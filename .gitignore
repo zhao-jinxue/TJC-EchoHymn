@@ -1,14 +1,41 @@
-# 依赖与构建产物
+# ===== 依赖与构建产物 =====
 node_modules/
 dist/
 build/
 
-# 系统与编辑器文件
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+hymn_app/build/
+hymn_app/.dart_tool/
+hymn_app/.flutter-plugins
+hymn_app/.flutter-plugins-dependencies
+hymn_app/.packages
+hymn_app/pubspec.lock
+
+# CMake / C++ 构建产物
+hymn_app/native/build/
+hymn_app/native/cmake-build-*/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE 编辑器文件（保留 .vscode/ 中的 launch.json / tasks.json）
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+
+# 系统文件
 .DS_Store
 Thumbs.db
 *.log
-.vscode/
-.idea/
 
 # 音频与素材（如有本地文件）
 audio/

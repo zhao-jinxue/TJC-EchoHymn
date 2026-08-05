@@ -1,0 +1,64 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cmake-configure-native",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}/hymn_app/native",
+                "-B",
+                "${workspaceFolder}/hymn_app/native/build"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "cmake-build-native",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/hymn_app/native/build",
+                "--config",
+                "Release"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "cmake-configure-native",
+            "problemMatcher": []
+        },
+        {
+            "label": "cmake-build-native-test",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/hymn_app/native/build",
+                "--config",
+                "Release",
+                "--target",
+                "hymn_engine_test"
+            ],
+            "group": "build",
+            "dependsOn": "cmake-configure-native",
+            "problemMatcher": []
+        },
+        {
+            "label": "flutter-test",
+            "type": "shell",
+            "command": "flutter",
+            "args": [
+                "test"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/hymn_app"
+            },
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

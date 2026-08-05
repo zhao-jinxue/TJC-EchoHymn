@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter (Windows)",
+            "type": "dart",
+            "request": "launch",
+            "program": "hymn_app/lib/main.dart",
+            "cwd": "hymn_app",
+            "flutterMode": "debug",
+            "toolArgs": []
+        }
+        // 说明：如需调试 C++ 原生引擎，请先安装 Microsoft C/C++ 扩展，
+        // 然后将下方配置块取消注释：
+        // {
+        //     "name": "C++ Native 测试 (VS)",
+        //     "type": "cppvsdbg",
+        //     "request": "launch",
+        //     "program": "${workspaceFolder}/hymn_app/native/build/Release/hymn_engine_test.exe",
+        //     "args": [],
+        //     "cwd": "${workspaceFolder}/hymn_app/native/build",
+        //     "console": "externalTerminal",
+        //     "stopAtEntry": false,
+        //     "preLaunchTask": "cmake-build-native"
+        // }
+    ]
+}
