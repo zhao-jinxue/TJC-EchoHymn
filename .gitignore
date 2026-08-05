@@ -26,10 +26,11 @@ hymn_app/native/cmake-build-*/
 *.dll
 *.exe
 
-# IDE 编辑器文件（保留 .vscode/ 中的 launch.json / tasks.json）
+# IDE 编辑器文件（保留 .vscode/ 中的必要配置）
 .vscode/*
 !.vscode/launch.json
 !.vscode/tasks.json
+!.vscode/settings.json
 .idea/
 
 # 系统文件
