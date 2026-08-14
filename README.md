@@ -35,7 +35,13 @@ EchoHymn/
 │
 ├── docs/
 │   ├── RECOMMENDED_TOOLS.md   # 🛠 MCP 服务器 & VS Code 插件推荐
-│   └── README.native.md       # C++ 引擎构建指南
+│   ├── README.native.md       # C++ 引擎构建指南
+│   └── DEPLOY.md              # 📦 打包与迁移部署指南
+│
+├── tools/
+│   ├── 打包.bat               # 🚀 一键打包 Web 迁移包（双击运行）
+│   └── package_web.ps1        # Web 迁移包打包脚本
+│
 └── README.md
 ```
 
@@ -116,6 +122,20 @@ python -m http.server 8000
 ```
 
 存储的数据会自动被 C++ 引擎解析（Flutter 版）。
+
+---
+
+## 📦 打包与迁移到其他设备
+
+详见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。速览：
+
+| 目标平台 | 依赖 | 产物 |
+| --- | --- | --- |
+| **Web**（推荐，立即可用） | 目标机只需 Python | `release/echohymn-web-1.0.0.zip` —— 双击 `tools/打包.bat` 一键生成 |
+| **Windows 桌面** | 开发机需 VS + 开发者模式 | `hymn_app/build/windows/x64/runner/Release/` 整体拷贝 |
+| **Android** | 开发机需 Android Studio | `build/app/outputs/flutter-apk/app-release.apk` 直接安装 |
+
+> 一键生成 Web 迁移包：**双击 `tools/打包.bat`** → 得到 `release/echohymn-web-1.0.0.zip` → 拷贝到目标电脑解压 → 双击「开始使用.bat」即可。
 
 ---
 
