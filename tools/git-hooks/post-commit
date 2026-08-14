@@ -1,0 +1,6 @@
+@echo off
+rem EchoHymn - post-commit auto release hook
+rem Runs after every git commit: builds web + packages release + keeps last 5.
+set "REPO_ROOT=%~dp0..\.."
+cd /d "%REPO_ROOT%"
+start "EchoHymn Auto-Release" /min pwsh -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\publish_release.ps1"

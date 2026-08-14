@@ -20,6 +20,31 @@
 
 ---
 
+## 〇、自动发布（每次 git commit 后自动打包发布）
+
+本仓库已内置 **git post-commit 钩子**：每次 `git commit` 成功后，自动在后台执行发布流水线。
+
+- **钩子安装**（一次性）：双击 `tools/install_hooks.bat`，或在仓库根执行：
+
+  ```powershell
+  Copy-Item tools\git-hooks\post-commit .git\hooks\post-commit -Force
+  ```
+
+- **发布流程** `tools/publish_release.ps1`：
+  1. 仅当分支为 `master`/`main` 时触发
+  2. `flutter build web --release` 构建最新代码
+  3. 打包为版本化目录 `release\<短commit>-\<时间戳>\`（如 `release\echohymn-web-e26cb8c-20260814-214507\echohymn-web-e26cb8c-20260814-214507.zip`）
+  4. **自动清理旧版本，只保留最近 5 份**（修改脚本顶部 `KeepCount` 可调）
+- **手动发布**（等效）：
+
+  ```powershell
+  pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_release.ps1
+  ```
+
+- 钩子模板存放于 `tools/git-hooks/post-commit`，便于版本管理；已安装副本在 `.git\hooks\post-commit`（不随仓库提交）。
+
+---
+
 ## 一、方式一：Web 版打包迁移（✅ 立即可用，推荐）
 
 Web 版产物是**纯静态文件**，拷贝到任意设备即可运行。

@@ -127,6 +127,18 @@ python -m http.server 8000
 
 ## 📦 打包与迁移到其他设备
 
+### ⚡ 每次 git commit 自动发布（已内置钩子）
+
+本仓库内置 **git post-commit 钩子**，每次 `git commit` 成功后自动：
+
+1. 构建最新 Web 版本
+2. 发布到 `release\<短commit>-<时间戳>\` 版本化目录
+3. **自动清理，只保留最近 5 份**（脚本内 `KeepCount` 可调）
+
+- 安装钩子（一次性）：双击 `tools/install_hooks.bat`（已安装则跳过）
+- 手动发布：`pwsh -NoProfile -File tools\publish_release.ps1`
+- 钩子模板：`tools/git-hooks/post-commit`
+
 详见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。速览：
 
 | 目标平台 | 依赖 | 产物 |
