@@ -18,6 +18,8 @@ if not exist "..\.git\hooks" (
 )
 
 copy /Y "git-hooks\post-commit" "..\.git\hooks\post-commit" >nul
+rem 确保 Git Bash 可执行（无扩展名 sh 脚本）
+if exist "..\.git\hooks\post-commit.sample" del "..\.git\hooks\post-commit.sample" >nul 2>nul
 if errorlevel 1 (
     echo [错误] 复制钩子失败。
     pause
