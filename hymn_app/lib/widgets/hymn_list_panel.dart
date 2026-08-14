@@ -84,7 +84,7 @@ class HymnListPanel extends StatelessWidget {
                   },
                 ),
         ),
-        Divider(height: 1),
+        const Divider(height: 1),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Text(

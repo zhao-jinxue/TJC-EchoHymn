@@ -42,7 +42,8 @@ class AudioService {
       switch (event.processingState) {
         case ProcessingState.ready:
         case ProcessingState.completed:
-          _emitStatus(event.playing ? PlayerStatus.playing : PlayerStatus.paused);
+          _emitStatus(
+              _player.playing ? PlayerStatus.playing : PlayerStatus.paused);
           break;
         case ProcessingState.buffering:
         case ProcessingState.loading:
@@ -50,14 +51,6 @@ class AudioService {
           break;
         case ProcessingState.idle:
           break;
-      }
-    });
-
-    _player.playerStateStream.listen((state) {
-      if (state.playing) {
-        _emitStatus(PlayerStatus.playing);
-      } else {
-        _emitStatus(PlayerStatus.paused);
       }
     });
 
@@ -128,9 +121,7 @@ class AudioService {
 
   Future<void> playNext() async {
     if (_playlist.isEmpty) return;
-    final next = _currentIndex < 0
-        ? 0
-        : (_currentIndex + 1) % _playlist.length;
+    final next = _currentIndex < 0 ? 0 : (_currentIndex + 1) % _playlist.length;
     await playAt(next);
   }
 

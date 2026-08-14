@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../models/hymn.dart';
 import '../services/audio_service.dart';
 
 /// 底部播放器栏：控制按钮 + 进度条 + 音量
@@ -88,9 +87,8 @@ class _PlayerBarState extends State<PlayerBar> {
     final hymn = widget.audio.currentHymn!;
     final playing = _status == PlayerStatus.playing;
     final loading = _status == PlayerStatus.loading;
-    final position = _dragValue != null
-        ? Duration(seconds: _dragValue!.round())
-        : _position;
+    final position =
+        _dragValue != null ? Duration(seconds: _dragValue!.round()) : _position;
 
     return Column(
       mainAxisSize: MainAxisSize.min,

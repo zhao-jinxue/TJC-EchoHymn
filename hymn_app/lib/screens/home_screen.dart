@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../models/hymn.dart';
 import '../services/audio_service.dart';
 import '../services/hymn_repository.dart';
 import '../widgets/lyrics_view.dart';

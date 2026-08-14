@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../models/hymn.dart';
 import '../services/audio_service.dart';
 
 /// 歌词视图：随播放器状态更新
@@ -16,7 +15,6 @@ class LyricsView extends StatefulWidget {
 }
 
 class _LyricsViewState extends State<LyricsView> {
-  Hymn? _currentHymn;
   StreamSubscription<PlayerStatus>? _statusSub;
 
   @override
@@ -43,7 +41,8 @@ class _LyricsViewState extends State<LyricsView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.library_music, size: 64, color: theme.colorScheme.outline),
+            Icon(Icons.library_music,
+                size: 64, color: theme.colorScheme.outline),
             const SizedBox(height: 12),
             Text(
               '选择一首诗歌，歌词将显示在这里',
