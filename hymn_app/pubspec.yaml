@@ -19,6 +19,8 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.24
   # 繁→简转换（OpenCC FFI，支持 Windows/Android/iOS/macOS/Web）
   flutter_opencc_ffi: ^0.0.3
+  # 本地状态持久化（记住上次歌单/音频版本/歌词版本）
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:
