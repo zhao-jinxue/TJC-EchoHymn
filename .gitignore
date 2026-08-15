@@ -41,3 +41,6 @@ Thumbs.db
 # 音频与素材（如有本地文件）
 audio/
 assets/media/
+
+# 发布产物（每次 commit 自动重新生成）
+release/
