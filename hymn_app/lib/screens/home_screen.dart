@@ -53,6 +53,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // 默认歌单二级目录的诗歌列表（选中时展示）
   List<Hymn> _defaultPlaylistHymns = const [];
   bool _showDefaultPlaylistContent = false;
+  static const int _pageSize = 50;
+  int _listPage = 0;
 
   @override
   void initState() {
@@ -217,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             width: 60,
             height: 30,
             child: _toggleButton(
-              icon: _showLeft ? Icons.chevron_left : Icons.chevron_right,
+              icon: _showLeft ? Icons.chevron_right : Icons.chevron_left,
               tooltip: _showLeft ? '收起左侧栏目' : '展开左侧栏目',
               active: !_showLeft,
               onTap: () => setState(() => _showLeft = !_showLeft),
@@ -240,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             width: 60,
             height: 30,
             child: _toggleButton(
-              icon: _showRight ? Icons.chevron_right : Icons.chevron_left,
+              icon: _showRight ? Icons.chevron_left : Icons.chevron_right,
               tooltip: _showRight ? '收起右侧栏目' : '展开右侧栏目',
               active: !_showRight,
               onTap: () => setState(() => _showRight = !_showRight),
@@ -321,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 左侧栏 ----------
   Widget _buildLeftPanel() {
     return SizedBox(
-      width: 400,
+      width: 350,
       child: Container(
         color: AppColors.sidebarBg,
         child: Column(
@@ -429,11 +431,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // 诗歌列表
+  // 诗歌列表（分页：每页 50 首）
   Widget _buildHymnListTab() {
-    final hymns = _searchKeyword.isEmpty
+    final all = _searchKeyword.isEmpty
         ? _allHymns
         : (_repo?.searchHymns(_searchKeyword) ?? const []);
+    final totalPages = (all.length / _pageSize).ceil().clamp(1, 1 << 31);
+    if (_listPage >= totalPages) _listPage = totalPages - 1;
+    if (_listPage < 0) _listPage = 0;
+    final start = _listPage * 50;
+    final end = (start + 50).clamp(0, all.length);
+    final hymns = all.sublist(start, end);
     return Column(
       children: [
         Padding(
@@ -446,13 +454,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.clear, size: 16),
-                      onPressed: () => setState(() => _searchKeyword = ''),
+                      onPressed: () {
+                        setState(() {
+                          _searchKeyword = '';
+                          _listPage = 0;
+                        });
+                      },
                     ),
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(vertical: 8),
             ),
             onChanged: (v) {
-              setState(() => _searchKeyword = v);
+              setState(() {
+                _searchKeyword = v;
+                _listPage = 0;
+              });
             },
           ),
         ),
@@ -461,9 +477,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ? const _EmptyHint(text: '未找到相关诗歌')
               : ListView.builder(
                   itemCount: hymns.length,
-                  itemBuilder: (context, index) =>
-                      _hymnListItem(hymns[index], index, hymns),
+                  itemBuilder: (context, index) => _hymnListItem(
+                      hymns[index], start + index, all),
                 ),
+        ),
+        Container(
+          color: AppColors.cardBg,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                tooltip: '上一页',
+                onPressed: _listPage > 0
+                    ? () => setState(() => _listPage--)
+                    : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  '第 ${_listPage + 1}/$totalPages 页',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                tooltip: '下一页',
+                onPressed: _listPage < totalPages - 1
+                    ? () => setState(() => _listPage++)
+                    : null,
+              ),
+            ],
+          ),
         ),
       ],
     );

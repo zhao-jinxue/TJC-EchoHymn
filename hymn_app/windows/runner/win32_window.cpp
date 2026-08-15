@@ -179,6 +179,14 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_GETMINMAXINFO: {
+      // 设置窗口最小尺寸 1000x700（逻辑像素，DPI 已按 96 比例）
+      auto mmi = reinterpret_cast<MINMAXINFO*>(lparam);
+      mmi->ptMinTrackSize.x = 1000;
+      mmi->ptMinTrackSize.y = 700;
+      return 0;
+    }
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();

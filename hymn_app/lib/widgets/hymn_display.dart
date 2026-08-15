@@ -100,8 +100,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 hymn != null && widget.audio.currentAudioVersion.contains('鋼琴'),
             onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
           ),
-          const SizedBox(width: 8),
-          _buildVoiceDropdown(hymn),
           const Spacer(),
           _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
           const SizedBox(width: 4),
@@ -153,78 +151,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
     return all.where((v) => !v.contains('鋼琴')).toList();
   }
 
-  Widget _buildVoiceDropdown(Hymn? hymn) {
-    final voices = hymn == null ? <String>[] : voiceVersions(hymn);
-    if (hymn == null || voices.isEmpty) {
-      return _versionBtn(
-        label: '人声版',
-        icon: Icons.mic,
-        active: false,
-      );
-    }
-
-    final currentVoice = widget.audio.currentAudioVersion;
-    final isVoiceActive = currentVoice.contains('人聲') ||
-        currentVoice.contains('人声') ||
-        !currentVoice.contains('鋼琴');
-
-    if (voices.length == 1) {
-      return _versionBtn(
-        label: '人声版',
-        icon: Icons.mic,
-        active: isVoiceActive,
-        onTap: () => _switchVersion(hymn, voices.first),
-      );
-    }
-
-    return Tooltip(
-      message: '共 ${voices.length} 个人声版本，请选择',
-      waitDuration: Duration.zero,
-      showDuration: const Duration(seconds: 10),
-      child: PopupMenuButton<String>(
-        tooltip: '选择人声版本',
-        initialValue: isVoiceActive ? currentVoice : voices.first,
-        onSelected: (v) => _switchVersion(hymn, v),
-        itemBuilder: (ctx) => [
-          for (final v in voices)
-            PopupMenuItem(value: v, child: Text(_voiceLabel(v))),
-        ],
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isVoiceActive ? AppColors.primary : AppColors.sidebarBg,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.mic,
-                  size: 16,
-                  color:
-                      isVoiceActive ? Colors.white : AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(
-                isVoiceActive ? _voiceLabel(currentVoice) : '人声版 ▾',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isVoiceActive ? Colors.white : AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 2),
-              Icon(Icons.arrow_drop_down,
-                  size: 18,
-                  color:
-                      isVoiceActive ? Colors.white : AppColors.textSecondary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   String _voiceLabel(String v) =>
       ChineseConvertService.instance.toSimplified(v);
-
   Widget _modeBtn(String label, DisplayMode mode, IconData icon) {
     final selected = _mode == mode;
     return Material(
@@ -303,11 +231,25 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 响应式字号：随窗口缩放
-        final w = constraints.maxWidth;
-        final titleSize = (w / 36).clamp(20.0, 34.0);
-        final bodySize = (w / 52).clamp(14.0, 24.0);
-        final labelSize = (w / 90).clamp(12.0, 16.0);
+        // 以「铺满显示区」为目标计算字号：先用基准字号测算内容高度，再按比例缩放铺满
+        const pad = 48.0; // 上下留白 24+24
+        double baseBody = 18.0;
+        // 粗估每段高度：标题 + 节标签 × N + 歌词 × N
+        final verseTexts = verses.where((v) => v.trim().isNotEmpty).toList();
+        int lineCount = 0;
+        for (final v in verseTexts) {
+          final lines = v.split('\n').length;
+          lineCount += lines + 1; // + 节标签
+        }
+        // 每行按 1.8 倍字号高度估算
+        final availH = (constraints.maxHeight - pad).clamp(100.0, 4000.0);
+        final availW = constraints.maxWidth - pad;
+        // 行高与字号关系：行距 1.8 → 每行约 2.0 倍字号
+        final maxByH = lineCount > 0 ? availH / (lineCount * 2.0) : 40.0;
+        final maxByW = availW / 14.0; // 每行约 14 个汉字
+        final bodySize = [baseBody, maxByH, maxByW].reduce((a, b) => a < b ? a : b).clamp(14.0, 30.0);
+        final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
+        final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -435,8 +377,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
           tooltip: '下一首',
           onPressed: () => widget.audio.playNext(),
         ),
-        // 人声版本列表（>1 时显示，悬停提示 10 秒）
-        if (voices.length > 1) _buildVoiceListButton(hymn!, voices),
+        // 人声版本列表（>1 时显示，悬停提示 10 秒，与下一首拉开间距）
+        if (voices.length > 1) ...[
+          const SizedBox(width: 24),
+          _buildVoiceListButton(hymn!, voices),
+        ],
       ],
     );
   }
