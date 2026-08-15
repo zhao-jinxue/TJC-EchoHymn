@@ -14,6 +14,11 @@ dependencies:
   path_provider: ^2.1.3
   audio_session: ^0.1.21
   just_audio: ^0.9.39
+  # 本地 SQLite（跨平台：Windows/Linux 直接打开文件，Android/iOS 由 sqlite3_flutter_libs 提供原生库）
+  sqlite3: ^2.4.0
+  sqlite3_flutter_libs: ^0.5.24
+  # 繁→简转换（OpenCC FFI，支持 Windows/Android/iOS/macOS/Web）
+  flutter_opencc_ffi: ^0.0.3
 
 dev_dependencies:
   flutter_test:

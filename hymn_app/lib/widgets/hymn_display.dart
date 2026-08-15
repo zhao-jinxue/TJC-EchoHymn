@@ -1,0 +1,433 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+
+import '../app.dart';
+import '../models/hymn.dart';
+import '../services/audio_service.dart';
+import '../services/app_paths.dart';
+import '../services/chinese_convert_service.dart';
+
+/// 歌词显示模式
+enum DisplayMode { lyrics, numbered, staff }
+
+/// 主内容区：版本切换按钮 + 歌词/谱面显示 + 播放控制
+class HymnDisplay extends StatefulWidget {
+  final AudioService audio;
+  const HymnDisplay({super.key, required this.audio});
+
+  @override
+  State<HymnDisplay> createState() => _HymnDisplayState();
+}
+
+class _HymnDisplayState extends State<HymnDisplay> {
+  DisplayMode _mode = DisplayMode.lyrics;
+  StreamSubscription? _statusSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // 监听播放状态刷新（播放中高亮、error 提示等）
+    _statusSub = widget.audio.statusStream.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hymn = widget.audio.currentHymn;
+    return Container(
+      color: AppColors.pageBg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildVersionBar(hymn),
+          const Divider(height: 1, color: AppColors.divider),
+          Expanded(child: _buildContent(hymn)),
+          const Divider(height: 1, color: AppColors.divider),
+          _buildPlayerBar(hymn),
+        ],
+      ),
+    );
+  }
+
+  // ---------- 版本切换栏 ----------
+  Widget _buildVersionBar(Hymn? hymn) {
+    return Container(
+      height: 44,
+      color: AppColors.cardBg,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          _versionBtn(
+            label: '钢琴版',
+            icon: Icons.piano,
+            active:
+                hymn != null && widget.audio.currentAudioVersion.contains('鋼琴'),
+            onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
+          ),
+          const SizedBox(width: 8),
+          _buildVoiceDropdown(hymn),
+          const Spacer(),
+          _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
+          const SizedBox(width: 4),
+          _modeBtn('简谱', DisplayMode.numbered, Icons.music_note),
+          const SizedBox(width: 4),
+          _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+        ],
+      ),
+    );
+  }
+
+  Widget _versionBtn({
+    required String label,
+    required IconData icon,
+    required bool active,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: active ? AppColors.primary : AppColors.sidebarBg,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon,
+                  size: 16,
+                  color: active ? Colors.white : AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: active ? Colors.white : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoiceDropdown(Hymn? hymn) {
+    final versions =
+        hymn == null ? <String>[] : widget.audio.availableVersions(hymn);
+    final voices =
+        versions.where((v) => v.contains('人聲') || v.contains('人声')).toList();
+
+    // 无人声版 → 灰色禁用
+    if (voices.isEmpty) {
+      return _versionBtn(
+        label: '人声版',
+        icon: Icons.mic,
+        active: false,
+      );
+    }
+
+    // 单个人声 → 按钮直切
+    final currentVoice = widget.audio.currentAudioVersion;
+    final isVoiceActive =
+        currentVoice.contains('人聲') || currentVoice.contains('人声');
+
+    if (voices.length == 1) {
+      return _versionBtn(
+        label: '人声版',
+        icon: Icons.mic,
+        active: isVoiceActive && currentVoice == voices.first,
+        onTap: hymn == null ? null : () => _switchVersion(hymn, voices.first),
+      );
+    }
+
+    // 多个人声 → 下拉菜单（hymn 为 null 时禁用）
+    void Function(String)? onSelected =
+        hymn == null ? null : (v) => _switchVersion(hymn, v);
+    return PopupMenuButton<String>(
+      tooltip: '选择人声版本',
+      initialValue: isVoiceActive ? currentVoice : voices.first,
+      onSelected: onSelected,
+      itemBuilder: (ctx) => [
+        for (final v in voices)
+          PopupMenuItem(value: v, child: Text(_voiceLabel(v))),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isVoiceActive ? AppColors.primary : AppColors.sidebarBg,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.mic,
+                size: 16,
+                color: isVoiceActive ? Colors.white : AppColors.textSecondary),
+            const SizedBox(width: 4),
+            Text(
+              isVoiceActive ? _voiceLabel(currentVoice) : '人声版 ▾',
+              style: TextStyle(
+                fontSize: 13,
+                color: isVoiceActive ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(Icons.arrow_drop_down,
+                size: 18,
+                color: isVoiceActive ? Colors.white : AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _voiceLabel(String v) =>
+      ChineseConvertService.instance.toSimplified(v);
+
+  Widget _modeBtn(String label, DisplayMode mode, IconData icon) {
+    final selected = _mode == mode;
+    return Material(
+      color: selected ? AppColors.selectedBg : AppColors.cardBg,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => setState(() => _mode = mode),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon,
+                  size: 15,
+                  color:
+                      selected ? AppColors.primary : AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _switchVersion(Hymn hymn, String version) async {
+    try {
+      await widget.audio.switchAudioVersion(version);
+      if (mounted) setState(() {});
+    } catch (_) {
+      _showAudioError();
+    }
+  }
+
+  // ---------- 内容区 ----------
+  Widget _buildContent(Hymn? hymn) {
+    if (hymn == null) {
+      return const Center(
+        child: Text(
+          '请在左侧选择一首诗歌',
+          style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
+        ),
+      );
+    }
+
+    switch (_mode) {
+      case DisplayMode.lyrics:
+        return _buildLyrics(hymn);
+      case DisplayMode.numbered:
+        return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
+      case DisplayMode.staff:
+        return _buildScore(hymn.staffPngPath, isEmpty: '暂无五线谱');
+    }
+  }
+
+  Widget _buildLyrics(Hymn hymn) {
+    final verses = hymn.verses;
+    if (verses.isEmpty) {
+      return const Center(
+        child: Text('暂无歌词', style: TextStyle(color: AppColors.textTertiary)),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            ChineseConvertService.instance.toSimplified(hymn.title),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '第 ${hymn.hymnNumber} 首',
+            style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+          ),
+          const SizedBox(height: 24),
+          for (var i = 0; i < verses.length; i++) ...[
+            if (verses[i].trim().isNotEmpty) ...[
+              Text(
+                '第${i + 1}节',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textTertiary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                ChineseConvertService.instance.toSimplified(verses[i]),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.8,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScore(String path, {required String isEmpty}) {
+    final abs = AppPaths.resolveAsset(path);
+    if (abs.isEmpty || !(abs.contains('http') || _fileExists(abs))) {
+      return Center(
+        child: Text(isEmpty,
+            style: const TextStyle(color: AppColors.textTertiary)),
+      );
+    }
+    // 图片谱面：本地文件用 Image.file
+    return Center(
+      child: InteractiveViewer(
+        child: abs.startsWith('http')
+            ? Image.network(abs,
+                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+            : Image.file(File(abs),
+                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
+      ),
+    );
+  }
+
+  bool _fileExists(String path) {
+    try {
+      return File(path).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ---------- 播放控制 ----------
+  Widget _buildPlayerBar(Hymn? hymn) {
+    return Container(
+      height: 60,
+      color: AppColors.cardBg,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.skip_previous, color: AppColors.textPrimary),
+            tooltip: '上一首',
+            onPressed: () => widget.audio.playPrev(),
+          ),
+          StreamBuilder<PlayerStatus>(
+            stream: widget.audio.statusStream,
+            builder: (context, snap) {
+              final status = snap.data ?? PlayerStatus.idle;
+              final playing = status == PlayerStatus.playing;
+              return IconButton(
+                iconSize: 40,
+                icon: Icon(
+                  playing
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_filled,
+                  color: AppColors.primary,
+                ),
+                tooltip: playing ? '暂停' : '播放',
+                onPressed: () => widget.audio.togglePlayPause(),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.skip_next, color: AppColors.textPrimary),
+            tooltip: '下一首',
+            onPressed: () => widget.audio.playNext(),
+          ),
+          const SizedBox(width: 16),
+          Expanded(child: _buildProgress()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgress() {
+    return StreamBuilder<Duration>(
+      stream: widget.audio.positionStream,
+      builder: (context, posSnap) {
+        final pos = posSnap.data ?? Duration.zero;
+        return StreamBuilder<Duration>(
+          stream: widget.audio.durationStream,
+          builder: (context, durSnap) {
+            final dur = durSnap.data ?? Duration.zero;
+            return Row(
+              children: [
+                Text(formatTime(pos),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+                Expanded(
+                  child: Slider(
+                    value: dur.inMilliseconds > 0
+                        ? pos.inMilliseconds
+                            .clamp(0, dur.inMilliseconds)
+                            .toDouble()
+                        : 0,
+                    max: dur.inMilliseconds > 0
+                        ? dur.inMilliseconds.toDouble()
+                        : 1,
+                    onChanged: (v) =>
+                        widget.audio.seek(Duration(milliseconds: v.toInt())),
+                  ),
+                ),
+                Text(formatTime(dur),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAudioError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('音频加载失败'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
