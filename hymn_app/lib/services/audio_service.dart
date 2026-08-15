@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:audio_session/audio_session.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../models/hymn.dart';
 import 'app_paths.dart';
@@ -9,7 +8,11 @@ import 'app_paths.dart';
 /// 播放器状态
 enum PlayerStatus { idle, loading, playing, paused, error }
 
-/// 音频播放服务：封装 just_audio，支持多版本本地音频
+/// 音频播放服务：封装 audioplayers
+///
+/// 用 `DeviceFileSource(path)` 直传本地文件路径（不经 URI 编码），
+/// 根治中文/繁体路径经 `Uri.file` 编码导致的「Loading interrupted」问题。
+/// 走 Windows Media Foundation 系统解码器（m4a/mp3 原生支持），零外部下载。
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
   final StreamController<PlayerStatus> _statusCtrl =
@@ -22,7 +25,7 @@ class AudioService {
   Hymn? _currentHymn;
   String _currentAudioVersion = '鋼琴版';
   bool _disposed = false;
-  String? lastError; // 最近一次播放错误（调试用）
+  String? lastError; // 最近一次播放错误（Toast 展示用）
 
   /// 播放列表（当前上下文：诗歌列表 / 默认歌单 / 个人歌单）
   List<Hymn> _playlist = const [];
@@ -33,42 +36,33 @@ class AudioService {
   }
 
   Future<void> _init() async {
-    // 音频会话（移动端后台/锁屏控制友好）
-    try {
-      final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
-    } catch (_) {}
+    // 时长 / 进度
+    _player.onDurationChanged.listen((d) {
+      if (!_durationCtrl.isClosed) _durationCtrl.add(d);
+    });
+    _player.onPositionChanged.listen((p) {
+      if (!_positionCtrl.isClosed) _positionCtrl.add(p);
+    });
 
-    _player.playbackEventStream
-        .where((event) => event.processingState != ProcessingState.idle)
-        .listen((event) {
-      switch (event.processingState) {
-        case ProcessingState.ready:
-        case ProcessingState.completed:
-          _emitStatus(
-              _player.playing ? PlayerStatus.playing : PlayerStatus.paused);
+    // 状态
+    _player.onPlayerStateChanged.listen((state) {
+      switch (state) {
+        case PlayerState.playing:
+          _emitStatus(PlayerStatus.playing);
           break;
-        case ProcessingState.buffering:
-        case ProcessingState.loading:
-          _emitStatus(PlayerStatus.loading);
+        case PlayerState.paused:
+        case PlayerState.stopped:
+        case PlayerState.completed:
+          _emitStatus(PlayerStatus.paused);
           break;
-        case ProcessingState.idle:
+        case PlayerState.disposed:
           break;
       }
     });
 
-    _player.positionStream.listen((pos) {
-      if (!_positionCtrl.isClosed) _positionCtrl.add(pos);
-    });
-
-    _player.durationStream.listen((dur) {
-      if (!_durationCtrl.isClosed) _durationCtrl.add(dur ?? Duration.zero);
-    });
-
-    _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        playNext();
-      }
+    // 播放完成 → 自动下一首（唯一通道，避免与状态流双触发）
+    _player.onPlayerComplete.listen((_) {
+      playNext();
     });
   }
 
@@ -81,7 +75,7 @@ class AudioService {
   Hymn? get currentHymn => _currentHymn;
   String get currentAudioVersion => _currentAudioVersion;
   int get currentIndex => _currentIndex;
-  bool get isPlaying => _player.playing;
+  bool get isPlaying => _player.state == PlayerState.playing;
 
   /// 当前播放列表（用于 UI 显示）
   List<Hymn> get playlist => _playlist;
@@ -120,15 +114,20 @@ class AudioService {
       return;
     }
     final abs = AppPaths.resolveAsset(rel);
+    if (abs.isEmpty) {
+      lastError = '音频路径为空';
+      _emitStatus(PlayerStatus.error);
+      return;
+    }
 
     _emitStatus(PlayerStatus.loading);
     try {
+      await _player.stop(); // 先停止旧源，避免资源占用
       if (abs.startsWith('http://') || abs.startsWith('https://')) {
-        await _player.setAudioSource(AudioSource.uri(Uri.parse(abs)));
+        await _player.play(UrlSource(abs));
       } else {
-        await _player.setAudioSource(AudioSource.uri(Uri.file(abs)));
+        await _player.play(DeviceFileSource(abs));
       }
-      await _player.play();
       lastError = null;
       _emitStatus(PlayerStatus.playing);
     } catch (e) {
@@ -156,10 +155,17 @@ class AudioService {
       }
       return;
     }
-    if (_player.playing) {
+    if (_player.state == PlayerState.playing) {
       await _player.pause();
     } else {
-      await _player.play();
+      // stop/completed 状态 resume 无效 → 需重新加载当前源
+      if (_player.state == PlayerState.stopped ||
+          _player.state == PlayerState.completed) {
+        final h = _currentHymn;
+        if (h != null) await playHymn(h, index: _currentIndex);
+      } else {
+        await _player.resume();
+      }
     }
   }
 
