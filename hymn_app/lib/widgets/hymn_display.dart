@@ -100,6 +100,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 hymn != null && widget.audio.currentAudioVersion.contains('鋼琴'),
             onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
           ),
+          const SizedBox(width: 8),
+          _buildVoiceButton(hymn),
           const Spacer(),
           _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
           const SizedBox(width: 4),
@@ -153,6 +155,24 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   String _voiceLabel(String v) =>
       ChineseConvertService.instance.toSimplified(v);
+  /// 人声版切换按钮（切到第一个人声版本；多版本列表在播放条）
+  Widget _buildVoiceButton(Hymn? hymn) {
+    final voices = hymn == null ? <String>[] : voiceVersions(hymn);
+    if (hymn == null || voices.isEmpty) {
+      return _versionBtn(label: '人声版', icon: Icons.mic, active: false);
+    }
+    final currentVoice = widget.audio.currentAudioVersion;
+    final isVoiceActive = currentVoice.contains('人聲') ||
+        currentVoice.contains('人声') ||
+        !currentVoice.contains('鋼琴');
+    return _versionBtn(
+      label: '人声版',
+      icon: Icons.mic,
+      active: isVoiceActive,
+      onTap: () => _switchVersion(hymn, voices.first),
+    );
+  }
+
   Widget _modeBtn(String label, DisplayMode mode, IconData icon) {
     final selected = _mode == mode;
     return Material(
@@ -447,10 +467,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   void _showAudioError() {
     if (!mounted) return;
+    final err = widget.audio.lastError;
+    final msg = (err == null || err.isEmpty)
+        ? '音频加载失败'
+        : '音频加载失败：$err';
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('音频加载失败'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
       ),
     );

@@ -22,6 +22,7 @@ class AudioService {
   Hymn? _currentHymn;
   String _currentAudioVersion = '鋼琴版';
   bool _disposed = false;
+  String? lastError; // 最近一次播放错误（调试用）
 
   /// 播放列表（当前上下文：诗歌列表 / 默认歌单 / 个人歌单）
   List<Hymn> _playlist = const [];
@@ -122,15 +123,16 @@ class AudioService {
     _emitStatus(PlayerStatus.loading);
     try {
       if (abs.startsWith('http://') || abs.startsWith('https://')) {
-        await _player.setUrl(abs);
+        await _player.setAudioSource(AudioSource.uri(Uri.parse(abs)));
       } else {
-        await _player.setFilePath(abs);
+        await _player.setAudioSource(AudioSource.uri(Uri.file(abs)));
       }
       await _player.play();
+      lastError = null;
       _emitStatus(PlayerStatus.playing);
     } catch (e) {
+      lastError = e.toString();
       _emitStatus(PlayerStatus.error);
-      rethrow;
     }
   }
 

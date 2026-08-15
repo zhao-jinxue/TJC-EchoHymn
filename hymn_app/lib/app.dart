@@ -55,7 +55,7 @@ class EchoHymnApp extends StatelessWidget {
       ),
       // 全局滚动条：宽度 13px（默认 8 → +5），滑块 #C1C1C1
       scrollbarTheme: const ScrollbarThemeData(
-        thickness: WidgetStatePropertyAll(13),
+        thickness: WidgetStatePropertyAll(10),
         thumbColor: WidgetStatePropertyAll(Color(0xFFC1C1C1)),
       ),
     );

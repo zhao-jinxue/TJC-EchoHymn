@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // 默认歌单二级目录的诗歌列表（选中时展示）
   List<Hymn> _defaultPlaylistHymns = const [];
   bool _showDefaultPlaylistContent = false;
-  static const int _pageSize = 50;
+  static const int _pageSize = 35;
   int _listPage = 0;
 
   @override
@@ -177,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     audio.playHymn(hymn,
         index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
     setState(() {});
+    _saveState();
   }
 
   /// 保存状态到本地
@@ -368,6 +369,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _leftTab = tab;
               _showDefaultPlaylistContent = false;
             });
+            _saveState();
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -439,8 +441,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final totalPages = (all.length / _pageSize).ceil().clamp(1, 1 << 31);
     if (_listPage >= totalPages) _listPage = totalPages - 1;
     if (_listPage < 0) _listPage = 0;
-    final start = _listPage * 50;
-    final end = (start + 50).clamp(0, all.length);
+    final start = _listPage * _pageSize;
+    final end = (start + _pageSize).clamp(0, all.length);
     final hymns = all.sublist(start, end);
     return Column(
       children: [
@@ -583,12 +585,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       color: selected ? AppColors.selectedBg : AppColors.sidebarBg,
       child: InkWell(
         onTap: () {
-          // 点击二级目录 → 展示包含的诗歌
           setState(() {
             _selectedSubcategory = sub.subcategory;
             _defaultPlaylistHymns = _buildCategoryHymns(sub);
             _showDefaultPlaylistContent = true;
           });
+          _saveState();
         },
         child: Container(
           padding:
@@ -703,7 +705,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return Material(
           color: selected ? AppColors.selectedBg : AppColors.cardBg,
           child: InkWell(
-            onTap: () => setState(() => _selectedPlaylistName = pl.name),
+            onTap: () {
+              setState(() => _selectedPlaylistName = pl.name);
+              _saveState();
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -812,6 +817,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _audio!.setPlaylist(contextList, startIndex: index);
     _audio!.playHymn(hymn, index: index, version: _currentAudioVersion);
     setState(() {});
+    _saveState();
   }
 
   // ---------- 右侧栏（源考） ----------
