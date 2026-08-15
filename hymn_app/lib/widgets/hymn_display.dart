@@ -48,8 +48,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
       (m) => m.name == widget.initialMode,
       orElse: () => DisplayMode.lyrics,
     );
-    _statusSub = widget.audio.statusStream.listen((_) {
-      if (mounted) setState(() {});
+    _statusSub = widget.audio.statusStream.listen((s) {
+      if (!mounted) return;
+      setState(() {});
+      if (s == PlayerStatus.error) _showAudioError();
     });
   }
 
@@ -71,13 +73,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
         children: [
           _buildVersionBar(hymn),
           const Divider(height: 1, color: AppColors.divider),
-          // 歌词区最小 450x450
-          Expanded(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 450, minHeight: 450),
-              child: _buildContent(hymn),
-            ),
-          ),
+          Expanded(child: _buildContent(hymn)),
           const Divider(height: 1, color: AppColors.divider),
           _buildPlayerBar(hymn),
         ],
@@ -155,6 +151,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   String _voiceLabel(String v) =>
       ChineseConvertService.instance.toSimplified(v);
+
   /// 人声版切换按钮（切到第一个人声版本；多版本列表在播放条）
   Widget _buildVoiceButton(Hymn? hymn) {
     final voices = hymn == null ? <String>[] : voiceVersions(hymn);
@@ -267,7 +264,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
         // 行高与字号关系：行距 1.8 → 每行约 2.0 倍字号
         final maxByH = lineCount > 0 ? availH / (lineCount * 2.0) : 40.0;
         final maxByW = availW / 14.0; // 每行约 14 个汉字
-        final bodySize = [baseBody, maxByH, maxByW].reduce((a, b) => a < b ? a : b).clamp(14.0, 30.0);
+        final bodySize = [baseBody, maxByH, maxByW]
+            .reduce((a, b) => a < b ? a : b)
+            .clamp(14.0, 30.0);
         final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
         final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
 
@@ -468,9 +467,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   void _showAudioError() {
     if (!mounted) return;
     final err = widget.audio.lastError;
-    final msg = (err == null || err.isEmpty)
-        ? '音频加载失败'
-        : '音频加载失败：$err';
+    final msg = (err == null || err.isEmpty) ? '音频加载失败' : '音频加载失败：$err';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),

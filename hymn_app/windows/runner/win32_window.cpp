@@ -182,7 +182,7 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_GETMINMAXINFO: {
       // 设置窗口最小尺寸 1000x700（逻辑像素，DPI 已按 96 比例）
       auto mmi = reinterpret_cast<MINMAXINFO*>(lparam);
-      mmi->ptMinTrackSize.x = 1202;
+      mmi->ptMinTrackSize.x = 1132;
       mmi->ptMinTrackSize.y = 700;
       return 0;
     }

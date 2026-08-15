@@ -115,6 +115,7 @@ class AudioService {
 
     final rel = hymn.audioVersions[audioVersion];
     if (rel == null || rel.isEmpty) {
+      lastError = '无音频文件';
       _emitStatus(PlayerStatus.error);
       return;
     }

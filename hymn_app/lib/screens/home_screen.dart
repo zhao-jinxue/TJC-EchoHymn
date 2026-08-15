@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app.dart';
@@ -50,10 +52,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _currentAudioVersion = '鋼琴版';
   String _currentDisplayMode = 'lyrics';
 
+  // ---- 列表联动（上一首/下一首时滚动到当前项） ----
+  StreamSubscription<PlayerStatus>? _audioStatusSub;
+  final ScrollController _hymnListScroll = ScrollController();
+  final ScrollController _defaultListScroll = ScrollController();
+
   // 默认歌单二级目录的诗歌列表（选中时展示）
   List<Hymn> _defaultPlaylistHymns = const [];
   bool _showDefaultPlaylistContent = false;
   static const int _pageSize = 35;
+  static const double _itemHeight = 34; // 列表项近似高度（滚动定位用）
   int _listPage = 0;
 
   @override
@@ -67,6 +75,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _saveState(); // 关闭时保存
+    _audioStatusSub?.cancel();
+    _hymnListScroll.dispose();
+    _defaultListScroll.dispose();
     _repo?.dispose();
     _audio?.dispose();
     super.dispose();
@@ -95,6 +106,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ));
 
       if (!mounted) return;
+      // 监听播放状态：错误 Toast（由 HymnDisplay 处理）+ 列表滚动高亮
+      _audioStatusSub = audio.statusStream.listen((s) {
+        if (!mounted) return;
+        setState(() {});
+        if (s == PlayerStatus.playing || s == PlayerStatus.loading) {
+          _syncListScroll();
+        }
+      });
       setState(() {
         _repo = repo;
         _audio = audio;
@@ -324,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 左侧栏 ----------
   Widget _buildLeftPanel() {
     return SizedBox(
-      width: 350,
+      width: 280,
       child: Container(
         color: AppColors.sidebarBg,
         child: Column(
@@ -478,9 +497,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: hymns.isEmpty
               ? const _EmptyHint(text: '未找到相关诗歌')
               : ListView.builder(
+                  controller: _hymnListScroll,
                   itemCount: hymns.length,
-                  itemBuilder: (context, index) => _hymnListItem(
-                      hymns[index], start + index, all),
+                  itemBuilder: (context, index) =>
+                      _hymnListItem(hymns[index], start + index, all),
                 ),
         ),
         Container(
@@ -492,9 +512,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               IconButton(
                 icon: const Icon(Icons.chevron_left, size: 20),
                 tooltip: '上一页',
-                onPressed: _listPage > 0
-                    ? () => setState(() => _listPage--)
-                    : null,
+                onPressed:
+                    _listPage > 0 ? () => setState(() => _listPage--) : null,
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -674,6 +693,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: _defaultPlaylistHymns.isEmpty
               ? const _EmptyHint(text: '暂无诗歌')
               : ListView.builder(
+                  controller: _defaultListScroll,
                   itemCount: _defaultPlaylistHymns.length,
                   itemBuilder: (context, index) => _hymnListItem(
                       _defaultPlaylistHymns[index],
@@ -820,11 +840,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _saveState();
   }
 
+  /// 上一首/下一首（或任意播放切换）时，将左侧列表滚动到当前项并保证翻页
+  void _syncListScroll() {
+    final audio = _audio;
+    if (audio == null || !mounted) return;
+    final idx = audio.currentIndex;
+    if (idx < 0) return;
+    final list = audio.playlist;
+    if (list.isEmpty) return;
+
+    ScrollController? controller;
+    var localIndex = idx;
+
+    if (_leftTab == LeftTab.hymnList) {
+      final all = _searchKeyword.isEmpty
+          ? _allHymns
+          : (_repo?.searchHymns(_searchKeyword) ?? const []);
+      if (identical(list, all)) {
+        final page = idx ~/ _pageSize;
+        if (page != _listPage) {
+          _listPage = page;
+          setState(() {});
+        }
+        localIndex = idx - _listPage * _pageSize;
+        controller = _hymnListScroll;
+      }
+    } else if (_leftTab == LeftTab.defaultPlaylists &&
+        _showDefaultPlaylistContent &&
+        identical(list, _defaultPlaylistHymns)) {
+      controller = _defaultListScroll;
+    }
+
+    if (controller == null) return;
+    final target = localIndex * _itemHeight;
+    final ctrl = controller;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !ctrl.hasClients) return;
+      final max = ctrl.position.maxScrollExtent;
+      ctrl
+          .animateTo(
+            target.clamp(0.0, max).toDouble(),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          )
+          .catchError((_) {});
+    });
+  }
+
   // ---------- 右侧栏（源考） ----------
   Widget _buildRightPanel() {
     final hymn = _audio?.currentHymn;
     return SizedBox(
-      width: 400,
+      width: 340,
       child: Container(
         color: AppColors.sidebarBg,
         child: Column(
