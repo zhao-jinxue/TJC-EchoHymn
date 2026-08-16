@@ -207,11 +207,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     final idx = ctx.indexOf(hymn);
     audio.setPlaylist(ctx, startIndex: idx >= 0 ? idx : 0);
-    // 只加载不播放：进度条从 0 开始，等待用户点击播放
-    audio.loadHymn(hymn, index: idx >= 0 ? idx : 0);
+    // 只加载不播放：进度条从 0 开始，等待用户点击播放；
+    // 同时记忆音频版本（人声版等），使版本栏正确高亮
+    audio.loadHymn(hymn,
+        index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
     setState(() {});
-    // 恢复后主动滚动左侧列表到当前诗歌（播放/加载状态不会触发，idle 需手动联动）
-    _syncListScroll();
+    // 恢复后主动滚动左侧列表到当前诗歌：
+    // 列表需在首帧构建完成（hasClients=true）后才能滚动，故延后到下一帧；
+    // 诗歌列表还需按分页机制先翻到对应页再滚动。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ensureHymnPageVisible();
+      _syncListScroll();
+    });
+  }
+
+  /// 保证当前诗歌所在分页已翻到（诗歌列表 35 首/页）
+  void _ensureHymnPageVisible() {
+    final audio = _audio;
+    if (audio == null || !mounted) return;
+    if (_leftTab != LeftTab.hymnList) return;
+    final idx = audio.currentIndex;
+    if (idx < 0) return;
+    final page = idx ~/ _pageSize;
+    if (page != _listPage) {
+      _listPage = page;
+      setState(() {});
+    }
   }
 
   /// 保存状态到本地
