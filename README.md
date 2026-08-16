@@ -115,7 +115,8 @@ flutter build apk --release
 | **Android** | Android Studio + SDK | `build/app/outputs/flutter-apk/app-release.apk` |
 | **OpenHarmony 鸿蒙** | 待接入（目录占位） | — |
 
-> 说明：**已移除 Web 自动发布机制**（git post-commit hook 已卸载）。当前每次 git commit 不再自动打包，需按需手动构建。
+> **自动发布**：每次 `git commit` 到 master/main 会自动构建 **Windows 桌面版**并发布到 `release/echohymn-win-<短哈希>-<时间戳>/`（保留最近 5 份）。日志见 `release/auto-release.log`。
+> 手动发布：`pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1`
 
 ---
 

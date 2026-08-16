@@ -17,6 +17,8 @@ import '../services/sqlite_repository.dart';
 ///   - 新建模式：取消 / 创建
 ///   - 修改模式：删除歌单 / 取消 / 保存
 ///
+/// 成员存储：`[{标题: 编号}]`（与 hymn_category.hymns 一致的 JSON 格式）
+///
 /// 返回值（String?）：'create' 新建成功 / 'save' 修改成功 / 'delete' 删除歌单 / null 取消
 class CreatePlaylistDialog extends StatefulWidget {
   final SqliteRepository repo;
@@ -34,8 +36,8 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   /// 歌单名称（弹窗关闭前暂存在内存，提交时才写库）
   String _playlistName = '';
 
-  /// 暂存的歌单成员 [{hymnId, name}]
-  final List<MapEntry<int, String>> _addedHymns = [];
+  /// 暂存的歌单成员 [{标题, 编号}]
+  final List<MapEntry<String, int>> _addedHymns = [];
 
   bool get _isEdit => widget.existing != null;
 
@@ -47,9 +49,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
     if (existing != null) {
       _playlistName = existing.name;
       _nameCtrl.text = existing.name;
-      for (final item in existing.hymnItems) {
-        _addedHymns.add(MapEntry(item.hymnId, item.name));
-      }
+      _addedHymns.addAll(existing.hymns);
     }
   }
 
@@ -179,7 +179,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                           leading: SizedBox(
                             width: 40,
                             child: Text(
-                              '${entry.key}',
+                              '${entry.value}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -188,7 +188,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                             ),
                           ),
                           title: Text(
-                            entry.value,
+                            entry.key,
                             style: const TextStyle(fontSize: 13),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -266,15 +266,18 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
       builder: (ctx) => HymnPickDialog(results: results),
     );
     if (selected == null || !mounted) return;
-    // 不允许重复添加
-    final exists = _addedHymns.any((e) => e.key == selected.id);
+    // 不允许重复添加（按编号判重）
+    final number = int.tryParse(selected.hymnNumber) ?? selected.id;
+    final exists = _addedHymns.any((e) => e.value == number);
     if (exists) {
       _showToast('该诗歌已在歌单中');
       return;
     }
     setState(() {
-      _addedHymns.add(MapEntry(selected.id,
-          ChineseConvertService.instance.toSimplified(selected.title)));
+      _addedHymns.add(MapEntry(
+        ChineseConvertService.instance.toSimplified(selected.title),
+        number,
+      ));
     });
   }
 
@@ -311,21 +314,11 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
     if (existing == null) {
       // 新建
       final id = repo.createPlaylist(_playlistName);
-      for (var i = 0; i < _addedHymns.length; i++) {
-        final entry = _addedHymns[i];
-        repo.addHymnToPlaylist(id, entry.key, entry.value);
-      }
+      repo.updatePlaylist(id, _playlistName, _addedHymns);
       Navigator.pop(context, 'create');
     } else {
-      // 修改：先重命名，再全量重建成员
-      repo.renamePlaylist(existing.id, _playlistName);
-      for (final item in existing.hymnItems) {
-        repo.removeHymnFromPlaylist(existing.id, item.hymnId);
-      }
-      for (var i = 0; i < _addedHymns.length; i++) {
-        final entry = _addedHymns[i];
-        repo.addHymnToPlaylist(existing.id, entry.key, entry.value);
-      }
+      // 修改
+      repo.updatePlaylist(existing.id, _playlistName, _addedHymns);
       Navigator.pop(context, 'save');
     }
   }

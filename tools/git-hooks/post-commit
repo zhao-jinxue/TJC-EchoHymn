@@ -1,0 +1,17 @@
+#!/bin/sh
+# EchoHymn - post-commit auto release hook (Windows)
+# Runs after every git commit: builds Windows release + keeps last 5.
+# Uses Git Bash's sh (Git for Windows ships sh.exe).
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+# Launch the release pipeline in background so it does NOT block git commit.
+mkdir -p "$REPO_ROOT/release"
+nohup pwsh -NoProfile -ExecutionPolicy Bypass \
+  -File "$REPO_ROOT/tools/publish_windows.ps1" \
+  > "$REPO_ROOT/release/auto-release.log" 2>&1 &
+
+exit 0

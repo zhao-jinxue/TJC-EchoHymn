@@ -823,8 +823,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<Hymn> _buildPlaylistHymns(Playlist pl) {
     final list = <Hymn>[];
-    for (final item in pl.hymnItems) {
-      final h = _repo?.hymnById(item.hymnId);
+    for (final item in pl.hymns) {
+      // item = {标题: 编号}（与 hymn_category.hymns 一致，编号即数据库 hymn_number）
+      final h = _repo?.hymnByNumber(item.value.toString());
       if (h != null) list.add(h);
     }
     return list;

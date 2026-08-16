@@ -107,7 +107,9 @@ flutter build apk --release
 
 - 使用官方源：设置 `PUB_HOSTED_URL=https://pub.dev` 与 `FLUTTER_STORAGE_BASE_URL=https://storage.googleapis.com`
 
-### Q4：之前的 Web 自动发布还能用吗？
+### Q4：之前提到的 Web 自动发布还能用吗？
 
-- **不能**。Web 已从目标平台移除，`tools/publish_release.ps1`、`package_web.ps1`、`install_hooks.bat`、`git-hooks/post-commit`、`tools/打包.bat` 均已删除，`.git/hooks/post-commit` 已卸载
+- **不能**。Web 已从目标平台移除；但已恢复 **Windows 自动发布**：
+  - 每次 `git commit` 到 master/main，post-commit 钩子自动运行 `tools/publish_windows.ps1`，构建 Windows 桌面版并发布到 `release/echohymn-win-<短哈希>-<时间戳>/`（保留 5 份）
+  - 日志：`release/auto-release.log`
 - 若日后需要 Web，需重新评估（`sqlite3` 的 `dart:ffi` 在 Web 不可用，需要做数据层降级/替换）
