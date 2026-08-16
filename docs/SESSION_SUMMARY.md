@@ -55,12 +55,11 @@ flutter build windows --release   # 桌面版可构建（audioplayers 方案）
 1. ✅（v1.0.1 已完成）个人歌单 UI 展示/播放（顶部新建按钮、tab 等距、点击歌单展示诗歌列表、修改弹窗复用+删除按钮）
 2. ✅（v1.0.2 已完成）移除 Web（目标平台 = Windows + Android + 鸿蒙）
 3. ✅（v1.0.3 已完成）个人歌单表结构重构（单表 playlist_hymn，hymns 存 `[{标题: 编号}]` JSON）+ 恢复 Windows 自动发布
-4. 音频「人声版」多版本已支持（播放条 groups 图标弹出列表），但**未验证切换发声**
-5. 状态持久化已保存，但**跨会话恢复后列表高亮/滚动位置**未验证联动（`_syncListScroll` 仅对 playing/loading 触发）
-6. `windows/runner/win32_window.cpp` 最小宽已改 1132，但未在**小屏实机**验证布局无溢出
-7. **Android 未开发**：目录就绪但未编码；数据库/音频路径待 Android 适配验证
-8. **鸿蒙未开发**：`hymn_app/ohos/` 仅占位，接入需 OpenHarmony Flutter SDK
-9. **Windows 自动发布未实测**：`publish_windows.ps1` 首次运行（本提交后）需确认真实构建 + 目录产出
+4. ✅ 音频「人声版」多版本已支持（播放条 groups 图标弹出列表），**切换可正常发声**
+5. ✅（本次修复）**跨会话恢复后列表滚动联动**：`_restoreFromInit` 恢复后主动调用 `_syncListScroll()`（原 `_syncListScroll` 仅对 playing/loading 触发，idle 恢复不滚动，已修复）
+6. `windows/runner/win32_window.cpp` 最小宽已改 1132，小屏实机布局验证**暂不作为任务**
+7. Android / 鸿蒙 **暂不作为当前任务**（目录占位）
+8. ✅ **Windows 自动发布已实测通过**（提交 122bdec 与 8a966c9 两次均自动产出 `release/echohymn-win-*`）
 
 ## 六、其他已知约束
 

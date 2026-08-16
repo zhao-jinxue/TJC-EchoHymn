@@ -210,6 +210,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // 只加载不播放：进度条从 0 开始，等待用户点击播放
     audio.loadHymn(hymn, index: idx >= 0 ? idx : 0);
     setState(() {});
+    // 恢复后主动滚动左侧列表到当前诗歌（播放/加载状态不会触发，idle 需手动联动）
+    _syncListScroll();
   }
 
   /// 保存状态到本地
