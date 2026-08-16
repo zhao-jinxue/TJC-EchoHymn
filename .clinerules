@@ -1,0 +1,10 @@
+# Cline 全局规则
+
+## 千问 API Key（图片解析/理解）
+
+当遇到需要解析或理解图片的工作时，使用以下 API key 访问千问多模态视觉 API：
+
+- **API Key**: `sk-ws-H.ERYHIXX.YbcV.MEQCIFSKscDGWSC2htlmg-1hUm1FKjhrTuFKkiDu8ngtXju_AiBsc7CYNLwCkGcC2R4fp9jBSFcywArzuwSxVnDFt54eBA`
+- **服务商**: 阿里云百炼 / 通义千问（DashScope）
+- **调用方式**: 使用 OpenAI SDK 兼容格式，base URL 为 `https://dashscope.aliyuncs.com/compatible-mode/v1`，模型使用 `qwen-vl-plus` 或 `qwen-vl-max`
+- **触发条件**: 当任务涉及"解析图片、理解图片、识别图片内容、读取图片文字、视觉问答"等场景时，必须使用此 key
