@@ -52,6 +52,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _currentAudioVersion = '鋼琴版';
   String _currentDisplayMode = 'lyrics';
 
+  /// 上次记录的播放列表位置索引（锚点恢复用）
+  int _restoredPlaylistIndex = -1;
+
   // ---- 列表联动（上一首/下一首时滚动到当前项） ----
   StreamSubscription<PlayerStatus>? _audioStatusSub;
   final ScrollController _hymnListScroll = ScrollController();
@@ -109,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             hymnNumber: '',
             audioVersion: '',
             displayMode: '',
+            playlistIndex: -1,
           ));
 
       if (!mounted) return;
@@ -141,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             state.audioVersion.isEmpty ? '鋼琴版' : state.audioVersion;
         _currentDisplayMode =
             state.displayMode.isEmpty ? 'lyrics' : state.displayMode;
+        _restoredPlaylistIndex = state.playlistIndex;
       });
 
       // 恢复/默认加载诗歌
@@ -198,61 +203,76 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _restoreFromInit(Hymn hymn) {
     final audio = _audio!;
-    // 恢复播放列表上下文（二级目录 / 个人歌单 / 全部诗歌）
+    // 恢复播放列表上下文（锚点 = 当前播放/选择的诗歌，来源歌单在 _init 已恢复）
     List<Hymn> ctx = _allHymns;
     if (_selectedSubcategory != null && _defaultPlaylistHymns.isNotEmpty) {
       ctx = _defaultPlaylistHymns;
+      _showDefaultPlaylistContent = true; // 恢复默认歌单：展开该二级目录诗歌列表
     } else if (_selectedPlaylistName != null && _myPlaylistHymns.isNotEmpty) {
       ctx = _myPlaylistHymns;
+      _showMyPlaylistContent = true; // 恢复个人歌单：展开该歌单诗歌列表
     }
-    final idx = ctx.indexOf(hymn);
+
+    // 用记录的位置索引精确定位（校验范围），否则回退 indexOf 猜测
+    final index = _restoredPlaylistIndex;
+    final idx = (index >= 0 && index < ctx.length) ? index : ctx.indexOf(hymn);
     audio.setPlaylist(ctx, startIndex: idx >= 0 ? idx : 0);
     // 只加载不播放：进度条从 0 开始，等待用户点击播放；
-    // 同时记忆音频版本（人声版等），使版本栏正确高亮
+    // 同时记忆音频版本（人声版等）与歌词版本，使版本栏正确高亮
     audio.loadHymn(hymn,
         index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
     setState(() {});
-    // 恢复后主动滚动左侧列表到当前诗歌：
-    // 用「诗歌在全部列表中的编号」直接定位（不依赖 identical 引用匹配），
-    // 采用 jumpTo 瞬时滚动 + 多帧重试，确保列表构建完成（hasClients=true）后落地。
+    // 恢复后统一滚动定位左侧列表到当前诗歌（含翻页/各列表），多帧重试保证落地。
     _scrollToCurrentHymnRetry(attempts: 8);
   }
 
-  /// 将左侧「诗歌列表」滚动定位到当前诗歌（含自动翻页），多帧重试保证列表就绪。
+  /// 将左侧当前列表滚动定位到当前诗歌（按播放上下文匹配对应列表），多帧重试保证列表就绪。
   void _scrollToCurrentHymnRetry({required int attempts}) {
     final audio = _audio;
     if (audio == null || !mounted) return;
-    final h = audio.currentHymn;
-    if (h == null) return;
+    final idx = audio.currentIndex;
+    if (idx < 0) return;
+    final list = audio.playlist;
+    if (list.isEmpty) return;
 
-    // 仅在「诗歌列表」Tab 且播放上下文为全部诗歌时做列表内定位
-    if (_leftTab != LeftTab.hymnList) return;
-    if (!identical(audio.playlist, _allHymns)) return;
+    ScrollController? controller;
+    var localIndex = idx;
 
-    // 以诗歌在全部列表中的编号（hymnNumber 排序索引）计算分页与滚动位置
-    final idxInAll = _allHymns.indexOf(h);
-    if (idxInAll < 0) return;
-    final page = idxInAll ~/ _pageSize;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // 先保证翻到对应页
+    if (identical(list, _allHymns) && _leftTab == LeftTab.hymnList) {
+      // 诗歌列表：先翻到对应页，再按页内位置滚动
+      final page = idx ~/ _pageSize;
+      localIndex = idx - page * _pageSize;
+      controller = _hymnListScroll;
       if (page != _listPage) {
         setState(() => _listPage = page);
       }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final ctrl = _hymnListScroll;
-        if (ctrl.hasClients) {
-          final localIndex = idxInAll - _listPage * _pageSize;
-          final target = (localIndex * _itemHeight)
-              .clamp(0.0, ctrl.position.maxScrollExtent)
-              .toDouble();
-          ctrl.jumpTo(target); // 瞬时定位最可靠
-        } else if (attempts > 0) {
-          _scrollToCurrentHymnRetry(attempts: attempts - 1);
-        }
-      });
+    } else if (identical(list, _defaultPlaylistHymns) &&
+        _showDefaultPlaylistContent) {
+      controller = _defaultListScroll;
+    } else if (identical(list, _myPlaylistHymns) && _showMyPlaylistContent) {
+      controller = _myListScroll;
+    }
+
+    if (controller == null) {
+      if (attempts > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
+        });
+      }
+      return;
+    }
+
+    final ctrl = controller;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ctrl.hasClients) {
+        final target = (localIndex * _itemHeight)
+            .clamp(0.0, ctrl.position.maxScrollExtent)
+            .toDouble();
+        ctrl.jumpTo(target); // 瞬时定位最可靠
+      } else if (attempts > 0) {
+        _scrollToCurrentHymnRetry(attempts: attempts - 1);
+      }
     });
   }
 
@@ -282,6 +302,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       hymnNumber: hymn?.hymnNumber ?? '',
       audioVersion: _currentAudioVersion,
       displayMode: _currentDisplayMode,
+      playlistIndex: _audio?.currentIndex ?? -1,
     );
   }
 

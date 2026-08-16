@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 应用状态持久化：记住上次选择
+/// 应用状态持久化：记住上次选择（锚点 = 当前播放/选择的诗歌及其上下文）
 class AppStateService {
   static const _k = {
     'leftTab': 'left_tab',
@@ -9,6 +9,7 @@ class AppStateService {
     'hymnNumber': 'hymn_number',
     'audioVersion': 'audio_version',
     'displayMode': 'display_mode',
+    'playlistIndex': 'playlist_index',
   };
 
   Future<void> saveAll({
@@ -18,6 +19,7 @@ class AppStateService {
     required String hymnNumber,
     required String audioVersion,
     required String displayMode,
+    required int playlistIndex,
   }) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_k['leftTab']!, leftTab);
@@ -26,6 +28,7 @@ class AppStateService {
     await p.setString(_k['hymnNumber']!, hymnNumber);
     await p.setString(_k['audioVersion']!, audioVersion);
     await p.setString(_k['displayMode']!, displayMode);
+    await p.setInt(_k['playlistIndex']!, playlistIndex);
   }
 
   Future<AppState> load() async {
@@ -37,6 +40,7 @@ class AppStateService {
       hymnNumber: p.getString(_k['hymnNumber']!) ?? '',
       audioVersion: p.getString(_k['audioVersion']!) ?? '',
       displayMode: p.getString(_k['displayMode']!) ?? '',
+      playlistIndex: p.getInt(_k['playlistIndex']!) ?? -1,
     );
   }
 }
@@ -49,6 +53,9 @@ class AppState {
   final String audioVersion;
   final String displayMode;
 
+  /// 当前诗歌在播放列表中的位置索引（-1 表示未记录）
+  final int playlistIndex;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -56,5 +63,6 @@ class AppState {
     required this.hymnNumber,
     required this.audioVersion,
     required this.displayMode,
+    required this.playlistIndex,
   });
 }
