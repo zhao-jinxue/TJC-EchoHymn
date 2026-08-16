@@ -4,19 +4,26 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../models/hymn.dart';
-import '../models/hymn_category.dart';
-import '../models/playlist.dart';
 import '../services/app_state_service.dart';
 import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/sqlite_repository.dart';
 import '../widgets/hymn_display.dart';
-import '../widgets/playlist_dialog.dart';
+import '../widgets/panels/default_playlists_panel.dart';
+import '../widgets/panels/hymn_list_panel.dart';
+import '../widgets/panels/left_panel_base.dart';
+import '../widgets/panels/my_playlists_panel.dart';
 
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
 
-/// 主界面：顶栏 + 左栏 + 主内容区 + 右栏 + 底部状态栏
+/// 主界面：顶栏 + 左栏（三面板之一）+ 主内容区 + 右栏 + 底部状态栏
+///
+/// 本类是「协调者」：只负责
+/// - 顶栏/主体/右栏/状态栏布局
+/// - 左栏三 Tab 的切换与对应面板构建（面板各自持有显示/交互/恢复逻辑）
+/// - 锚点状态保存（leftTab/诗歌/版本/歌词/播放列表位置）
+/// - 播放来源状态同步（面板播放时回调）
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -34,48 +41,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showLeft = true;
   bool _showRight = true;
 
-  // ---- 左侧栏状态 ----
+  // ---- 左栏视图状态 ----
   LeftTab _leftTab = LeftTab.hymnList;
-  String _searchKeyword = '';
-  final Set<String> _expandedCategories = {};
+  int _restoredPlaylistIndex = -1;
 
-  // 当前选中的歌单
-  String? _selectedSubcategory;
-  String? _selectedPlaylistName;
-
-  // 数据缓存
+  // ---- 数据缓存（供状态保存/恢复判断来源） ----
   List<Hymn> _allHymns = const [];
-  List<HymnCategory> _categories = const [];
-  List<Playlist> _playlists = const [];
+
+  // ---- 播放来源（供保存 leftTab） ----
+  String? _playSubcategory; // 当前播放来自默认歌单的二级目录
+  String? _playPlaylistName; // 当前播放来自个人歌单名
 
   // 当前持久化值
   String _currentAudioVersion = '鋼琴版';
   String _currentDisplayMode = 'lyrics';
 
-  /// 上次记录的播放列表位置索引（锚点恢复用）
-  int _restoredPlaylistIndex = -1;
-
-  /// 恢复校验报告（底部状态栏显示）
-  String _restoreReport = '';
-  String _savedLeftTab = '';
-  String _savedAudioVersion = '';
-
-  // ---- 列表联动（上一首/下一首时滚动到当前项） ----
-  StreamSubscription<PlayerStatus>? _audioStatusSub;
-  final ScrollController _hymnListScroll = ScrollController();
-  final ScrollController _defaultListScroll = ScrollController();
-  final ScrollController _myListScroll = ScrollController();
-
-  // 默认歌单二级目录的诗歌列表（选中时展示）
-  List<Hymn> _defaultPlaylistHymns = const [];
-  bool _showDefaultPlaylistContent = false;
-
-  // 个人歌单的诗歌列表（选中歌单时展示）
-  List<Hymn> _myPlaylistHymns = const [];
-  bool _showMyPlaylistContent = false;
-  static const int _pageSize = 35;
-  static const double _itemHeight = 34; // 列表项近似高度（滚动定位用）
-  int _listPage = 0;
+  // 恢复锚点（传给左栏面板自动恢复）
+  AppState? _anchor;
 
   @override
   void initState() {
@@ -88,10 +70,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _saveState(); // 关闭时保存
-    _audioStatusSub?.cancel();
-    _hymnListScroll.dispose();
-    _defaultListScroll.dispose();
-    _myListScroll.dispose();
     _repo?.dispose();
     _audio?.dispose();
     super.dispose();
@@ -121,80 +99,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ));
 
       if (!mounted) return;
-      // 监听播放状态：错误 Toast（由 HymnDisplay 处理）+ 列表滚动高亮
-      _audioStatusSub = audio.statusStream.listen((s) {
-        if (!mounted) return;
-        setState(() {});
-        if (s == PlayerStatus.playing || s == PlayerStatus.loading) {
-          _syncListScroll();
-        }
-      });
       setState(() {
         _repo = repo;
         _audio = audio;
         _allHymns = repo.getAllHymns();
-        _categories = repo.getAllCategories();
-        _playlists = repo.getPlaylists();
-
+        _currentAudioVersion =
+            state.audioVersion.isEmpty ? '鋼琴版' : state.audioVersion;
+        _currentDisplayMode =
+            state.displayMode.isEmpty ? 'lyrics' : state.displayMode;
+        _restoredPlaylistIndex = state.playlistIndex;
+        _playSubcategory = state.subcategory.isEmpty ? null : state.subcategory;
+        _playPlaylistName =
+            state.playlistName.isEmpty ? null : state.playlistName;
         // 恢复左栏视图
         if (state.leftTab == 'defaultPlaylists') {
           _leftTab = LeftTab.defaultPlaylists;
         } else if (state.leftTab == 'myPlaylists') {
           _leftTab = LeftTab.myPlaylists;
         }
-        _selectedSubcategory =
-            state.subcategory.isEmpty ? null : state.subcategory;
-        _selectedPlaylistName =
-            state.playlistName.isEmpty ? null : state.playlistName;
-        _currentAudioVersion =
-            state.audioVersion.isEmpty ? '鋼琴版' : state.audioVersion;
-        _currentDisplayMode =
-            state.displayMode.isEmpty ? 'lyrics' : state.displayMode;
-        _restoredPlaylistIndex = state.playlistIndex;
-        _savedLeftTab = state.leftTab;
-        _savedAudioVersion = _currentAudioVersion;
       });
 
-      // 恢复/默认加载诗歌
+      // 首次默认/恢复一首诗歌（只加载不播放，进度条从 0 开始）
       Hymn? hymn;
-      if (_selectedSubcategory != null) {
-        final sub = _categories
-            .where((c) => c.subcategory == _selectedSubcategory)
-            .toList();
-        if (sub.isNotEmpty) {
-          final list = _buildCategoryHymns(sub.first);
-          _defaultPlaylistHymns = list;
-          _showDefaultPlaylistContent = list.isNotEmpty;
-          if (list.isNotEmpty) {
-            hymn = state.hymnNumber.isNotEmpty
-                ? _findInList(list, state.hymnNumber)
-                : list.first;
-          }
+      if (_playSubcategory != null) {
+        final list = _hymnsOfSubcategory(_playSubcategory!);
+        if (list.isNotEmpty) {
+          hymn = state.hymnNumber.isNotEmpty
+              ? _findInList(list, state.hymnNumber)
+              : list.first;
         }
-      } else if (_selectedPlaylistName != null) {
-        final pl =
-            _playlists.where((p) => p.name == _selectedPlaylistName).toList();
-        if (pl.isNotEmpty) {
-          final list = _buildPlaylistHymns(pl.first);
-          _myPlaylistHymns = list;
-          _showMyPlaylistContent = list.isNotEmpty;
-          if (list.isNotEmpty) {
-            hymn = state.hymnNumber.isNotEmpty
-                ? _findInList(list, state.hymnNumber)
-                : list.first;
-          }
+      } else if (_playPlaylistName != null) {
+        final list = _hymnsOfPlaylistName(_playPlaylistName!);
+        if (list.isNotEmpty) {
+          hymn = state.hymnNumber.isNotEmpty
+              ? _findInList(list, state.hymnNumber)
+              : list.first;
         }
       }
-
       if (hymn == null && _allHymns.isNotEmpty) {
         hymn = state.hymnNumber.isNotEmpty
             ? _findInList(_allHymns, state.hymnNumber)
-            : _allHymns.first; // 首次默认第一首
+            : _allHymns.first;
+      }
+      if (hymn != null) {
+        final idx = _restoredPlaylistIndex >= 0
+            ? _restoredPlaylistIndex
+            : _allHymns.indexOf(hymn);
+        audio.setPlaylist(_allHymns, startIndex: idx >= 0 ? idx : 0);
+        audio.loadHymn(hymn,
+            index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
       }
 
-      if (hymn != null) {
-        _restoreFromInit(hymn);
-      }
+      // 组装恢复锚点，传给左栏面板自动恢复滚动/展开/分页
+      _anchor = AppState(
+        leftTab: state.leftTab,
+        subcategory: state.subcategory,
+        playlistName: state.playlistName,
+        hymnNumber: state.hymnNumber,
+        audioVersion: _currentAudioVersion,
+        displayMode: _currentDisplayMode,
+        playlistIndex: _restoredPlaylistIndex,
+      );
+      setState(() {});
     } catch (_) {
       if (!mounted) return;
       setState(() => _initError = true);
@@ -208,183 +174,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return null;
   }
 
-  /// 锚点恢复：当前播放/选择的诗歌 + 来源歌单 + 播放列表位置。
-  /// 一次性同步 `_leftTab`/展开标志/`_listPage`，然后分帧滚动定位。
-  void _restoreFromInit(Hymn hymn) {
-    final audio = _audio!;
-    // 恢复播放列表上下文（锚点，来源歌单在 _init 已恢复）
-    List<Hymn> ctx = _allHymns;
-    if (_selectedSubcategory != null && _defaultPlaylistHymns.isNotEmpty) {
-      ctx = _defaultPlaylistHymns;
-      _leftTab = LeftTab.defaultPlaylists; // 确保切到默认歌单
-    } else if (_selectedPlaylistName != null && _myPlaylistHymns.isNotEmpty) {
-      ctx = _myPlaylistHymns;
-      _leftTab = LeftTab.myPlaylists; // 确保切到个人歌单
-    }
-
-    // 用记录的位置索引精确定位（校验范围），否则回退 indexOf 猜测
-    final index = _restoredPlaylistIndex;
-    final idx = (index >= 0 && index < ctx.length) ? index : ctx.indexOf(hymn);
-    audio.setPlaylist(ctx, startIndex: idx >= 0 ? idx : 0);
-    // 只加载不播放：进度条从 0 开始；同时记忆音频/歌词版本
-    audio.loadHymn(hymn,
-        index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
-
-    // 第 1 帧：一次同步恢复视图状态（左栏 Tab + 展开标志 + 诗歌列表页码）
-    setState(() {
-      if (ctx == _allHymns) {
-        _listPage = idx ~/ _pageSize; // 首帧即渲染正确页
-      } else if (ctx == _defaultPlaylistHymns) {
-        _showDefaultPlaylistContent = true;
-      } else if (ctx == _myPlaylistHymns) {
-        _showMyPlaylistContent = true;
+  List<Hymn> _hymnsOfSubcategory(String subcategory) {
+    final cats = _repo?.getAllCategories() ?? const [];
+    final list = <Hymn>[];
+    for (final c in cats) {
+      if (c.subcategory == subcategory) {
+        for (final e in c.hymns) {
+          final h = _repo?.hymnByNumber(e.value.toString());
+          if (h != null) list.add(h);
+        }
       }
-    });
-
-    // 第 2 帧起：滚动定位到当前诗歌（列表已构建），带偏移校验 + 多帧重试。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _scrollToCurrentHymnRetry(attempts: 10);
-    });
+    }
+    return list;
   }
 
-  /// 将左侧当前列表滚动定位到当前诗歌（按播放上下文匹配对应列表）。
-  /// **执行后校验实际滚动偏移**，与目标相差 >2px 则判定失败并重试。
-  void _scrollToCurrentHymnRetry({required int attempts}) {
-    final audio = _audio;
-    if (audio == null || !mounted) return;
-    final idx = audio.currentIndex;
-    if (idx < 0) return;
-    final list = audio.playlist;
-    if (list.isEmpty) return;
-
-    ScrollController? controller;
-    var localIndex = idx;
-
-    if (identical(list, _allHymns) && _leftTab == LeftTab.hymnList) {
-      // 诗歌列表：页码已在恢复时设好，此处仅页内滚动
-      localIndex = idx - _listPage * _pageSize;
-      controller = _hymnListScroll;
-    } else if (identical(list, _defaultPlaylistHymns) &&
-        _leftTab == LeftTab.defaultPlaylists &&
-        _showDefaultPlaylistContent) {
-      controller = _defaultListScroll;
-    } else if (identical(list, _myPlaylistHymns) &&
-        _leftTab == LeftTab.myPlaylists &&
-        _showMyPlaylistContent) {
-      controller = _myListScroll;
-    }
-
-    if (controller == null) {
-      // 视图尚未就绪（如展开标志/列表未挂载）：多帧重试
-      if (attempts > 0) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
-        });
-      } else {
-        _finishRestore(false, reason: '列表视图未就绪');
+  List<Hymn> _hymnsOfPlaylistName(String name) {
+    final pls = _repo?.getPlaylists() ?? const [];
+    final list = <Hymn>[];
+    for (final pl in pls) {
+      if (pl.name == name) {
+        for (final item in pl.hymns) {
+          final h = _repo?.hymnByNumber(item.value.toString());
+          if (h != null) list.add(h);
+        }
       }
-      return;
     }
-
-    final ctrl = controller;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // hasClients 保护：列表未挂载时不能访问 position
-      if (!ctrl.hasClients) {
-        if (attempts > 0) {
-          WidgetsBinding.instance.addPostFrameCallback((__) {
-            if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
-          });
-        } else {
-          _finishRestore(false, reason: '列表未挂载');
-        }
-        return;
-      }
-      // 目标偏移在列表挂载后计算，避免 position 异常
-      final target = (localIndex * _itemHeight)
-          .clamp(0.0, ctrl.position.maxScrollExtent)
-          .toDouble();
-      ctrl.jumpTo(target);
-      // 跳跃后隔一帧校验实际偏移（jumpTo 瞬时生效，但保险起见隔帧读）
-      WidgetsBinding.instance.addPostFrameCallback((__) {
-        if (!mounted || !ctrl.hasClients) {
-          if (attempts > 0) {
-            WidgetsBinding.instance.addPostFrameCallback((___) {
-              if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
-            });
-          } else {
-            _finishRestore(false, reason: '滚动后列表未挂载');
-          }
-          return;
-        }
-        final actual = ctrl.offset;
-        final ok = (actual - target).abs() <= 2.0;
-        if (ok) {
-          _finishRestore(true);
-        } else if (attempts > 0) {
-          _scrollToCurrentHymnRetry(attempts: attempts - 1);
-        } else {
-          _finishRestore(false,
-              reason:
-                  '滚动偏移未到目标(${actual.toStringAsFixed(0)}/${target.toStringAsFixed(0)})');
-        }
-      });
-    });
-  }
-
-  /// 恢复完成收尾：统一校验所有锚点。
-  /// **成功时清空报告**（状态栏恢复显示播放信息）；仅异常才常驻红色报告。
-  void _finishRestore(bool listOk, {String? reason}) {
-    final audio = _audio;
-    if (!mounted || audio == null) return;
-
-    final problems = <String>[];
-    // 1) 左栏 Tab
-    if (_savedLeftTab.isNotEmpty && _leftTab.name != _savedLeftTab) {
-      problems.add('左栏(${_leftTab.name}≠$_savedLeftTab)');
-    }
-    // 2) 音频版本
-    if (_savedAudioVersion.isNotEmpty &&
-        audio.currentAudioVersion != _savedAudioVersion) {
-      problems.add('音频版本(${audio.currentAudioVersion}≠$_savedAudioVersion)');
-    }
-    // 3) 播放列表位置
-    if (_restoredPlaylistIndex >= 0 &&
-        audio.currentIndex != _restoredPlaylistIndex) {
-      problems.add('位置(${audio.currentIndex}≠$_restoredPlaylistIndex)');
-    }
-    // 4) 歌单视图展开（诊断用）
-    if (_leftTab == LeftTab.defaultPlaylists && !_showDefaultPlaylistContent) {
-      problems.add('默认歌单未展开');
-    }
-    if (_leftTab == LeftTab.myPlaylists && !_showMyPlaylistContent) {
-      problems.add('个人歌单未展开');
-    }
-    // 5) 滚动
-    if (!listOk) {
-      problems.add(reason ?? '列表滚动未确认');
-    }
-
-    // 成功 → 清空报告（状态栏显示诗歌信息）；异常 → 红色报告常驻便于排查
-    _restoreReport = problems.isEmpty ? '' : '恢复待确认：${problems.join('；')}';
-    setState(() {});
+    return list;
   }
 
   /// 保存状态到本地
-  ///
-  /// leftTab 按「当前播放列表来源」优先（而非当前 UI 所在栏），
-  /// 保证重启后左侧栏与正在播放的诗歌上下文一致。
   Future<void> _saveState() async {
     final hymn = _audio?.currentHymn;
     var leftTab = _leftTab.name;
+    // 按「当前播放列表来源」优先（而非当前 UI 所在栏）
     final list = _audio?.playlist ?? const <Hymn>[];
     if (list.isNotEmpty) {
-      if (identical(list, _defaultPlaylistHymns) &&
-          _defaultPlaylistHymns.isNotEmpty) {
+      if (_playSubcategory != null) {
         leftTab = LeftTab.defaultPlaylists.name;
-      } else if (identical(list, _myPlaylistHymns) &&
-          _myPlaylistHymns.isNotEmpty) {
+      } else if (_playPlaylistName != null) {
         leftTab = LeftTab.myPlaylists.name;
       } else if (identical(list, _allHymns)) {
         leftTab = LeftTab.hymnList.name;
@@ -392,8 +219,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     await _stateService.saveAll(
       leftTab: leftTab,
-      subcategory: _selectedSubcategory ?? '',
-      playlistName: _selectedPlaylistName ?? '',
+      subcategory: _playSubcategory ?? '',
+      playlistName: _playPlaylistName ?? '',
       hymnNumber: hymn?.hymnNumber ?? '',
       audioVersion: _currentAudioVersion,
       displayMode: _currentDisplayMode,
@@ -423,7 +250,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       color: AppColors.cardBg,
       child: Row(
         children: [
-          // 左侧按钮：未展开=蓝+展开箭头；已展开=灰+收起箭头
           SizedBox(
             width: 60,
             height: 30,
@@ -446,7 +272,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          // 右侧按钮：未展开=蓝+展开箭头；已展开=灰+收起箭头
           SizedBox(
             width: 60,
             height: 30,
@@ -500,12 +325,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final repo = _repo!;
+    final audio = _audio!;
     final children = <Widget>[
-      if (_showLeft) _buildLeftPanel(),
-      const VerticalDivider(width: 1, color: AppColors.divider),
+      if (_showLeft) ...[
+        _buildLeftPanel(repo, audio),
+        const VerticalDivider(width: 1, color: AppColors.divider),
+      ],
       Expanded(
         child: HymnDisplay(
-          audio: _audio!,
+          audio: audio,
           initialMode: _currentDisplayMode,
           onModeChanged: (mode) {
             _currentDisplayMode = mode;
@@ -529,8 +358,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ---------- 左侧栏 ----------
-  Widget _buildLeftPanel() {
+  // ---------- 左侧栏：tab + 对应面板 ----------
+  Widget _buildLeftPanel(SqliteRepository repo, AudioService audio) {
     return SizedBox(
       width: 280,
       child: Container(
@@ -540,7 +369,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             _buildLeftTabBar(),
             const Divider(height: 1, color: AppColors.divider),
-            Expanded(child: _buildLeftTabContent()),
+            // 三 Tab 面板分发：各自持有显示/交互/恢复逻辑，互不影响
+            Expanded(
+              child: switch (_leftTab) {
+                LeftTab.hymnList => HymnListPanel(
+                    key: const ValueKey('hymnList'),
+                    audio: audio,
+                    repo: repo,
+                    anchor: _anchor,
+                    onPlayback: _onPlayback,
+                  ),
+                LeftTab.defaultPlaylists => DefaultPlaylistsPanel(
+                    key: const ValueKey('defaultPlaylists'),
+                    audio: audio,
+                    repo: repo,
+                    anchor: _anchor,
+                    onPlayback: _onPlayback,
+                  ),
+                LeftTab.myPlaylists => MyPlaylistsPanel(
+                    key: const ValueKey('myPlaylists'),
+                    audio: audio,
+                    repo: repo,
+                    anchor: _anchor,
+                    onPlayback: _onPlayback,
+                  ),
+              },
+            ),
           ],
         ),
       ),
@@ -571,11 +425,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
           onTap: () {
-            setState(() {
-              _leftTab = tab;
-              _showDefaultPlaylistContent = false;
-              _showMyPlaylistContent = false;
-            });
+            setState(() => _leftTab = tab);
             _saveState();
           },
           child: Padding(
@@ -605,567 +455,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _newPlaylistButton() {
-    return Material(
-      color: AppColors.primary,
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: _openCreatePlaylistDialog,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, size: 16, color: Colors.white),
-              SizedBox(width: 2),
-              Text('新建', style: TextStyle(fontSize: 12, color: Colors.white)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ---------- 左侧内容 ----------
-  Widget _buildLeftTabContent() {
-    switch (_leftTab) {
-      case LeftTab.hymnList:
-        return _buildHymnListTab();
-      case LeftTab.defaultPlaylists:
-        return _showDefaultPlaylistContent
-            ? _buildDefaultPlaylistContent()
-            : _buildDefaultPlaylistsTab();
-      case LeftTab.myPlaylists:
-        return _showMyPlaylistContent
-            ? _buildMyPlaylistContent()
-            : _buildMyPlaylistsTab();
+  /// 面板内点击播放回调：同步播放来源并保存状态
+  void _onPlayback(PlaybackEvent e) {
+    _playSubcategory = null;
+    _playPlaylistName = null;
+    // 通过对比播放列表与来源列表判断（面板构建时使用同一 repo/全量列表）
+    if (e.contextList.length == _allHymns.length &&
+        _containsAllHymns(e.contextList)) {
+      _leftTab = LeftTab.hymnList;
     }
-  }
-
-  // 诗歌列表（分页：每页 50 首）
-  Widget _buildHymnListTab() {
-    final all = _searchKeyword.isEmpty
-        ? _allHymns
-        : (_repo?.searchHymns(_searchKeyword) ?? const []);
-    final totalPages = (all.length / _pageSize).ceil().clamp(1, 1 << 31);
-    if (_listPage >= totalPages) _listPage = totalPages - 1;
-    if (_listPage < 0) _listPage = 0;
-    final start = _listPage * _pageSize;
-    final end = (start + _pageSize).clamp(0, all.length);
-    final hymns = all.sublist(start, end);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: '搜索编号/标题/作者/作曲',
-              prefixIcon: const Icon(Icons.search, size: 18),
-              suffixIcon: _searchKeyword.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
-                      onPressed: () {
-                        setState(() {
-                          _searchKeyword = '';
-                          _listPage = 0;
-                        });
-                      },
-                    ),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            ),
-            onChanged: (v) {
-              setState(() {
-                _searchKeyword = v;
-                _listPage = 0;
-              });
-            },
-          ),
-        ),
-        Expanded(
-          child: hymns.isEmpty
-              ? const _EmptyHint(text: '未找到相关诗歌')
-              : ListView.builder(
-                  controller: _hymnListScroll,
-                  itemCount: hymns.length,
-                  itemBuilder: (context, index) =>
-                      _hymnListItem(hymns[index], start + index, all),
-                ),
-        ),
-        Container(
-          color: AppColors.cardBg,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left, size: 20),
-                tooltip: '上一页',
-                onPressed:
-                    _listPage > 0 ? () => setState(() => _listPage--) : null,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  '第 ${_listPage + 1}/$totalPages 页',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right, size: 20),
-                tooltip: '下一页',
-                onPressed: _listPage < totalPages - 1
-                    ? () => setState(() => _listPage++)
-                    : null,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 默认歌单：一级分类 → 二级目录 → 点二级展示诗歌
-  Widget _buildDefaultPlaylistsTab() {
-    final grouped = <String, List<HymnCategory>>{};
-    for (final c in _categories) {
-      grouped.putIfAbsent(c.category, () => []).add(c);
-    }
-    if (grouped.isEmpty) return const _EmptyHint(text: '暂无分类');
-
-    final cats = grouped.keys.toList();
-    String display(String s) => ChineseConvertService.instance.toSimplified(s);
-
-    return ListView.builder(
-      itemCount: cats.length,
-      itemBuilder: (context, i) {
-        final cat = cats[i];
-        final subs = grouped[cat]!;
-        final expanded = _expandedCategories.contains(cat);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Material(
-              color: AppColors.cardBg,
-              child: InkWell(
-                onTap: () => setState(() {
-                  if (expanded) {
-                    _expandedCategories.remove(cat);
-                  } else {
-                    _expandedCategories.add(cat);
-                  }
-                }),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      Icon(
-                        expanded ? Icons.expand_more : Icons.chevron_right,
-                        size: 18,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        display(cat),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (expanded) ...subs.map((sub) => _subcategoryItem(sub, display)),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _subcategoryItem(HymnCategory sub, String Function(String) display) {
-    final selected = _selectedSubcategory == sub.subcategory;
-    return Material(
-      color: selected ? AppColors.selectedBg : AppColors.sidebarBg,
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedSubcategory = sub.subcategory;
-            _defaultPlaylistHymns = _buildCategoryHymns(sub);
-            _showDefaultPlaylistContent = true;
-          });
-          _saveState();
-        },
-        child: Container(
-          padding:
-              const EdgeInsets.only(left: 28, top: 6, bottom: 6, right: 12),
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                width: 3,
-                color: selected ? AppColors.primary : Colors.transparent,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  display(sub.subcategory),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color:
-                        selected ? AppColors.primary : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Text(
-                '${sub.hymns.length}首',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textTertiary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 默认歌单二级目录的诗歌列表视图
-  Widget _buildDefaultPlaylistContent() {
-    final display = ChineseConvertService.instance.toSimplified;
-    String name = '';
-    if (_selectedSubcategory != null) {
-      final title = _categories
-          .where((c) => c.subcategory == _selectedSubcategory)
-          .toList();
-      if (title.isNotEmpty) name = display(title.first.subcategory);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, size: 18),
-                tooltip: '返回分类目录',
-                onPressed: () =>
-                    setState(() => _showDefaultPlaylistContent = false),
-              ),
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                '${_defaultPlaylistHymns.length}首',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textTertiary),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.divider),
-        Expanded(
-          child: _defaultPlaylistHymns.isEmpty
-              ? const _EmptyHint(text: '暂无诗歌')
-              : ListView.builder(
-                  controller: _defaultListScroll,
-                  itemCount: _defaultPlaylistHymns.length,
-                  itemBuilder: (context, index) => _hymnListItem(
-                      _defaultPlaylistHymns[index],
-                      index,
-                      _defaultPlaylistHymns),
-                ),
-        ),
-      ],
-    );
-  }
-
-  List<Hymn> _buildCategoryHymns(HymnCategory sub) {
-    final list = <Hymn>[];
-    for (final entry in sub.hymns) {
-      final h = _repo?.hymnByNumber(entry.value.toString());
-      if (h != null) list.add(h);
-    }
-    return list;
-  }
-
-  // 个人歌单
-  Widget _buildMyPlaylistsTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 顶部：新建按钮（固定位置，类似搜索框）
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: SizedBox(
-            width: double.infinity,
-            child: _newPlaylistButton(),
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.divider),
-        Expanded(
-          child: _playlists.isEmpty
-              ? const _EmptyHint(text: '暂无个人歌单')
-              : ListView.builder(
-                  itemCount: _playlists.length,
-                  itemBuilder: (context, i) {
-                    final pl = _playlists[i];
-                    final selected = _selectedPlaylistName == pl.name;
-                    return Material(
-                      color: selected ? AppColors.selectedBg : AppColors.cardBg,
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedPlaylistName = pl.name;
-                            _myPlaylistHymns = _buildPlaylistHymns(pl);
-                            _showMyPlaylistContent = true;
-                          });
-                          _saveState();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(
-                                width: 3,
-                                color: selected
-                                    ? AppColors.primary
-                                    : Colors.transparent,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.queue_music,
-                                  size: 18, color: AppColors.textSecondary),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  pl.name,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                    color: selected
-                                        ? AppColors.primary
-                                        : AppColors.textPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                '${pl.count}首',
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textTertiary),
-                              ),
-                              // 修改按钮：打开复用弹窗（含删除歌单）
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined,
-                                    size: 16, color: AppColors.textTertiary),
-                                tooltip: '修改歌单',
-                                onPressed: () => _openEditPlaylistDialog(pl),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  List<Hymn> _buildPlaylistHymns(Playlist pl) {
-    final list = <Hymn>[];
-    for (final item in pl.hymns) {
-      // item = {标题: 编号}（与 hymn_category.hymns 一致，编号即数据库 hymn_number）
-      final h = _repo?.hymnByNumber(item.value.toString());
-      if (h != null) list.add(h);
-    }
-    return list;
-  }
-
-  /// 个人歌单的诗歌列表视图（点击歌单后展示，可播放）
-  Widget _buildMyPlaylistContent() {
-    final display = ChineseConvertService.instance.toSimplified;
-    String name = '';
-    if (_selectedPlaylistName != null) {
-      final pl =
-          _playlists.where((p) => p.name == _selectedPlaylistName).toList();
-      if (pl.isNotEmpty) name = display(pl.first.name);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, size: 18),
-                tooltip: '返回歌单列表',
-                onPressed: () => setState(() => _showMyPlaylistContent = false),
-              ),
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                '${_myPlaylistHymns.length}首',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textTertiary),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.divider),
-        Expanded(
-          child: _myPlaylistHymns.isEmpty
-              ? const _EmptyHint(text: '暂无诗歌')
-              : ListView.builder(
-                  controller: _myListScroll,
-                  itemCount: _myPlaylistHymns.length,
-                  itemBuilder: (context, index) => _hymnListItem(
-                      _myPlaylistHymns[index], index, _myPlaylistHymns),
-                ),
-        ),
-      ],
-    );
-  }
-
-  // ---------- 列表项 ----------
-  Widget _hymnListItem(Hymn hymn, int index, List<Hymn> contextList) {
-    final current = _audio?.currentHymn;
-    final isCurrent = current?.id == hymn.id;
-    return Material(
-      color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
-      child: InkWell(
-        onTap: () => _playHymnFromList(hymn, index, contextList),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                width: 3,
-                color: isCurrent ? AppColors.primary : Colors.transparent,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 56,
-                child: Text(
-                  hymn.hymnNumber,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color:
-                        isCurrent ? AppColors.primary : AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  ChineseConvertService.instance.toSimplified(hymn.title),
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textPrimary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _playHymnFromList(Hymn hymn, int index, List<Hymn> contextList) {
-    _audio!.setPlaylist(contextList, startIndex: index);
-    _audio!.playHymn(hymn, index: index, version: _currentAudioVersion);
-    setState(() {
-      _restoreReport = ''; // 用户主动播放后清除恢复报告，状态栏回归播放信息
-    });
+    setState(() {});
     _saveState();
   }
 
-  /// 上一首/下一首（或任意播放切换）时，将左侧列表滚动到当前项并保证翻页
-  void _syncListScroll() {
-    final audio = _audio;
-    if (audio == null || !mounted) return;
-    final idx = audio.currentIndex;
-    if (idx < 0) return;
-    final list = audio.playlist;
-    if (list.isEmpty) return;
-
-    ScrollController? controller;
-    var localIndex = idx;
-
-    if (_leftTab == LeftTab.hymnList) {
-      final all = _searchKeyword.isEmpty
-          ? _allHymns
-          : (_repo?.searchHymns(_searchKeyword) ?? const []);
-      if (identical(list, all)) {
-        final page = idx ~/ _pageSize;
-        if (page != _listPage) {
-          _listPage = page;
-          setState(() {});
-        }
-        localIndex = idx - _listPage * _pageSize;
-        controller = _hymnListScroll;
-      }
-    } else if (_leftTab == LeftTab.defaultPlaylists &&
-        _showDefaultPlaylistContent &&
-        identical(list, _defaultPlaylistHymns)) {
-      controller = _defaultListScroll;
-    } else if (_leftTab == LeftTab.myPlaylists &&
-        _showMyPlaylistContent &&
-        identical(list, _myPlaylistHymns)) {
-      controller = _myListScroll;
+  bool _containsAllHymns(List<Hymn> list) {
+    if (list.length != _allHymns.length) return false;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id != _allHymns[i].id) return false;
     }
-
-    if (controller == null) return;
-    final target = localIndex * _itemHeight;
-    final ctrl = controller;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !ctrl.hasClients) return;
-      final max = ctrl.position.maxScrollExtent;
-      ctrl
-          .animateTo(
-            target.clamp(0.0, max).toDouble(),
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-          )
-          .catchError((_) {});
-    });
+    return true;
   }
 
   // ---------- 右侧栏（源考） ----------
@@ -1217,28 +525,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 底部状态栏 ----------
   Widget _buildStatusBar() {
     final hymn = _audio?.currentHymn;
-    // 恢复报告优先展示（用户可确认是否正确恢复），随后是常规状态信息
-    final report = _restoreReport;
     return Container(
       height: 40,
       color: AppColors.cardBg,
       child: Row(
         children: [
           const SizedBox(width: 16),
-          if (report.isNotEmpty)
-            Expanded(
-              child: Text(
-                report,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: report.startsWith('恢复完成')
-                      ? AppColors.success
-                      : AppColors.danger,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            )
-          else if (hymn != null)
+          if (hymn != null)
             Expanded(
               child: Text(
                 hymn.statusMeta,
@@ -1256,72 +549,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           const SizedBox(width: 16),
         ],
-      ),
-    );
-  }
-
-  // ---------- 弹窗 ----------
-  /// 新建歌单弹窗
-  Future<void> _openCreatePlaylistDialog() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => CreatePlaylistDialog(repo: _repo!),
-    );
-    if (!mounted) return;
-    if (result == 'create') {
-      setState(() {
-        _playlists = _repo!.getPlaylists();
-        _leftTab = LeftTab.myPlaylists;
-        _showMyPlaylistContent = false;
-      });
-      _saveState();
-      _showToast('歌单创建成功');
-    }
-  }
-
-  /// 修改歌单弹窗（复用创建弹窗，编辑模式追加「删除歌单」按钮）
-  Future<void> _openEditPlaylistDialog(Playlist pl) async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => CreatePlaylistDialog(repo: _repo!, existing: pl),
-    );
-    if (!mounted) return;
-    if (result == 'save') {
-      setState(() {
-        _playlists = _repo!.getPlaylists();
-        final updated = _playlists.where((p) => p.id == pl.id).toList();
-        if (updated.isNotEmpty) {
-          final newPl = updated.first;
-          // 歌单可能被重命名，同步选中的歌单名与内容
-          if (_selectedPlaylistName == pl.name) {
-            _selectedPlaylistName = newPl.name;
-            _myPlaylistHymns = _buildPlaylistHymns(newPl);
-          }
-        }
-      });
-      _saveState();
-      _showToast('歌单已保存');
-    } else if (result == 'delete') {
-      setState(() {
-        _repo!.deletePlaylist(pl.id);
-        _playlists = _repo!.getPlaylists();
-        if (_selectedPlaylistName == pl.name) {
-          _selectedPlaylistName = null;
-          _myPlaylistHymns = const [];
-          _showMyPlaylistContent = false;
-        }
-      });
-      _saveState();
-      _showToast('歌单已删除');
-    }
-  }
-
-  void _showToast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }
