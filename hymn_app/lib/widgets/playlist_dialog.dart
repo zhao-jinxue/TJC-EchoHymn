@@ -2,20 +2,26 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../models/hymn.dart';
+import '../models/playlist.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/sqlite_repository.dart';
 
-/// 个人歌单创建弹窗
+/// 个人歌单创建/修改弹窗（复用同一个弹窗）
 ///
 /// 结构：
-/// - 顶部标题「个人歌单创建」
+/// - 顶部标题（新建：「个人歌单创建」；修改：「修改歌单」）
 /// - 歌单名称输入框（限 30 字）
 /// - 搜索框（编号/名称，回车或点击搜索 → 弹出诗歌选择）
 /// - 已添加诗歌列表（编号 + 标题 + 减号）
-/// - 底部：取消 / 创建（创建后写入数据库，返回 pop(true)）
+/// - 底部按钮：
+///   - 新建模式：取消 / 创建
+///   - 修改模式：删除歌单 / 取消 / 保存
+///
+/// 返回值（String?）：'create' 新建成功 / 'save' 修改成功 / 'delete' 删除歌单 / null 取消
 class CreatePlaylistDialog extends StatefulWidget {
   final SqliteRepository repo;
-  const CreatePlaylistDialog({super.key, required this.repo});
+  final Playlist? existing; // 传入则为修改模式
+  const CreatePlaylistDialog({super.key, required this.repo, this.existing});
 
   @override
   State<CreatePlaylistDialog> createState() => _CreatePlaylistDialogState();
@@ -25,11 +31,27 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   final _nameCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
 
-  /// 歌单名称（弹窗关闭前暂存在内存，创建时才写库）
+  /// 歌单名称（弹窗关闭前暂存在内存，提交时才写库）
   String _playlistName = '';
 
   /// 暂存的歌单成员 [{hymnId, name}]
   final List<MapEntry<int, String>> _addedHymns = [];
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // 修改模式：预填名称与已添加成员
+    final existing = widget.existing;
+    if (existing != null) {
+      _playlistName = existing.name;
+      _nameCtrl.text = existing.name;
+      for (final item in existing.hymnItems) {
+        _addedHymns.add(MapEntry(item.hymnId, item.name));
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -54,10 +76,10 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      '个人歌单创建',
-                      style: TextStyle(
+                      _isEdit ? '修改歌单' : '个人歌单创建',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -69,7 +91,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                     icon: const Icon(Icons.close,
                         size: 18, color: AppColors.textSecondary),
                     tooltip: '关闭',
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.pop(context, null),
                   ),
                 ],
               ),
@@ -99,11 +121,8 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                   Expanded(
                     child: TextField(
                       controller: _searchCtrl,
-                      onSubmitted: (_) => widget.repo
-                              .searchHymns(_searchCtrl.text.trim())
-                              .isEmpty
-                          ? _searchHymn(_searchCtrl.text.trim())
-                          : _openHymnSearch(_searchCtrl.text.trim()),
+                      onSubmitted: (_) =>
+                          _openHymnSearch(_searchCtrl.text.trim()),
                       decoration: const InputDecoration(
                         hintText: '输入编号或诗歌名称',
                         prefixIcon: Icon(Icons.search, size: 18),
@@ -191,8 +210,23 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // 修改模式：追加「删除歌单」按钮
+                  if (_isEdit) ...[
+                    OutlinedButton(
+                      onPressed: _onDelete,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        side: const BorderSide(color: AppColors.danger),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      child: const Text('删除歌单'),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.pop(context, null),
                     style: OutlinedButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
@@ -202,14 +236,14 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: _doCreate,
+                    onPressed: _doSave,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    child: const Text('创建'),
+                    child: Text(_isEdit ? '保存' : '创建'),
                   ),
                 ],
               ),
@@ -220,13 +254,6 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
     );
   }
 
-  /// 非精确搜索：搜索框直接回车但无结果时，直接列出搜索出的诗歌
-  void _searchHymn(String keyword) {
-    final results = widget.repo.searchHymns(keyword);
-    if (results.isEmpty) return;
-    _openHymnResults(results);
-  }
-
   Future<void> _openHymnSearch(String keyword) async {
     if (keyword.isEmpty) return;
     final results = widget.repo.searchHymns(keyword);
@@ -234,10 +261,6 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
       _showToast('未找到相关诗歌');
       return;
     }
-    _openHymnResults(results);
-  }
-
-  Future<void> _openHymnResults(List<Hymn> results) async {
     final selected = await showDialog<Hymn>(
       context: context,
       builder: (ctx) => HymnPickDialog(results: results),
@@ -255,19 +278,56 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
     });
   }
 
-  void _doCreate() {
+  Future<void> _onDelete() async {
+    final existing = widget.existing;
+    if (existing == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除歌单'),
+        content: Text('确定删除歌单「${existing.name}」吗？此操作不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) Navigator.pop(context, 'delete');
+  }
+
+  void _doSave() {
     if (_playlistName.isEmpty) {
       _showToast('请输入歌单名称');
       return;
     }
-    final id = widget.repo.createPlaylist(_playlistName);
-    if (_addedHymns.isNotEmpty) {
+    final repo = widget.repo;
+    final existing = widget.existing;
+    if (existing == null) {
+      // 新建
+      final id = repo.createPlaylist(_playlistName);
       for (var i = 0; i < _addedHymns.length; i++) {
         final entry = _addedHymns[i];
-        widget.repo.addHymnToPlaylist(id, entry.key, entry.value);
+        repo.addHymnToPlaylist(id, entry.key, entry.value);
       }
+      Navigator.pop(context, 'create');
+    } else {
+      // 修改：先重命名，再全量重建成员
+      repo.renamePlaylist(existing.id, _playlistName);
+      for (final item in existing.hymnItems) {
+        repo.removeHymnFromPlaylist(existing.id, item.hymnId);
+      }
+      for (var i = 0; i < _addedHymns.length; i++) {
+        final entry = _addedHymns[i];
+        repo.addHymnToPlaylist(existing.id, entry.key, entry.value);
+      }
+      Navigator.pop(context, 'save');
     }
-    Navigator.pop(context, true);
   }
 
   void _showToast(String msg) {

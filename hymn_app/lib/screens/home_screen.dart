@@ -56,10 +56,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription<PlayerStatus>? _audioStatusSub;
   final ScrollController _hymnListScroll = ScrollController();
   final ScrollController _defaultListScroll = ScrollController();
+  final ScrollController _myListScroll = ScrollController();
 
   // 默认歌单二级目录的诗歌列表（选中时展示）
   List<Hymn> _defaultPlaylistHymns = const [];
   bool _showDefaultPlaylistContent = false;
+
+  // 个人歌单的诗歌列表（选中歌单时展示）
+  List<Hymn> _myPlaylistHymns = const [];
+  bool _showMyPlaylistContent = false;
   static const int _pageSize = 35;
   static const double _itemHeight = 34; // 列表项近似高度（滚动定位用）
   int _listPage = 0;
@@ -78,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _audioStatusSub?.cancel();
     _hymnListScroll.dispose();
     _defaultListScroll.dispose();
+    _myListScroll.dispose();
     _repo?.dispose();
     _audio?.dispose();
     super.dispose();
@@ -158,6 +164,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _playlists.where((p) => p.name == _selectedPlaylistName).toList();
         if (pl.isNotEmpty) {
           final list = _buildPlaylistHymns(pl.first);
+          _myPlaylistHymns = list;
+          _showMyPlaylistContent = list.isNotEmpty;
           if (list.isNotEmpty) {
             hymn = state.hymnNumber.isNotEmpty
                 ? _findInList(list, state.hymnNumber)
@@ -190,9 +198,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _playFromInit(Hymn hymn) {
     final audio = _audio!;
-    final idx = _allHymns.indexOf(hymn);
-    // 播放列表用当前上下文
-    audio.setPlaylist(_allHymns, startIndex: idx >= 0 ? idx : 0);
+    // 播放列表用当前上下文（二级目录 / 个人歌单 / 全部诗歌）
+    List<Hymn> ctx = _allHymns;
+    if (_selectedSubcategory != null && _defaultPlaylistHymns.isNotEmpty) {
+      ctx = _defaultPlaylistHymns;
+    } else if (_selectedPlaylistName != null && _myPlaylistHymns.isNotEmpty) {
+      ctx = _myPlaylistHymns;
+    }
+    final idx = ctx.indexOf(hymn);
+    audio.setPlaylist(ctx, startIndex: idx >= 0 ? idx : 0);
     audio.playHymn(hymn,
         index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
     setState(() {});
@@ -368,8 +382,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _tabButton('默认歌单', LeftTab.defaultPlaylists, Icons.library_music),
           const SizedBox(width: 4),
           _tabButton('个人歌单', LeftTab.myPlaylists, Icons.favorite),
-          const Spacer(),
-          if (_leftTab == LeftTab.myPlaylists) _newPlaylistButton(),
         ],
       ),
     );
@@ -387,6 +399,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             setState(() {
               _leftTab = tab;
               _showDefaultPlaylistContent = false;
+              _showMyPlaylistContent = false;
             });
             _saveState();
           },
@@ -427,6 +440,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: const Padding(
           padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.add, size: 16, color: Colors.white),
               SizedBox(width: 2),
@@ -448,7 +462,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ? _buildDefaultPlaylistContent()
             : _buildDefaultPlaylistsTab();
       case LeftTab.myPlaylists:
-        return _buildMyPlaylistsTab();
+        return _showMyPlaylistContent
+            ? _buildMyPlaylistContent()
+            : _buildMyPlaylistsTab();
     }
   }
 
@@ -716,64 +732,92 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // 个人歌单
   Widget _buildMyPlaylistsTab() {
-    if (_playlists.isEmpty) return const _EmptyHint(text: '暂无个人歌单');
-    return ListView.builder(
-      itemCount: _playlists.length,
-      itemBuilder: (context, i) {
-        final pl = _playlists[i];
-        final selected = _selectedPlaylistName == pl.name;
-        return Material(
-          color: selected ? AppColors.selectedBg : AppColors.cardBg,
-          child: InkWell(
-            onTap: () {
-              setState(() => _selectedPlaylistName = pl.name);
-              _saveState();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    width: 3,
-                    color: selected ? AppColors.primary : Colors.transparent,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.queue_music,
-                      size: 18, color: AppColors.textSecondary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      pl.name,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.normal,
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${pl.count}首',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textTertiary),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        size: 16, color: AppColors.textTertiary),
-                    tooltip: '删除歌单',
-                    onPressed: () => _deletePlaylist(pl),
-                  ),
-                ],
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 顶部：新建按钮（固定位置，类似搜索框）
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: SizedBox(
+            width: double.infinity,
+            child: _newPlaylistButton(),
           ),
-        );
-      },
+        ),
+        const Divider(height: 1, color: AppColors.divider),
+        Expanded(
+          child: _playlists.isEmpty
+              ? const _EmptyHint(text: '暂无个人歌单')
+              : ListView.builder(
+                  itemCount: _playlists.length,
+                  itemBuilder: (context, i) {
+                    final pl = _playlists[i];
+                    final selected = _selectedPlaylistName == pl.name;
+                    return Material(
+                      color: selected ? AppColors.selectedBg : AppColors.cardBg,
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedPlaylistName = pl.name;
+                            _myPlaylistHymns = _buildPlaylistHymns(pl);
+                            _showMyPlaylistContent = true;
+                          });
+                          _saveState();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                width: 3,
+                                color: selected
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.queue_music,
+                                  size: 18, color: AppColors.textSecondary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  pl.name,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                    color: selected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '${pl.count}首',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textTertiary),
+                              ),
+                              // 修改按钮：打开复用弹窗（含删除歌单）
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined,
+                                    size: 16, color: AppColors.textTertiary),
+                                tooltip: '修改歌单',
+                                onPressed: () => _openEditPlaylistDialog(pl),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -784,6 +828,61 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (h != null) list.add(h);
     }
     return list;
+  }
+
+  /// 个人歌单的诗歌列表视图（点击歌单后展示，可播放）
+  Widget _buildMyPlaylistContent() {
+    final display = ChineseConvertService.instance.toSimplified;
+    String name = '';
+    if (_selectedPlaylistName != null) {
+      final pl =
+          _playlists.where((p) => p.name == _selectedPlaylistName).toList();
+      if (pl.isNotEmpty) name = display(pl.first.name);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, size: 18),
+                tooltip: '返回歌单列表',
+                onPressed: () => setState(() => _showMyPlaylistContent = false),
+              ),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${_myPlaylistHymns.length}首',
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AppColors.divider),
+        Expanded(
+          child: _myPlaylistHymns.isEmpty
+              ? const _EmptyHint(text: '暂无诗歌')
+              : ListView.builder(
+                  controller: _myListScroll,
+                  itemCount: _myPlaylistHymns.length,
+                  itemBuilder: (context, index) => _hymnListItem(
+                      _myPlaylistHymns[index], index, _myPlaylistHymns),
+                ),
+        ),
+      ],
+    );
   }
 
   // ---------- 列表项 ----------
@@ -869,6 +968,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _showDefaultPlaylistContent &&
         identical(list, _defaultPlaylistHymns)) {
       controller = _defaultListScroll;
+    } else if (_leftTab == LeftTab.myPlaylists &&
+        _showMyPlaylistContent &&
+        identical(list, _myPlaylistHymns)) {
+      controller = _myListScroll;
     }
 
     if (controller == null) return;
@@ -965,47 +1068,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ---------- 弹窗 ----------
+  /// 新建歌单弹窗
   Future<void> _openCreatePlaylistDialog() async {
-    final created = await showDialog<bool>(
+    final result = await showDialog<String>(
       context: context,
       builder: (ctx) => CreatePlaylistDialog(repo: _repo!),
     );
-    if (created == true && mounted) {
+    if (!mounted) return;
+    if (result == 'create') {
       setState(() {
         _playlists = _repo!.getPlaylists();
         _leftTab = LeftTab.myPlaylists;
+        _showMyPlaylistContent = false;
       });
+      _saveState();
       _showToast('歌单创建成功');
     }
   }
 
-  void _deletePlaylist(Playlist pl) {
-    showDialog<bool>(
+  /// 修改歌单弹窗（复用创建弹窗，编辑模式追加「删除歌单」按钮）
+  Future<void> _openEditPlaylistDialog(Playlist pl) async {
+    final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除歌单'),
-        content: Text('确定删除歌单「${pl.name}」吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除', style: TextStyle(color: AppColors.danger)),
-          ),
-        ],
-      ),
-    ).then((ok) {
-      if (ok == true && mounted) {
-        setState(() {
-          _repo!.deletePlaylist(pl.id);
-          _playlists = _repo!.getPlaylists();
-          if (_selectedPlaylistName == pl.name) _selectedPlaylistName = null;
-        });
-        _showToast('已删除');
-      }
-    });
+      builder: (ctx) => CreatePlaylistDialog(repo: _repo!, existing: pl),
+    );
+    if (!mounted) return;
+    if (result == 'save') {
+      setState(() {
+        _playlists = _repo!.getPlaylists();
+        final updated = _playlists.where((p) => p.id == pl.id).toList();
+        if (updated.isNotEmpty) {
+          final newPl = updated.first;
+          // 歌单可能被重命名，同步选中的歌单名与内容
+          if (_selectedPlaylistName == pl.name) {
+            _selectedPlaylistName = newPl.name;
+            _myPlaylistHymns = _buildPlaylistHymns(newPl);
+          }
+        }
+      });
+      _saveState();
+      _showToast('歌单已保存');
+    } else if (result == 'delete') {
+      setState(() {
+        _repo!.deletePlaylist(pl.id);
+        _playlists = _repo!.getPlaylists();
+        if (_selectedPlaylistName == pl.name) {
+          _selectedPlaylistName = null;
+          _myPlaylistHymns = const [];
+          _showMyPlaylistContent = false;
+        }
+      });
+      _saveState();
+      _showToast('歌单已删除');
+    }
   }
 
   void _showToast(String msg) {
