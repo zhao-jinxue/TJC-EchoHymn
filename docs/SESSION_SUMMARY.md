@@ -29,7 +29,7 @@
 - **数据**：SQLite `tjc_hymn.db`（474 首）+ `AppPaths.resolveAsset`（Linux 相对路径 → Windows 分隔符，向上查找 12 层 data/）
 - **繁转简**：OpenCC FFI（桌面 FFI）
 - **音频播放**：`audioplayers` 6.8.1 → Windows 走 Media Foundation 系统解码器；`DeviceFileSource(abs)` 直读中文路径文件（m4a/mp3）
-- **状态持久化**：shared_preferences（左栏 Tab/歌单/诗歌/音频版本/歌词模式）
+- **状态持久化**：左栏 Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 → **`echo_hymn.exe` 同级目录 `state.json`**（便携，随程序拷贝；旧 `%APPDATA%\com.example\echo_hymn\shared_preferences.json` 首次启动自动迁移）
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart（audioplayers 自带平台支持）
 
 ## 三、第 4 轮 + 发声修复 关键决策记录
