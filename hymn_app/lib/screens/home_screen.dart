@@ -288,15 +288,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     final ctrl = controller;
-    final expected =
-        (localIndex * _itemHeight).clamp(0.0, ctrl.position.maxScrollExtent);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (ctrl.hasClients) {
-        ctrl.jumpTo(expected);
-        // ===== 校验：实际滚动偏移是否达到目标 =====
+      // hasClients 保护：列表未挂载时不能访问 position
+      if (!ctrl.hasClients) {
+        if (attempts > 0) {
+          WidgetsBinding.instance.addPostFrameCallback((__) {
+            if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
+          });
+        } else {
+          _finishRestore(false, reason: '列表未挂载');
+        }
+        return;
+      }
+      // 目标偏移在列表挂载后计算，避免 position 异常
+      final target = (localIndex * _itemHeight)
+          .clamp(0.0, ctrl.position.maxScrollExtent)
+          .toDouble();
+      ctrl.jumpTo(target);
+      // 跳跃后隔一帧校验实际偏移（jumpTo 瞬时生效，但保险起见隔帧读）
+      WidgetsBinding.instance.addPostFrameCallback((__) {
+        if (!mounted || !ctrl.hasClients) {
+          if (attempts > 0) {
+            WidgetsBinding.instance.addPostFrameCallback((___) {
+              if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
+            });
+          } else {
+            _finishRestore(false, reason: '滚动后列表未挂载');
+          }
+          return;
+        }
         final actual = ctrl.offset;
-        final ok = (actual - expected).abs() <= 2.0;
+        final ok = (actual - target).abs() <= 2.0;
         if (ok) {
           _finishRestore(true);
         } else if (attempts > 0) {
@@ -304,17 +327,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         } else {
           _finishRestore(false,
               reason:
-                  '滚动偏移未到目标(${actual.toStringAsFixed(0)}/${expected.toStringAsFixed(0)})');
+                  '滚动偏移未到目标(${actual.toStringAsFixed(0)}/${target.toStringAsFixed(0)})');
         }
-      } else if (attempts > 0) {
-        _scrollToCurrentHymnRetry(attempts: attempts - 1);
-      } else {
-        _finishRestore(false, reason: '列表未挂载');
-      }
+      });
     });
   }
 
-  /// 恢复完成收尾：统一校验所有锚点并生成用户可见报告。
+  /// 恢复完成收尾：统一校验所有锚点。
+  /// **成功时清空报告**（状态栏恢复显示播放信息）；仅异常才常驻红色报告。
   void _finishRestore(bool listOk, {String? reason}) {
     final audio = _audio;
     if (!mounted || audio == null) return;
@@ -334,14 +354,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         audio.currentIndex != _restoredPlaylistIndex) {
       problems.add('位置(${audio.currentIndex}≠$_restoredPlaylistIndex)');
     }
-    // 4) 滚动
+    // 4) 歌单视图展开（诊断用）
+    if (_leftTab == LeftTab.defaultPlaylists && !_showDefaultPlaylistContent) {
+      problems.add('默认歌单未展开');
+    }
+    if (_leftTab == LeftTab.myPlaylists && !_showMyPlaylistContent) {
+      problems.add('个人歌单未展开');
+    }
+    // 5) 滚动
     if (!listOk) {
       problems.add(reason ?? '列表滚动未确认');
     }
 
-    _restoreReport = problems.isEmpty
-        ? '恢复完成：${_leftTab.name} · ${audio.currentHymn?.hymnNumber ?? ''}首 · ${audio.currentAudioVersion}'
-        : '恢复待确认：${problems.join('；')}';
+    // 成功 → 清空报告（状态栏显示诗歌信息）；异常 → 红色报告常驻便于排查
+    _restoreReport = problems.isEmpty ? '' : '恢复待确认：${problems.join('；')}';
     setState(() {});
   }
 
@@ -1085,7 +1111,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _playHymnFromList(Hymn hymn, int index, List<Hymn> contextList) {
     _audio!.setPlaylist(contextList, startIndex: index);
     _audio!.playHymn(hymn, index: index, version: _currentAudioVersion);
-    setState(() {});
+    setState(() {
+      _restoreReport = ''; // 用户主动播放后清除恢复报告，状态栏回归播放信息
+    });
     _saveState();
   }
 
