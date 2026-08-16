@@ -201,32 +201,47 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return null;
   }
 
+  /// 锚点恢复：当前播放/选择的诗歌 + 来源歌单 + 播放列表位置。
+  /// 一次性同步 `_leftTab`/展开标志/`_listPage`，然后分帧滚动定位。
   void _restoreFromInit(Hymn hymn) {
     final audio = _audio!;
-    // 恢复播放列表上下文（锚点 = 当前播放/选择的诗歌，来源歌单在 _init 已恢复）
+    // 恢复播放列表上下文（锚点，来源歌单在 _init 已恢复）
     List<Hymn> ctx = _allHymns;
     if (_selectedSubcategory != null && _defaultPlaylistHymns.isNotEmpty) {
       ctx = _defaultPlaylistHymns;
-      _showDefaultPlaylistContent = true; // 恢复默认歌单：展开该二级目录诗歌列表
+      _leftTab = LeftTab.defaultPlaylists; // 确保切到默认歌单
     } else if (_selectedPlaylistName != null && _myPlaylistHymns.isNotEmpty) {
       ctx = _myPlaylistHymns;
-      _showMyPlaylistContent = true; // 恢复个人歌单：展开该歌单诗歌列表
+      _leftTab = LeftTab.myPlaylists; // 确保切到个人歌单
     }
 
     // 用记录的位置索引精确定位（校验范围），否则回退 indexOf 猜测
     final index = _restoredPlaylistIndex;
     final idx = (index >= 0 && index < ctx.length) ? index : ctx.indexOf(hymn);
     audio.setPlaylist(ctx, startIndex: idx >= 0 ? idx : 0);
-    // 只加载不播放：进度条从 0 开始，等待用户点击播放；
-    // 同时记忆音频版本（人声版等）与歌词版本，使版本栏正确高亮
+    // 只加载不播放：进度条从 0 开始；同时记忆音频/歌词版本
     audio.loadHymn(hymn,
         index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
-    setState(() {});
-    // 恢复后统一滚动定位左侧列表到当前诗歌（含翻页/各列表），多帧重试保证落地。
-    _scrollToCurrentHymnRetry(attempts: 8);
+
+    // 第 1 帧：一次同步恢复视图状态（左栏 Tab + 展开标志 + 诗歌列表页码）
+    setState(() {
+      if (ctx == _allHymns) {
+        _listPage = idx ~/ _pageSize; // 首帧即渲染正确页
+      } else if (ctx == _defaultPlaylistHymns) {
+        _showDefaultPlaylistContent = true;
+      } else if (ctx == _myPlaylistHymns) {
+        _showMyPlaylistContent = true;
+      }
+    });
+
+    // 第 2 帧起：滚动定位到当前诗歌（列表已构建），多帧重试保证落地。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollToCurrentHymnRetry(attempts: 8);
+    });
   }
 
-  /// 将左侧当前列表滚动定位到当前诗歌（按播放上下文匹配对应列表），多帧重试保证列表就绪。
+  /// 将左侧当前列表滚动定位到当前诗歌（按播放上下文匹配对应列表），多帧重试保证就绪。
   void _scrollToCurrentHymnRetry({required int attempts}) {
     final audio = _audio;
     if (audio == null || !mounted) return;
@@ -239,21 +254,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     var localIndex = idx;
 
     if (identical(list, _allHymns) && _leftTab == LeftTab.hymnList) {
-      // 诗歌列表：先翻到对应页，再按页内位置滚动
-      final page = idx ~/ _pageSize;
-      localIndex = idx - page * _pageSize;
+      // 诗歌列表：页码已在恢复时设好，此处仅页内滚动
+      localIndex = idx - _listPage * _pageSize;
       controller = _hymnListScroll;
-      if (page != _listPage) {
-        setState(() => _listPage = page);
-      }
     } else if (identical(list, _defaultPlaylistHymns) &&
+        _leftTab == LeftTab.defaultPlaylists &&
         _showDefaultPlaylistContent) {
       controller = _defaultListScroll;
-    } else if (identical(list, _myPlaylistHymns) && _showMyPlaylistContent) {
+    } else if (identical(list, _myPlaylistHymns) &&
+        _leftTab == LeftTab.myPlaylists &&
+        _showMyPlaylistContent) {
       controller = _myListScroll;
     }
 
     if (controller == null) {
+      // 视图尚未就绪（如展开标志/列表未挂载）：多帧重试
       if (attempts > 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
