@@ -55,6 +55,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 上次记录的播放列表位置索引（锚点恢复用）
   int _restoredPlaylistIndex = -1;
 
+  /// 恢复校验报告（底部状态栏显示）
+  String _restoreReport = '';
+  String _savedLeftTab = '';
+  String _savedAudioVersion = '';
+
   // ---- 列表联动（上一首/下一首时滚动到当前项） ----
   StreamSubscription<PlayerStatus>? _audioStatusSub;
   final ScrollController _hymnListScroll = ScrollController();
@@ -146,6 +151,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _currentDisplayMode =
             state.displayMode.isEmpty ? 'lyrics' : state.displayMode;
         _restoredPlaylistIndex = state.playlistIndex;
+        _savedLeftTab = state.leftTab;
+        _savedAudioVersion = _currentAudioVersion;
       });
 
       // 恢复/默认加载诗歌
@@ -234,14 +241,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     });
 
-    // 第 2 帧起：滚动定位到当前诗歌（列表已构建），多帧重试保证落地。
+    // 第 2 帧起：滚动定位到当前诗歌（列表已构建），带偏移校验 + 多帧重试。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _scrollToCurrentHymnRetry(attempts: 8);
+      _scrollToCurrentHymnRetry(attempts: 10);
     });
   }
 
-  /// 将左侧当前列表滚动定位到当前诗歌（按播放上下文匹配对应列表），多帧重试保证就绪。
+  /// 将左侧当前列表滚动定位到当前诗歌（按播放上下文匹配对应列表）。
+  /// **执行后校验实际滚动偏移**，与目标相差 >2px 则判定失败并重试。
   void _scrollToCurrentHymnRetry({required int attempts}) {
     final audio = _audio;
     if (audio == null || !mounted) return;
@@ -273,22 +281,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _scrollToCurrentHymnRetry(attempts: attempts - 1);
         });
+      } else {
+        _finishRestore(false, reason: '列表视图未就绪');
       }
       return;
     }
 
     final ctrl = controller;
+    final expected =
+        (localIndex * _itemHeight).clamp(0.0, ctrl.position.maxScrollExtent);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (ctrl.hasClients) {
-        final target = (localIndex * _itemHeight)
-            .clamp(0.0, ctrl.position.maxScrollExtent)
-            .toDouble();
-        ctrl.jumpTo(target); // 瞬时定位最可靠
+        ctrl.jumpTo(expected);
+        // ===== 校验：实际滚动偏移是否达到目标 =====
+        final actual = ctrl.offset;
+        final ok = (actual - expected).abs() <= 2.0;
+        if (ok) {
+          _finishRestore(true);
+        } else if (attempts > 0) {
+          _scrollToCurrentHymnRetry(attempts: attempts - 1);
+        } else {
+          _finishRestore(false,
+              reason:
+                  '滚动偏移未到目标(${actual.toStringAsFixed(0)}/${expected.toStringAsFixed(0)})');
+        }
       } else if (attempts > 0) {
         _scrollToCurrentHymnRetry(attempts: attempts - 1);
+      } else {
+        _finishRestore(false, reason: '列表未挂载');
       }
     });
+  }
+
+  /// 恢复完成收尾：统一校验所有锚点并生成用户可见报告。
+  void _finishRestore(bool listOk, {String? reason}) {
+    final audio = _audio;
+    if (!mounted || audio == null) return;
+
+    final problems = <String>[];
+    // 1) 左栏 Tab
+    if (_savedLeftTab.isNotEmpty && _leftTab.name != _savedLeftTab) {
+      problems.add('左栏(${_leftTab.name}≠$_savedLeftTab)');
+    }
+    // 2) 音频版本
+    if (_savedAudioVersion.isNotEmpty &&
+        audio.currentAudioVersion != _savedAudioVersion) {
+      problems.add('音频版本(${audio.currentAudioVersion}≠$_savedAudioVersion)');
+    }
+    // 3) 播放列表位置
+    if (_restoredPlaylistIndex >= 0 &&
+        audio.currentIndex != _restoredPlaylistIndex) {
+      problems.add('位置(${audio.currentIndex}≠$_restoredPlaylistIndex)');
+    }
+    // 4) 滚动
+    if (!listOk) {
+      problems.add(reason ?? '列表滚动未确认');
+    }
+
+    _restoreReport = problems.isEmpty
+        ? '恢复完成：${_leftTab.name} · ${audio.currentHymn?.hymnNumber ?? ''}首 · ${audio.currentAudioVersion}'
+        : '恢复待确认：${problems.join('；')}';
+    setState(() {});
   }
 
   /// 保存状态到本地
@@ -1135,13 +1189,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 底部状态栏 ----------
   Widget _buildStatusBar() {
     final hymn = _audio?.currentHymn;
+    // 恢复报告优先展示（用户可确认是否正确恢复），随后是常规状态信息
+    final report = _restoreReport;
     return Container(
       height: 40,
       color: AppColors.cardBg,
       child: Row(
         children: [
           const SizedBox(width: 16),
-          if (hymn != null)
+          if (report.isNotEmpty)
+            Expanded(
+              child: Text(
+                report,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: report.startsWith('恢复完成')
+                      ? AppColors.success
+                      : AppColors.danger,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            )
+          else if (hymn != null)
             Expanded(
               child: Text(
                 hymn.statusMeta,
