@@ -33,7 +33,7 @@
 
 | MCP 服务器 | 用途 |
 | --- | --- |
-| `playwright` / `puppeteer` MCP | Web 版（html/ 目录）自动化回归测试 |
+| `playwright` / `puppeteer` MCP | Flutter Web/UI 自动化回归测试（按需启用） |
 | `@modelcontextprotocol/server-fetch` | 抓取 Web 文档（Flutter API 参考） |
 
 > 以上均为社区常用 MCP，安装命令均为 `npx -y <包名>` 或通过 VS Code「MCP 市场」一键添加。具体以各仓库 README 为准。
