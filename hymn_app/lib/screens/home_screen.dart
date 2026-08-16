@@ -213,27 +213,47 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
     setState(() {});
     // 恢复后主动滚动左侧列表到当前诗歌：
-    // 列表需在首帧构建完成（hasClients=true）后才能滚动，故延后到下一帧；
-    // 诗歌列表还需按分页机制先翻到对应页再滚动。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _ensureHymnPageVisible();
-      _syncListScroll();
-    });
+    // 用「诗歌在全部列表中的编号」直接定位（不依赖 identical 引用匹配），
+    // 采用 jumpTo 瞬时滚动 + 多帧重试，确保列表构建完成（hasClients=true）后落地。
+    _scrollToCurrentHymnRetry(attempts: 8);
   }
 
-  /// 保证当前诗歌所在分页已翻到（诗歌列表 35 首/页）
-  void _ensureHymnPageVisible() {
+  /// 将左侧「诗歌列表」滚动定位到当前诗歌（含自动翻页），多帧重试保证列表就绪。
+  void _scrollToCurrentHymnRetry({required int attempts}) {
     final audio = _audio;
     if (audio == null || !mounted) return;
+    final h = audio.currentHymn;
+    if (h == null) return;
+
+    // 仅在「诗歌列表」Tab 且播放上下文为全部诗歌时做列表内定位
     if (_leftTab != LeftTab.hymnList) return;
-    final idx = audio.currentIndex;
-    if (idx < 0) return;
-    final page = idx ~/ _pageSize;
-    if (page != _listPage) {
-      _listPage = page;
-      setState(() {});
-    }
+    if (!identical(audio.playlist, _allHymns)) return;
+
+    // 以诗歌在全部列表中的编号（hymnNumber 排序索引）计算分页与滚动位置
+    final idxInAll = _allHymns.indexOf(h);
+    if (idxInAll < 0) return;
+    final page = idxInAll ~/ _pageSize;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // 先保证翻到对应页
+      if (page != _listPage) {
+        setState(() => _listPage = page);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ctrl = _hymnListScroll;
+        if (ctrl.hasClients) {
+          final localIndex = idxInAll - _listPage * _pageSize;
+          final target = (localIndex * _itemHeight)
+              .clamp(0.0, ctrl.position.maxScrollExtent)
+              .toDouble();
+          ctrl.jumpTo(target); // 瞬时定位最可靠
+        } else if (attempts > 0) {
+          _scrollToCurrentHymnRetry(attempts: attempts - 1);
+        }
+      });
+    });
   }
 
   /// 保存状态到本地
