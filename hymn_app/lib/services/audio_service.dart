@@ -94,6 +94,15 @@ class AudioService {
     }
   }
 
+  /// 仅加载诗歌（设置当前歌曲与上下文，**不播放**，进度条从 0 开始）。
+  /// 用于应用重启后恢复上次状态但静默待播。
+  Future<void> loadHymn(Hymn hymn, {int? index}) async {
+    _currentHymn = hymn;
+    if (index != null) _currentIndex = index;
+    await _player.stop(); // 停止旧源，确保进度归零
+    _emitStatus(PlayerStatus.idle);
+  }
+
   /// 播放指定诗歌；[version] 指定音频版本（缺省用当前版本或默认）
   Future<void> playHymn(Hymn hymn, {int? index, String? version}) async {
     _currentHymn = hymn;

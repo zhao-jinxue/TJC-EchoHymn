@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
 
       if (hymn != null) {
-        _playFromInit(hymn);
+        _restoreFromInit(hymn);
       }
     } catch (_) {
       if (!mounted) return;
@@ -196,9 +196,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return null;
   }
 
-  void _playFromInit(Hymn hymn) {
+  void _restoreFromInit(Hymn hymn) {
     final audio = _audio!;
-    // 播放列表用当前上下文（二级目录 / 个人歌单 / 全部诗歌）
+    // 恢复播放列表上下文（二级目录 / 个人歌单 / 全部诗歌）
     List<Hymn> ctx = _allHymns;
     if (_selectedSubcategory != null && _defaultPlaylistHymns.isNotEmpty) {
       ctx = _defaultPlaylistHymns;
@@ -207,17 +207,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     final idx = ctx.indexOf(hymn);
     audio.setPlaylist(ctx, startIndex: idx >= 0 ? idx : 0);
-    audio.playHymn(hymn,
-        index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
+    // 只加载不播放：进度条从 0 开始，等待用户点击播放
+    audio.loadHymn(hymn, index: idx >= 0 ? idx : 0);
     setState(() {});
-    _saveState();
   }
 
   /// 保存状态到本地
+  ///
+  /// leftTab 按「当前播放列表来源」优先（而非当前 UI 所在栏），
+  /// 保证重启后左侧栏与正在播放的诗歌上下文一致。
   Future<void> _saveState() async {
     final hymn = _audio?.currentHymn;
+    var leftTab = _leftTab.name;
+    final list = _audio?.playlist ?? const <Hymn>[];
+    if (list.isNotEmpty) {
+      if (identical(list, _defaultPlaylistHymns) &&
+          _defaultPlaylistHymns.isNotEmpty) {
+        leftTab = LeftTab.defaultPlaylists.name;
+      } else if (identical(list, _myPlaylistHymns) &&
+          _myPlaylistHymns.isNotEmpty) {
+        leftTab = LeftTab.myPlaylists.name;
+      } else if (identical(list, _allHymns)) {
+        leftTab = LeftTab.hymnList.name;
+      }
+    }
     await _stateService.saveAll(
-      leftTab: _leftTab.name,
+      leftTab: leftTab,
       subcategory: _selectedSubcategory ?? '',
       playlistName: _selectedPlaylistName ?? '',
       hymnNumber: hymn?.hymnNumber ?? '',
@@ -995,7 +1010,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildRightPanel() {
     final hymn = _audio?.currentHymn;
     return SizedBox(
-      width: 340,
+      width: 480,
       child: Container(
         color: AppColors.sidebarBg,
         child: Column(
