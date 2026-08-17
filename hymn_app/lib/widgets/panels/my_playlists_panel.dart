@@ -41,6 +41,68 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
     super.dispose();
   }
 
+  /// 诗歌行渲染：编号 + 标题（来源 = 当前个人歌单）
+  @override
+  Widget buildHymnTile(Hymn hymn, int index, List<Hymn> contextList) {
+    final isCurrent = currentHymn?.id == hymn.id;
+    return Material(
+      color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
+      child: InkWell(
+        onTap: () => playHymn(
+          hymn,
+          index,
+          contextList,
+          sourcePlaylistName: _selectedPlaylist?.name,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                width: 3,
+                color: isCurrent ? AppColors.primary : Colors.transparent,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 56,
+                child: Text(
+                  hymn.hymnNumber,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color:
+                        isCurrent ? AppColors.primary : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  display(hymn.title),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 切歌联动：当前歌曲属于展开的个人歌单时，滚动到可视区域（避开歌单标题栏）。
+  @override
+  void syncWithPlayback() {
+    final hymn = currentHymn;
+    if (hymn == null || !_showContent || _selectedPlaylist == null) return;
+    final idx = _selectedHymns.indexWhere((h) => h.id == hymn.id);
+    if (idx < 0) return;
+    scrollCurrentIntoView(_contentScroll, idx, headerHeight: 47);
+  }
+
   /// 按锚点恢复：选中歌单并展开其诗歌列表，滚动到当前诗歌
   @override
   void restoreSaved(AppState anchor) {
@@ -238,12 +300,32 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
               : ListView.builder(
                   controller: _contentScroll,
                   itemCount: _selectedHymns.length,
-                  itemBuilder: (context, index) =>
-                      hymnTile(_selectedHymns[index], index, _selectedHymns),
+                  itemBuilder: (context, index) => buildHymnTile(
+                      _selectedHymns[index], index, _selectedHymns),
                 ),
         ),
       ],
     );
+  }
+
+  /// 编辑保存后同步播放上下文：
+  /// 若当前播放列表正是被编辑的歌单（旧顺序），用新顺序更新 AudioService，
+  /// 并保持当前歌曲位置——之后「下一首/上一首」立即按新顺序切换。
+  void _syncEditedPlaylist(Playlist oldPl, Playlist newPl) {
+    final hymn = currentHymn;
+    if (hymn == null) return;
+    // 当前歌曲必须属于该歌单（新列表）
+    final newIdx = _selectedHymns.indexWhere((h) => h.id == hymn.id);
+    if (newIdx < 0) return;
+    final active = currentPlaylist;
+    if (active.isEmpty) return;
+    // 判断 active 是否就是被编辑歌单的旧列表：等长 + 编号集合一致
+    final oldNumbers = oldPl.hymns.map((e) => e.value.toString()).toSet();
+    final activeNumbers = active.map((h) => h.hymnNumber).toSet();
+    if (oldNumbers.length != activeNumbers.length) return;
+    if (!oldNumbers.containsAll(activeNumbers)) return;
+    // 同一歌单 → 用新顺序同步 AudioService，保持当前歌曲位置
+    audio.setPlaylist(_selectedHymns, startIndex: newIdx);
   }
 
   Future<void> _openCreateDialog() async {
@@ -274,6 +356,10 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
           _selectedPlaylist = updated.isNotEmpty ? updated.first : null;
           if (_selectedPlaylist != null) {
             _selectedHymns = _buildPlaylistHymns(_selectedPlaylist!);
+            // 同步播放上下文：若当前播放列表正是这个歌单（旧列表），
+            // 用新顺序更新 AudioService 播放列表，并保持当前歌曲位置，
+            // 使「下一首/上一首」立即按新顺序切换。
+            _syncEditedPlaylist(pl, _selectedPlaylist!);
           }
         }
       });

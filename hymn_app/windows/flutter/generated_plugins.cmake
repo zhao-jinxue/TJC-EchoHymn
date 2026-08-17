@@ -4,7 +4,6 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
-  flutter_opencc_ffi_windows
   sqlite3_flutter_libs
 )
 

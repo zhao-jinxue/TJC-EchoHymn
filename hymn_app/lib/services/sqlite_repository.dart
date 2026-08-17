@@ -128,12 +128,12 @@ class SqliteRepository {
     return rows.map((r) => Hymn.fromDbRow(_rowToMap(r))).toList();
   }
 
-  /// 按编号或标题搜索
+  /// 按编号或标题搜索（不含作者/作曲，按需求限定范围）
   List<Hymn> searchHymns(String keyword) {
     final kw = keyword.trim();
     if (kw.isEmpty) return getAllHymns();
     final like = '%$kw%';
-    // 数字 → 优先匹配编号；其余匹配标题/作词/作曲
+    // 数字 → 优先匹配编号；其余仅匹配标题
     final isNum = int.tryParse(kw) != null;
     if (isNum) {
       final rows = _db.select(
@@ -143,10 +143,8 @@ class SqliteRepository {
       return rows.map((r) => Hymn.fromDbRow(_rowToMap(r))).toList();
     }
     final rows = _db.select(
-      '''SELECT * FROM tjc_hymn
-         WHERE title LIKE ? OR lyricist LIKE ? OR composer LIKE ?
-         ORDER BY CAST(hymn_number AS INTEGER)''',
-      [like, like, like],
+      'SELECT * FROM tjc_hymn WHERE title LIKE ? ORDER BY CAST(hymn_number AS INTEGER)',
+      [like],
     );
     return rows.map((r) => Hymn.fromDbRow(_rowToMap(r))).toList();
   }

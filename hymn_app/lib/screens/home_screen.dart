@@ -99,6 +99,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ));
 
       if (!mounted) return;
+      // 切歌（上一首/下一首/播放完成）时自动保存状态
+      audio.onCurrentChanged = _saveState;
       setState(() {
         _repo = repo;
         _audio = audio;
@@ -120,34 +122,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
 
       // 首次默认/恢复一首诗歌（只加载不播放，进度条从 0 开始）
-      Hymn? hymn;
+      // 播放列表按「播放来源」构建：默认歌单二级目录 / 个人歌单 / 全部诗歌
+      var restoreList = _allHymns;
       if (_playSubcategory != null) {
         final list = _hymnsOfSubcategory(_playSubcategory!);
-        if (list.isNotEmpty) {
-          hymn = state.hymnNumber.isNotEmpty
-              ? _findInList(list, state.hymnNumber)
-              : list.first;
-        }
+        if (list.isNotEmpty) restoreList = list;
       } else if (_playPlaylistName != null) {
         final list = _hymnsOfPlaylistName(_playPlaylistName!);
-        if (list.isNotEmpty) {
-          hymn = state.hymnNumber.isNotEmpty
-              ? _findInList(list, state.hymnNumber)
-              : list.first;
-        }
+        if (list.isNotEmpty) restoreList = list;
       }
-      if (hymn == null && _allHymns.isNotEmpty) {
+      Hymn? hymn;
+      if (restoreList.isNotEmpty) {
         hymn = state.hymnNumber.isNotEmpty
-            ? _findInList(_allHymns, state.hymnNumber)
-            : _allHymns.first;
+            ? _findInList(restoreList, state.hymnNumber)
+            : restoreList.first;
       }
       if (hymn != null) {
-        final idx = _restoredPlaylistIndex >= 0
-            ? _restoredPlaylistIndex
-            : _allHymns.indexOf(hymn);
-        audio.setPlaylist(_allHymns, startIndex: idx >= 0 ? idx : 0);
-        audio.loadHymn(hymn,
-            index: idx >= 0 ? idx : 0, version: _currentAudioVersion);
+        // 索引：恢复的播放列表位置索引优先；否则按诗歌在列表中的位置
+        var idx = _restoredPlaylistIndex;
+        if (idx < 0 || idx >= restoreList.length) {
+          idx = restoreList.indexOf(hymn);
+        }
+        if (idx < 0) idx = 0;
+        audio.setPlaylist(restoreList, startIndex: idx);
+        audio.loadHymn(hymn, index: idx, version: _currentAudioVersion);
       }
 
       // 组装恢复锚点，传给左栏面板自动恢复滚动/展开/分页
@@ -208,13 +206,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     var leftTab = _leftTab.name;
     // 按「当前播放列表来源」优先（而非当前 UI 所在栏）
     final list = _audio?.playlist ?? const <Hymn>[];
+    // 仅当播放列表 = 全部诗歌（逐 id 比对）时，索引才与全局定位一致；
+    // 搜索结果/歌单子集由 hymnNumber 定位，索引不保存（-1）。
+    var saveIndex = false;
     if (list.isNotEmpty) {
       if (_playSubcategory != null) {
         leftTab = LeftTab.defaultPlaylists.name;
       } else if (_playPlaylistName != null) {
         leftTab = LeftTab.myPlaylists.name;
-      } else if (identical(list, _allHymns)) {
+      } else {
         leftTab = LeftTab.hymnList.name;
+        saveIndex = _containsAllHymns(list);
       }
     }
     await _stateService.saveAll(
@@ -224,8 +226,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       hymnNumber: hymn?.hymnNumber ?? '',
       audioVersion: _currentAudioVersion,
       displayMode: _currentDisplayMode,
-      playlistIndex: _audio?.currentIndex ?? -1,
+      playlistIndex: saveIndex ? (_audio?.currentIndex ?? -1) : -1,
     );
+  }
+
+  /// 判断 [list] 是否为全部诗歌列表（长度 + 逐 id 比对）
+  bool _containsAllHymns(List<Hymn> list) {
+    if (list.length != _allHymns.length) return false;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id != _allHymns[i].id) return false;
+    }
+    return true;
   }
 
   // ================= 构建 =================
@@ -457,23 +468,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 面板内点击播放回调：同步播放来源并保存状态
   void _onPlayback(PlaybackEvent e) {
-    _playSubcategory = null;
-    _playPlaylistName = null;
-    // 通过对比播放列表与来源列表判断（面板构建时使用同一 repo/全量列表）
-    if (e.contextList.length == _allHymns.length &&
-        _containsAllHymns(e.contextList)) {
+    _playSubcategory = e.sourceSubcategory;
+    _playPlaylistName = e.sourcePlaylistName;
+    if (e.sourceSubcategory != null) {
+      _leftTab = LeftTab.defaultPlaylists;
+    } else if (e.sourcePlaylistName != null) {
+      _leftTab = LeftTab.myPlaylists;
+    } else {
       _leftTab = LeftTab.hymnList;
     }
     setState(() {});
     _saveState();
-  }
-
-  bool _containsAllHymns(List<Hymn> list) {
-    if (list.length != _allHymns.length) return false;
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].id != _allHymns[i].id) return false;
-    }
-    return true;
   }
 
   // ---------- 右侧栏（源考） ----------
@@ -534,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (hymn != null)
             Expanded(
               child: Text(
-                hymn.statusMeta,
+                ChineseConvertService.instance.toSimplified(hymn.statusMeta),
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.textSecondary),
                 overflow: TextOverflow.ellipsis,

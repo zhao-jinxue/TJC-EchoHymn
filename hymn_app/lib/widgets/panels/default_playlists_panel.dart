@@ -42,6 +42,68 @@ class _DefaultPlaylistsPanelState
     super.dispose();
   }
 
+  /// 诗歌行渲染：编号 + 标题（来源 = 当前二级目录）
+  @override
+  Widget buildHymnTile(Hymn hymn, int index, List<Hymn> contextList) {
+    final isCurrent = currentHymn?.id == hymn.id;
+    return Material(
+      color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
+      child: InkWell(
+        onTap: () => playHymn(
+          hymn,
+          index,
+          contextList,
+          sourceSubcategory: _selectedSub?.subcategory,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                width: 3,
+                color: isCurrent ? AppColors.primary : Colors.transparent,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 56,
+                child: Text(
+                  hymn.hymnNumber,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color:
+                        isCurrent ? AppColors.primary : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  display(hymn.title),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 切歌联动：当前歌曲属于展开的二级目录时，滚动到可视区域（避开目录标题栏）。
+  @override
+  void syncWithPlayback() {
+    final hymn = currentHymn;
+    if (hymn == null || !_showContent || _selectedSub == null) return;
+    final idx = _selectedHymns.indexWhere((h) => h.id == hymn.id);
+    if (idx < 0) return;
+    scrollCurrentIntoView(_contentScroll, idx, headerHeight: 47);
+  }
+
   /// 按锚点恢复：展开对应二级目录并滚动到当前诗歌
   @override
   void restoreSaved(AppState anchor) {
@@ -234,8 +296,8 @@ class _DefaultPlaylistsPanelState
               : ListView.builder(
                   controller: _contentScroll,
                   itemCount: _selectedHymns.length,
-                  itemBuilder: (context, index) =>
-                      hymnTile(_selectedHymns[index], index, _selectedHymns),
+                  itemBuilder: (context, index) => buildHymnTile(
+                      _selectedHymns[index], index, _selectedHymns),
                 ),
         ),
       ],

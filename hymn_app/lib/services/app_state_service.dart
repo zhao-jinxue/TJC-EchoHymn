@@ -10,6 +10,9 @@ import 'dart:io';
 class AppStateService {
   static const _fileName = 'state.json';
 
+  /// 写队列：所有写入排队串行执行，避免并发写同一 tmp 文件导致文件损坏
+  Future<void> _writeChain = Future.value();
+
   /// exe 同级目录的 state.json 路径
   static String get _statePath {
     try {
@@ -30,27 +33,36 @@ class AppStateService {
     required String audioVersion,
     required String displayMode,
     required int playlistIndex,
-  }) async {
+  }) {
+    final data = <String, Object>{
+      'leftTab': leftTab,
+      'subcategory': subcategory,
+      'playlistName': playlistName,
+      'hymnNumber': hymnNumber,
+      'audioVersion': audioVersion,
+      'displayMode': displayMode,
+      'playlistIndex': playlistIndex,
+    };
+    // 排队执行，串行写入，且异常不影响后续写入
+    _writeChain = _writeChain.then((_) => _doWrite(data)).catchError((_) {});
+    return _writeChain;
+  }
+
+  Future<void> _doWrite(Map<String, Object> data) async {
+    final file = File(_statePath);
+    // 原子写：先写临时文件再替换，避免写一半损坏
+    // 用 2 空格缩进格式化输出，便于人工阅读/排查
+    final tmp = File('$_statePath.tmp');
+    const encoder = JsonEncoder.withIndent('  ');
+    await tmp.writeAsString(encoder.convert(data), flush: true);
+    // 直接 rename 覆盖；如目标存在且平台不允许覆盖，则先删再改名
     try {
-      final data = <String, Object>{
-        'leftTab': leftTab,
-        'subcategory': subcategory,
-        'playlistName': playlistName,
-        'hymnNumber': hymnNumber,
-        'audioVersion': audioVersion,
-        'displayMode': displayMode,
-        'playlistIndex': playlistIndex,
-      };
-      final file = File(_statePath);
-      // 原子写：先写临时文件再替换，避免写一半损坏
-      final tmp = File('$_statePath.tmp');
-      await tmp.writeAsString(jsonEncode(data), flush: true);
+      await tmp.rename(file.path);
+    } catch (_) {
       if (await file.exists()) {
         await file.delete();
       }
       await tmp.rename(file.path);
-    } catch (_) {
-      // 写失败不影响程序运行（下次启动按默认/旧状态）
     }
   }
 

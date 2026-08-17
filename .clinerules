@@ -1,4 +1,24 @@
-# Cline 全局规则
+# EchoHymn 项目规则（Cline）
+
+> 全局规则见 `C:\Users\小蔡爱金雪\.clinerules`（系统已自动注入，本文件不重复）。
+> 本文件只放 **EchoHymn 项目专属**的规则与启动指引。
+
+## 新会话启动流程（续接开发）
+
+新会话开始时按以下顺序加载上下文（目的：最小化消耗，约 30~40K）：
+
+1. 读 `docs/SESSION_SUMMARY.md`（项目开发总结，续接开发）——按需全文或关键章节
+2. 读 `docs/UI_CONFIRMATION.md` 的「第 3 轮修订（最终设计定稿）」章节（可按需读全文）
+3. 执行 `git log --oneline -15` 查看提交历史
+
+**禁止**：不要重复读取全局 `.clinerules` 与项目 `.clinerules`（系统均已自动注入）；不要遍历 `C:\Users\小蔡爱金雪\.cline` 目录；不要读取 `.mcp.json`（已有 MCP 工具列表即可）。
+
+## 重要须知（项目）
+
+- **目标平台**：Windows（已开发）+ Android（目录就绪）+ OpenHarmony（占位）。Web 已移除。
+- **自动发布**：每次 git commit 到 master/main 会自动触发 Windows 发布（`tools/publish_windows.ps1`），提交后核对 `release/auto-release.log`。
+- **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携、原子写、自动迁移老数据）。
+- **架构**：左栏三栏目 = `LeftPanel` 抽象基类 + 三个子类（`HymnListPanel` / `DefaultPlaylistsPanel` / `MyPlaylistsPanel`），`HomeScreen` 为协调者。
 
 ## 千问 API Key（图片解析/理解）
 

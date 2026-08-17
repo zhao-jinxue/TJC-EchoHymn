@@ -89,6 +89,19 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
+# 随程序打包 VC++ 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1），
+# 使 opencc.dll 等原生库就近加载，不依赖系统是否安装 VC++ Redistributable。
+# 源取自本机 Visual Studio 运行库安装目录。
+set(VC_REDIST_DIR "C:/Windows/System32")
+install(FILES
+  "${VC_REDIST_DIR}/msvcp140.dll"
+  "${VC_REDIST_DIR}/vcruntime140.dll"
+  "${VC_REDIST_DIR}/vcruntime140_1.dll"
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  CONFIGURATIONS Release
+  COMPONENT Runtime
+  OPTIONAL)
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"

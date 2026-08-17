@@ -27,6 +27,9 @@ class AudioService {
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
+  /// 当前歌曲变化回调（播放新歌/加载恢复歌时触发，供上层保存状态）
+  void Function()? onCurrentChanged;
+
   /// 播放列表（当前上下文：诗歌列表 / 默认歌单 / 个人歌单）
   List<Hymn> _playlist = const [];
   int _currentIndex = -1;
@@ -101,6 +104,7 @@ class AudioService {
     _currentHymn = hymn;
     if (index != null) _currentIndex = index;
     if (version != null) _currentAudioVersion = version;
+    onCurrentChanged?.call();
     await _player.stop(); // 停止旧源，确保进度归零
     _emitStatus(PlayerStatus.idle);
   }
@@ -109,6 +113,7 @@ class AudioService {
   Future<void> playHymn(Hymn hymn, {int? index, String? version}) async {
     _currentHymn = hymn;
     if (index != null) _currentIndex = index;
+    onCurrentChanged?.call();
 
     // 选择音频版本
     var audioVersion = version ?? _currentAudioVersion;
