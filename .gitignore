@@ -42,8 +42,15 @@ Thumbs.db
 audio/
 assets/media/
 
-# 诗本下载数据（本地缓存，不入库；如需分享改用 LFS 或独立发布）
-data/Hymn_Downloads/
+# 诗本下载数据：大文件（音频/PDF/图片）本地缓存不入库，
+# 但保留 checksums.json 哈希清单跟踪，使数据变化可通过 git diff 感知
+# （参考 hymn_crawler 仓库做法）
+data/Hymn_Downloads/**
+!data/Hymn_Downloads/**/
+!data/Hymn_Downloads/**/*.json
+
+# SQLite 临时日志（db 运行时的 journal 不应入库）
+*.db-journal
 
 # 发布产物（每次 commit 自动重新生成）
 release/
