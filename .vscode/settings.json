@@ -2,5 +2,11 @@
     "git.path": "C:\\Program Files\\Git\\cmd\\git.exe",
     "git.enabled": true,
     "git.autofetch": true,
-    "cmake.sourceDirectory": "E:/EchoHymn/hymn_app/native"
+    "cmake.sourceDirectory": "E:/EchoHymn/hymn_app/native",
+    "markdownlint.config": {
+        "MD033": false,
+        "MD024": {
+            "siblings_only": true
+        }
+    }
 }
