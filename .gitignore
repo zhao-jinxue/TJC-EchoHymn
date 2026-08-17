@@ -42,5 +42,8 @@ Thumbs.db
 audio/
 assets/media/
 
+# 诗本下载数据（本地缓存，不入库；如需分享改用 LFS 或独立发布）
+data/Hymn_Downloads/
+
 # 发布产物（每次 commit 自动重新生成）
 release/
