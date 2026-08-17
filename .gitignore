@@ -49,6 +49,11 @@ data/Hymn_Downloads/**
 !data/Hymn_Downloads/**/
 !data/Hymn_Downloads/**/*.json
 
+# 爬取断点续跑临时状态（放行 *.json 白名单之后，显式排除）
+data/Hymn_Downloads/step2_progress.json
+data/Hymn_Downloads/step5_progress.json
+data/Hymn_Downloads/step7_progress.json
+
 # SQLite 临时日志（db 运行时的 journal 不应入库）
 *.db-journal
 
