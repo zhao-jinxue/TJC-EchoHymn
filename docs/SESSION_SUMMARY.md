@@ -26,7 +26,8 @@
 | `96d89ba` | **恢复校验机制**：滚动偏移校验（jumpTo 后读 `offset` 误差 ≤2px）+ 锚点统一校验 + 底部状态栏报告 |
 | `9bc754f` | 恢复成功清空报告回归播放信息 + 滚动校验 `hasClients` 保护 + 播放清除报告 |
 | `ca890de` | **状态存储改 `exe` 同级 `state.json`**（便携 + 原子写 + 容错 + 旧数据迁移） |
-| `716fcd4`（当前） | **基类/子类重构**：左栏三栏目拆分为 `LeftPanel` 抽象基类 + 三个子类（共用播放/渲染/滚动入基类，独立显示/交互/恢复入子类），`HomeScreen` 精简为协调者 |
+| `716fcd4` | **基类/子类重构**：左栏三栏目拆分为 `LeftPanel` 抽象基类 + 三个子类（共用播放/渲染/滚动入基类，独立显示/交互/恢复入子类），`HomeScreen` 精简为协调者 |
+| `5433195`（**tag v1.1.0**，当前） | **纯 Dart 简繁转换 + 搜索定位/切歌联动/状态稳定**：弃用 OpenCC FFI（本机 DLL 与 UI 线程不兼容）改用数据库全量字符映射表；搜索框「定位跳转」语义（编号即时定位/标题匹配列表/×保持定位）；切歌联动高亮滚动（避搜索框/标题栏）；state.json 串行写入防损坏；VC 运行库就近打包 |
 
 **关键文件**：
 
@@ -40,11 +41,12 @@
 
 - **UI**：Flutter（Material），三栏布局（左 280 / 歌词 / 右 **480**），顶栏收起按钮 + 底部状态栏；窗口最小 1132×700
 - **数据**：SQLite `tjc_hymn.db`（474 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
-- **繁转简**：OpenCC FFI（桌面 FFI）
+- **简繁转换**：**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`，由 `tools/gen_convert_map.py` 从数据库全量字符生成：繁→简 1052 / 简→繁 1025）；**弃用 OpenCC FFI**（本机 opencc.dll 与 UI 线程不兼容，导致白屏/崩溃）
 - **音频播放**：`audioplayers` 6.8.1 → Windows Media Foundation；`DeviceFileSource(abs)` 直读中文路径
-- **状态持久化**：`echo_hymn.exe` 同级 `state.json`（原子写；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`）
-- **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）
-- **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）
+- **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`）
+- **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
+- **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
+- **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
 ---
 
@@ -54,8 +56,16 @@
 2. **播放恢复**：软件重启**不自动播放**（`loadHymn` 只加载，进度条 0 起），等用户点播放
 3. **状态锚点**：记录「当前播放/选择的诗歌 + 音频版本 + 歌词模式 + 来源歌单 + **播放列表位置索引**」，重启后统一恢复并**校验**（滚动偏移/左栏/版本/位置逐项比对，底部状态栏异常报告）
 4. **状态存储**：离开 `%APPDATA%` 改为 `exe` 同级 `state.json`（便携、原子写 `.tmp`+rename、加载失败兜底默认、旧数据自动迁移）
-5. **架构拆分**（用户要求）：三个左栏栏目用 **Dart 基类/子类**拆开——`LeftPanel`（抽象基类，含 `hymnTile`/`playHymn`/`scrollToCurrent`/抽象 `restoreSaved`）+ `HymnListPanel`/`DefaultPlaylistsPanel`/`MyPlaylistsPanel`（各自滚动列、展开逻辑、交互），防止改动互相影响
+5. **架构拆分**（用户要求）：三个左栏栏目用 **Dart 基类/子类**拆开——`LeftPanel`（抽象基类，含 `buildHymnTile` 抽象渲染接口/`playHymn` 公共播放/`scrollToCurrent`/`restoreSaved`/`syncWithPlayback`）+ `HymnListPanel`/`DefaultPlaylistsPanel`/`MyPlaylistsPanel`（各自实现行渲染、滚动列、展开逻辑、交互、来源透传），防止改动互相影响
 6. **自动发布**：git post-commit → `tools/publish_windows.ps1` → `flutter build windows --release` → `release/echohymn-win-<hash>-<ts>/`（保留 5 份）；Web 已移除不发布
+
+### 2026-08-16 ~ 17 会话追加决策
+
+1. **搜索框语义 = 定位跳转**（非过滤）：输入编号即时定位（翻页+滚动+高亮，不自动播放；回车播放）；输入标题显示匹配列表供点击选择；点「×」保持当前定位结果；定位后播放条/上一首/下一首从定位处开始
+2. **简繁转换弃用 OpenCC FFI**：本机 opencc.dll 与 UI 线程不兼容（FFI 调用挂起致白屏，Bindings 一次性 lookup 缺符号致崩溃）；改用**纯 Dart 逐字查表**（数据库全量字符映射，无原生依赖、不阻塞、跨平台稳定）
+3. **切歌联动**：基类监听 `AudioService.statusStream`，切歌先 `setState` 刷新高亮再 `scrollCurrentIntoView`（避开搜索框/标题栏）；HymnListPanel 支持跨页自动翻页
+4. **state.json 串行写队列**：`AppStateService` 用 Future 链排队写入，杜绝并发写损坏；搜索结果播放不保存 `playlistIndex`（由 `hymnNumber` 定位恢复，避免跨列表索引错位）
+5. **VC 运行库就近打包**：CMake 安装规则把 MSVCP140/VCRUNTIME140/VCRUNTIME140_1 拷入 exe 目录，不依赖系统是否安装 VC++ Redistributable
 
 ---
 
@@ -68,7 +78,7 @@
 5. ✅ 锚点 playlistIndex + 统一恢复 + 校验机制 + 状态栏报告
 6. ✅ 状态存储 exe 同级 state.json（便携）
 7. ✅ 左栏三栏目基类/子类重构
-8. ⬜ **待验证（重构后）**：三个面板的显示/交互/恢复在新架构下逐项验证（尤其个人歌单展开、诗歌列表分页滚动）
+8. ✅ **重构后逐项验证（v1.1.0 完成）**：搜索定位跳转、切歌联动高亮滚动、个人歌单编辑后播放顺序同步、状态恢复（含搜索结果由编号定位）
 9. `windows/runner/win32_window.cpp` 最小宽 1132 小屏实机布局验证——**暂不作为任务**
 10. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
 11. 发布产物中残留 `just_audio_windows_plugin.dll` 旧缓存（无害，如需干净可 `flutter clean` 重建）
