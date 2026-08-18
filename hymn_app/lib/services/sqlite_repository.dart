@@ -6,6 +6,7 @@ import '../models/hymn.dart';
 import '../models/hymn_category.dart';
 import '../models/playlist.dart';
 import 'app_paths.dart';
+import 'log_service.dart';
 
 /// SQLite 数据仓库：tjc_hymn / hymn_category / playlist_hymn（个人歌单单表）
 class SqliteRepository {
@@ -18,8 +19,25 @@ class SqliteRepository {
     await AppPaths.init();
     final path = AppPaths.databasePath ?? '';
     final db = sqlite3.open(path);
+    LogService.instance.info(LogTag.lib, '打开 SQLite 数据库', detail: path);
     final repo = SqliteRepository._(db);
     repo._ensurePlaylistTable();
+    // 统计已加载数据量
+    try {
+      final hymnCount =
+          db.select('SELECT COUNT(*) AS c FROM tjc_hymn').first['c'];
+      final catCount =
+          db.select('SELECT COUNT(*) AS c FROM hymn_category').first['c'];
+      final plCount =
+          db.select('SELECT COUNT(*) AS c FROM playlist_hymn').first['c'];
+      LogService.instance.info(
+        LogTag.lib,
+        '数据库数据加载完成',
+        detail: '诗歌 $hymnCount 首 / 分类 $catCount 条 / 个人歌单 $plCount 个',
+      );
+    } catch (e) {
+      LogService.instance.warning(LogTag.lib, '数据库统计失败', detail: '$e');
+    }
     return repo;
   }
 
@@ -215,7 +233,13 @@ class SqliteRepository {
       'INSERT INTO playlist_hymn (name, hymns, created_at, updated_at) VALUES (?, ?, ?, ?)',
       [name, '[]', now, now],
     );
-    return _db.lastInsertRowId;
+    final id = _db.lastInsertRowId;
+    LogService.instance.info(
+      LogTag.playlist,
+      '创建个人歌单',
+      detail: '歌单ID: $id\n歌单名称: $name\n创建时间: $now',
+    );
+    return id;
   }
 
   /// 更新歌单（名称 + 诗歌列表 + 更新时间）
@@ -225,9 +249,16 @@ class SqliteRepository {
     List<MapEntry<String, int>> hymns,
   ) {
     final now = DateTime.now().toIso8601String();
+    final json = Playlist.hymnsToJson(hymns);
     _db.execute(
       'UPDATE playlist_hymn SET name = ?, hymns = ?, updated_at = ? WHERE id = ?',
-      [name, Playlist.hymnsToJson(hymns), now, id],
+      [name, json, now, id],
+    );
+    LogService.instance.info(
+      LogTag.playlist,
+      '修改个人歌单',
+      detail: '歌单ID: $id\n歌单名称: $name\n诗歌数量: ${hymns.length}\n'
+          '成员明细: $json\n更新时间: $now',
     );
   }
 
@@ -238,11 +269,25 @@ class SqliteRepository {
       'UPDATE playlist_hymn SET name = ?, updated_at = ? WHERE id = ?',
       [newName, now, id],
     );
+    LogService.instance.info(
+      LogTag.playlist,
+      '重命名个人歌单',
+      detail: '歌单ID: $id\n新名称: $newName\n更新时间: $now',
+    );
   }
 
   /// 删除歌单
   void deletePlaylist(int id) {
+    final before = getPlaylistById(id);
     _db.execute('DELETE FROM playlist_hymn WHERE id = ?', [id]);
+    LogService.instance.info(
+      LogTag.playlist,
+      '删除个人歌单',
+      detail: before == null
+          ? '歌单ID: $id（删除前未能读取到歌单信息）'
+          : '歌单ID: $id\n歌单名称: ${before.name}\n'
+              '诗歌数量: ${before.hymns.length}\n成员明细: ${Playlist.hymnsToJson(before.hymns)}',
+    );
   }
 
   // ---------- 工具 ----------

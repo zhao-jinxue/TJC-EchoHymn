@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/log_service.dart';
 
 /// 主题色常量（按 UI 确认单规范）
 class AppColors {
@@ -27,6 +28,7 @@ class EchoHymnApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LogService.instance.info(LogTag.ui, '生成应用根组件（EchoHymnApp / Material 主题）');
     final base = ThemeData.light(useMaterial3: true);
     final theme = base.copyWith(
       colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
@@ -60,6 +62,11 @@ class EchoHymnApp extends StatelessWidget {
       ),
     );
 
+    LogService.instance.info(
+      LogTag.ui,
+      'MaterialApp 构建完成',
+      detail: '标题: EchoHymn · 聆听赞美诗\n主页: HomeScreen',
+    );
     return MaterialApp(
       title: 'EchoHymn · 聆听赞美诗',
       debugShowCheckedModeBanner: false,

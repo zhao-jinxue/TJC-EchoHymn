@@ -4,6 +4,7 @@ import '../../../models/hymn.dart';
 import '../../../models/hymn_category.dart';
 import '../../../services/app_state_service.dart';
 import '../../../services/chinese_convert_service.dart';
+import '../../../services/log_service.dart';
 import '../../app.dart';
 import 'left_panel_base.dart';
 
@@ -167,13 +168,21 @@ class _DefaultPlaylistsPanelState
             Material(
               color: AppColors.cardBg,
               child: InkWell(
-                onTap: () => setState(() {
-                  if (expanded) {
-                    _expandedCategories.remove(cat);
-                  } else {
-                    _expandedCategories.add(cat);
-                  }
-                }),
+                onTap: () {
+                  LogService.instance.info(
+                    LogTag.action,
+                    expanded
+                        ? '收起分类: ${display(cat)}'
+                        : '展开分类: ${display(cat)}',
+                  );
+                  setState(() {
+                    if (expanded) {
+                      _expandedCategories.remove(cat);
+                    } else {
+                      _expandedCategories.add(cat);
+                    }
+                  });
+                },
                 child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -214,6 +223,11 @@ class _DefaultPlaylistsPanelState
             final h = repo.hymnByNumber(e.value.toString());
             if (h != null) hymns.add(h);
           }
+          LogService.instance.info(
+            LogTag.action,
+            '打开默认歌单子目录: ${display(sub.subcategory)}',
+            detail: '所属分类: ${display(sub.category)}\n诗歌数量: ${hymns.length}',
+          );
           setState(() {
             _selectedSub = sub;
             _selectedHymns = hymns;
@@ -268,7 +282,13 @@ class _DefaultPlaylistsPanelState
               IconButton(
                 icon: const Icon(Icons.arrow_back, size: 18),
                 tooltip: '返回分类目录',
-                onPressed: () => setState(() => _showContent = false),
+                onPressed: () {
+                  LogService.instance.info(
+                    LogTag.action,
+                    '返回分类目录（关闭子目录）',
+                  );
+                  setState(() => _showContent = false);
+                },
               ),
               Expanded(
                 child: Text(

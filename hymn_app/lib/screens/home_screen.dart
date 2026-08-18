@@ -7,6 +7,7 @@ import '../models/hymn.dart';
 import '../services/app_state_service.dart';
 import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
+import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
 import '../widgets/hymn_display.dart';
 import '../widgets/panels/default_playlists_panel.dart';
@@ -62,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    LogService.instance.info(LogTag.ui, 'HomeScreen 初始化（initState）');
     WidgetsBinding.instance.addObserver(this);
     _init();
   }
@@ -72,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _saveState(); // 关闭时保存
     _repo?.dispose();
     _audio?.dispose();
+    LogService.instance.info(LogTag.system, 'HomeScreen 销毁（应用关闭）');
     super.dispose();
   }
 
@@ -80,12 +83,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
+      LogService.instance.info(LogTag.system, '应用生命周期变化: ${state.name}，保存状态');
       _saveState();
     }
   }
 
   Future<void> _init() async {
     try {
+      LogService.instance.info(LogTag.ui, 'HomeScreen 初始化数据中...');
       final repo = await SqliteRepository.open();
       final audio = AudioService();
       final state = await _stateService.load().catchError((_) => const AppState(
@@ -159,8 +164,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         playlistIndex: _restoredPlaylistIndex,
       );
       setState(() {});
-    } catch (_) {
+      LogService.instance.info(
+        LogTag.ui,
+        'HomeScreen 初始化完成',
+        detail: '诗歌总数: ${_allHymns.length}',
+      );
+      LogService.instance.info(LogTag.ui, 'HomeScreen 首帧构建完成');
+    } catch (e) {
       if (!mounted) return;
+      LogService.instance.error(LogTag.error, 'HomeScreen 初始化失败', detail: '$e');
       setState(() => _initError = true);
     }
   }
@@ -268,7 +280,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               icon: _showLeft ? Icons.chevron_right : Icons.chevron_left,
               tooltip: _showLeft ? '收起左侧栏目' : '展开左侧栏目',
               active: !_showLeft,
-              onTap: () => setState(() => _showLeft = !_showLeft),
+              onTap: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  _showLeft ? '收起左侧栏目' : '展开左侧栏目',
+                );
+                setState(() => _showLeft = !_showLeft);
+              },
             ),
           ),
           const Expanded(
@@ -290,7 +308,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               icon: _showRight ? Icons.chevron_left : Icons.chevron_right,
               tooltip: _showRight ? '收起右侧栏目' : '展开右侧栏目',
               active: !_showRight,
-              onTap: () => setState(() => _showRight = !_showRight),
+              onTap: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  _showRight ? '收起右侧栏目' : '展开右侧栏目',
+                );
+                setState(() => _showRight = !_showRight);
+              },
             ),
           ),
         ],
@@ -436,6 +460,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
           onTap: () {
+            LogService.instance.info(
+              LogTag.action,
+              '切换左侧栏目: $label',
+            );
             setState(() => _leftTab = tab);
             _saveState();
           },
@@ -468,6 +496,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 面板内点击播放回调：同步播放来源并保存状态
   void _onPlayback(PlaybackEvent e) {
+    LogService.instance.info(
+      LogTag.play,
+      '面板点击播放：第 ${e.hymn.hymnNumber} 首《${e.hymn.title}》',
+      detail: '来源子目录: ${e.sourceSubcategory ?? '无'}\n'
+          '来源个人歌单: ${e.sourcePlaylistName ?? '无'}\n'
+          '列表位置: ${e.index}',
+    );
     _playSubcategory = e.sourceSubcategory;
     _playPlaylistName = e.sourcePlaylistName;
     if (e.sourceSubcategory != null) {

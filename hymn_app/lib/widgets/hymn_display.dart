@@ -8,6 +8,7 @@ import '../models/hymn.dart';
 import '../services/audio_service.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
+import '../services/log_service.dart';
 
 /// 歌词显示模式
 enum DisplayMode { lyrics, numbered, staff }
@@ -44,6 +45,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   @override
   void initState() {
     super.initState();
+    LogService.instance.info(LogTag.ui, '主内容区 HymnDisplay 初始化');
     _mode = DisplayMode.values.firstWhere(
       (m) => m.name == widget.initialMode,
       orElse: () => DisplayMode.lyrics,
@@ -205,14 +207,28 @@ class _HymnDisplayState extends State<HymnDisplay> {
   void _setMode(DisplayMode mode) {
     setState(() => _mode = mode);
     widget.onModeChanged?.call(mode.name);
+    LogService.instance.info(
+      LogTag.action,
+      '切换歌词显示模式: ${mode.name}',
+    );
   }
 
   Future<void> _switchVersion(Hymn hymn, String version) async {
     try {
+      LogService.instance.info(
+        LogTag.action,
+        '切换音频版本: ${ChineseConvertService.instance.toSimplified(version)}',
+        detail: '诗歌: 第 ${hymn.hymnNumber} 首《${hymn.title}》',
+      );
       await widget.audio.switchAudioVersion(version);
       widget.onAudioVersionChanged?.call(version);
       if (mounted) setState(() {});
-    } catch (_) {
+    } catch (e) {
+      LogService.instance.error(
+        LogTag.error,
+        '切换音频版本异常',
+        detail: '版本: $version\n异常: $e',
+      );
       _showAudioError();
     }
   }
@@ -387,7 +403,13 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 color: AppColors.primary,
               ),
               tooltip: playing ? '暂停' : '播放',
-              onPressed: () => widget.audio.togglePlayPause(),
+              onPressed: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  playing ? '点击播放条：暂停' : '点击播放条：播放',
+                );
+                widget.audio.togglePlayPause();
+              },
             );
           },
         ),
@@ -468,6 +490,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
     if (!mounted) return;
     final err = widget.audio.lastError;
     final msg = (err == null || err.isEmpty) ? '音频加载失败' : '音频加载失败：$err';
+    LogService.instance.error(LogTag.error, '音频加载失败（Toast）', detail: msg);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),

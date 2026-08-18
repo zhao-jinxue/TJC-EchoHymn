@@ -4,6 +4,7 @@ import '../app.dart';
 import '../models/hymn.dart';
 import '../models/playlist.dart';
 import '../services/chinese_convert_service.dart';
+import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
 
 /// 个人歌单创建/修改弹窗（复用同一个弹窗）
@@ -257,6 +258,11 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   Future<void> _openHymnSearch(String keyword) async {
     if (keyword.isEmpty) return;
     final results = widget.repo.searchHymns(keyword);
+    LogService.instance.info(
+      LogTag.action,
+      '歌单弹窗内搜索: $keyword',
+      detail: '匹配 ${results.length} 首',
+    );
     if (results.isEmpty) {
       _showToast('未找到相关诗歌');
       return;
@@ -284,6 +290,12 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   Future<void> _onDelete() async {
     final existing = widget.existing;
     if (existing == null) return;
+    LogService.instance.info(
+      LogTag.playlist,
+      '请求删除歌单',
+      detail: '歌单ID: ${existing.id}\n名称: ${existing.name}\n'
+          '成员: ${existing.hymns.length} 首',
+    );
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -301,11 +313,20 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
         ],
       ),
     );
+    LogService.instance.info(
+      LogTag.playlist,
+      '删除确认框关闭',
+      detail: '歌单ID: ${existing.id}\n确认: ${ok == true ? '是' : '否'}',
+    );
     if (ok == true && mounted) Navigator.pop(context, 'delete');
   }
 
   void _doSave() {
     if (_playlistName.isEmpty) {
+      LogService.instance.warning(
+        LogTag.playlist,
+        '保存歌单失败：名称为空',
+      );
       _showToast('请输入歌单名称');
       return;
     }
@@ -315,10 +336,23 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
       // 新建
       final id = repo.createPlaylist(_playlistName);
       repo.updatePlaylist(id, _playlistName, _addedHymns);
+      LogService.instance.info(
+        LogTag.playlist,
+        '新建歌单成功',
+        detail: '歌单ID: $id\n名称: $_playlistName\n成员: ${_addedHymns.length} 首',
+      );
       Navigator.pop(context, 'create');
     } else {
       // 修改
       repo.updatePlaylist(existing.id, _playlistName, _addedHymns);
+      LogService.instance.info(
+        LogTag.playlist,
+        '修改歌单成功',
+        detail: '歌单ID: ${existing.id}\n'
+            '旧名称: ${existing.name} → 新名称: $_playlistName\n'
+            '旧成员: ${existing.hymns.length} 首 → 新成员: ${_addedHymns.length} 首\n'
+            '新成员明细: ${Playlist.hymnsToJson(_addedHymns)}',
+      );
       Navigator.pop(context, 'save');
     }
   }

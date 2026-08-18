@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/hymn.dart';
 import '../../../services/app_state_service.dart';
 import '../../../services/chinese_convert_service.dart';
+import '../../../services/log_service.dart';
 import '../../app.dart';
 import 'left_panel_base.dart';
 
@@ -162,10 +163,23 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     if (int.tryParse(kw) != null) {
       // 编号 → 即时定位最匹配项（编号精确 / 前缀）
       final target = _findByNumber(kw);
-      if (target != null) _locateTo(target);
+      if (target != null) {
+        LogService.instance.info(
+          LogTag.action,
+          '搜索编号定位: $kw',
+          detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
+        );
+        _locateTo(target);
+      }
     } else {
       // 标题 → 显示匹配列表供点击选择
-      setState(() => _titleResults = _titleMatches(kw));
+      final matches = _titleMatches(kw);
+      LogService.instance.info(
+        LogTag.action,
+        '搜索标题: $kw',
+        detail: '匹配 ${matches.length} 首',
+      );
+      setState(() => _titleResults = matches);
     }
   }
 
@@ -173,9 +187,17 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     final kw = v.trim();
     if (kw.isEmpty) return;
     final target = _findByNumber(kw) ?? _findByTitle(kw);
-    if (target == null) return;
+    if (target == null) {
+      LogService.instance.info(LogTag.action, '搜索提交无匹配: $kw');
+      return;
+    }
     final all = repo.getAllHymns();
     final idx = all.indexWhere((h) => h.id == target.id);
+    LogService.instance.info(
+      LogTag.action,
+      '搜索回车定位并播放: $kw',
+      detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
+    );
     _locateTo(target);
     // 回车 = 定位 + 播放
     playHymn(target, idx, all);
@@ -355,7 +377,13 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
           IconButton(
             icon: const Icon(Icons.chevron_left, size: 20),
             tooltip: '上一页',
-            onPressed: _listPage > 0 ? () => setState(() => _listPage--) : null,
+            onPressed: _listPage > 0
+                ? () {
+                    LogService.instance
+                        .info(LogTag.action, '诗歌列表上一页 → 第 $_listPage 页');
+                    setState(() => _listPage--);
+                  }
+                : null,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -369,7 +397,11 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
             icon: const Icon(Icons.chevron_right, size: 20),
             tooltip: '下一页',
             onPressed: _listPage < totalPages - 1
-                ? () => setState(() => _listPage++)
+                ? () {
+                    LogService.instance
+                        .info(LogTag.action, '诗歌列表下一页 → 第 ${_listPage + 2} 页');
+                    setState(() => _listPage++);
+                  }
                 : null,
           ),
         ],

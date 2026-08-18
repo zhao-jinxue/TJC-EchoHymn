@@ -4,6 +4,7 @@ import '../../../models/hymn.dart';
 import '../../../models/playlist.dart';
 import '../../../services/app_state_service.dart';
 import '../../../services/chinese_convert_service.dart';
+import '../../../services/log_service.dart';
 import '../../app.dart';
 import '../playlist_dialog.dart';
 import 'left_panel_base.dart';
@@ -172,6 +173,11 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
                       color: selected ? AppColors.selectedBg : AppColors.cardBg,
                       child: InkWell(
                         onTap: () {
+                          LogService.instance.info(
+                            LogTag.action,
+                            '打开个人歌单: ${pl.name}',
+                            detail: '诗歌数量: ${pl.hymns.length}',
+                          );
                           setState(() {
                             _selectedPlaylist = pl;
                             _selectedHymns = _buildPlaylistHymns(pl);
@@ -272,7 +278,13 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
               IconButton(
                 icon: const Icon(Icons.arrow_back, size: 18),
                 tooltip: '返回歌单列表',
-                onPressed: () => setState(() => _showContent = false),
+                onPressed: () {
+                  LogService.instance.info(
+                    LogTag.action,
+                    '返回歌单列表（关闭歌单内容）',
+                  );
+                  setState(() => _showContent = false);
+                },
               ),
               Expanded(
                 child: Text(
@@ -329,9 +341,15 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
   }
 
   Future<void> _openCreateDialog() async {
+    LogService.instance.info(LogTag.action, '打开「新建歌单」弹窗');
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => CreatePlaylistDialog(repo: repo),
+    );
+    LogService.instance.info(
+      LogTag.playlist,
+      '「新建歌单」弹窗关闭',
+      detail: '结果: ${result ?? '取消'}',
     );
     if (result == 'create' && mounted) {
       setState(() {
@@ -343,11 +361,21 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
   }
 
   Future<void> _openEditDialog(Playlist pl) async {
+    LogService.instance.info(
+      LogTag.action,
+      '打开「修改歌单」弹窗',
+      detail: '歌单ID: ${pl.id}\n歌单名称: ${pl.name}',
+    );
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => CreatePlaylistDialog(repo: repo, existing: pl),
     );
     if (!mounted) return;
+    LogService.instance.info(
+      LogTag.playlist,
+      '「修改歌单」弹窗关闭',
+      detail: '歌单ID: ${pl.id}\n结果: ${result ?? '取消'}',
+    );
     if (result == 'save') {
       setState(() {
         // 若正在展示该歌单内容，刷新选中歌单

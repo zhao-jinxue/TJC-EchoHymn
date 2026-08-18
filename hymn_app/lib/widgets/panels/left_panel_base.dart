@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/hymn.dart';
 import '../../services/audio_service.dart';
 import '../../services/app_state_service.dart';
+import '../../services/log_service.dart';
 import '../../services/sqlite_repository.dart';
 
 /// 播放回调：面板内点击播放后通知 HomeScreen 保存状态
@@ -150,6 +151,13 @@ abstract class LeftPanelState<P extends LeftPanel> extends State<P> {
     String? sourceSubcategory,
     String? sourcePlaylistName,
   }) {
+    LogService.instance.info(
+      LogTag.play,
+      '左栏点击播放：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+      detail: '来源子目录: ${sourceSubcategory ?? '无'}\n'
+          '来源个人歌单: ${sourcePlaylistName ?? '无'}\n'
+          '列表位置: $index / 列表长度: ${contextList.length}',
+    );
     audio.setPlaylist(contextList, startIndex: index);
     audio.playHymn(hymn, index: index, version: audio.currentAudioVersion);
     widget.onPlayback(PlaybackEvent(

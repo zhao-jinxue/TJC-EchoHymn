@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import 'log_service.dart';
+
 /// 应用数据与资源路径解析
 class AppPaths {
   static String? _dataRoot;
@@ -16,6 +18,8 @@ class AppPaths {
       if (found != null) {
         _dataRoot = found;
         databasePath = '$_dataRoot/tjc_hymn.db';
+        LogService.instance
+            .info(LogTag.lib, '数据根目录定位（桌面向上查找）', detail: databasePath);
         return;
       }
     }
@@ -24,9 +28,16 @@ class AppPaths {
       final dir = await getApplicationSupportDirectory();
       _dataRoot = dir.path;
       databasePath = '$_dataRoot/tjc_hymn.db';
-    } catch (_) {
+      LogService.instance
+          .info(LogTag.lib, '数据根目录定位（应用支持目录）', detail: databasePath);
+    } catch (e) {
       _dataRoot = Directory.current.path;
       databasePath = '$_dataRoot/data/tjc_hymn.db';
+      LogService.instance.warning(
+        LogTag.lib,
+        '数据根目录定位失败，回退当前工作目录',
+        detail: '$databasePath\n原因: $e',
+      );
     }
   }
 

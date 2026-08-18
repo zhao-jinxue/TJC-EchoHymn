@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 import '../models/hymn.dart';
 import 'app_paths.dart';
+import 'log_service.dart';
 
 /// 播放器状态
 enum PlayerStatus { idle, loading, playing, paused, error }
@@ -35,6 +36,8 @@ class AudioService {
   int _currentIndex = -1;
 
   AudioService() {
+    LogService.instance
+        .info(LogTag.lib, '音频播放库加载完成（audioplayers / Windows Media Foundation）');
     _init();
   }
 
@@ -107,6 +110,11 @@ class AudioService {
     onCurrentChanged?.call();
     await _player.stop(); // 停止旧源，确保进度归零
     _emitStatus(PlayerStatus.idle);
+    LogService.instance.info(
+      LogTag.play,
+      '加载诗歌（不播放）：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+      detail: '音频版本: $version / 列表位置: $index',
+    );
   }
 
   /// 播放指定诗歌；[version] 指定音频版本（缺省用当前版本或默认）
@@ -127,15 +135,30 @@ class AudioService {
     if (rel == null || rel.isEmpty) {
       lastError = '无音频文件';
       _emitStatus(PlayerStatus.error);
+      LogService.instance.error(
+        LogTag.play,
+        '播放失败：第 ${hymn.hymnNumber} 首《${hymn.title}》无音频文件',
+        detail: '当前音频版本: $audioVersion / 可用版本: ${hymn.audioVersionList}',
+      );
       return;
     }
     final abs = AppPaths.resolveAsset(rel);
     if (abs.isEmpty) {
       lastError = '音频路径为空';
       _emitStatus(PlayerStatus.error);
+      LogService.instance.error(
+        LogTag.play,
+        '播放失败：第 ${hymn.hymnNumber} 首《${hymn.title}》音频路径为空',
+        detail: '音频版本: $audioVersion / 相对路径: $rel',
+      );
       return;
     }
 
+    LogService.instance.info(
+      LogTag.play,
+      '播放诗歌：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+      detail: '音频版本: $audioVersion\n文件路径: $abs',
+    );
     _emitStatus(PlayerStatus.loading);
     try {
       await _player.stop(); // 先停止旧源，避免资源占用
@@ -146,9 +169,19 @@ class AudioService {
       }
       lastError = null;
       _emitStatus(PlayerStatus.playing);
+      LogService.instance.info(
+        LogTag.play,
+        '播放成功：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+        detail: '音频版本: $audioVersion',
+      );
     } catch (e) {
       lastError = e.toString();
       _emitStatus(PlayerStatus.error);
+      LogService.instance.error(
+        LogTag.play,
+        '播放异常：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+        detail: '音频版本: $audioVersion\n文件路径: $abs\n异常: $e',
+      );
     }
   }
 
@@ -171,16 +204,22 @@ class AudioService {
       }
       return;
     }
+    final h = _currentHymn!;
     if (_player.state == PlayerState.playing) {
       await _player.pause();
+      LogService.instance
+          .info(LogTag.play, '暂停播放：第 ${h.hymnNumber} 首《${h.title}》');
     } else {
       // stop/completed 状态 resume 无效 → 需重新加载当前源
       if (_player.state == PlayerState.stopped ||
           _player.state == PlayerState.completed) {
-        final h = _currentHymn;
-        if (h != null) await playHymn(h, index: _currentIndex);
+        LogService.instance
+            .info(LogTag.play, '重新播放：第 ${h.hymnNumber} 首《${h.title}》');
+        await playHymn(h, index: _currentIndex);
       } else {
         await _player.resume();
+        LogService.instance
+            .info(LogTag.play, '继续播放：第 ${h.hymnNumber} 首《${h.title}》');
       }
     }
   }
@@ -189,6 +228,8 @@ class AudioService {
   Future<void> playNext() async {
     if (_playlist.isEmpty) return;
     final next = _currentIndex < 0 ? 0 : (_currentIndex + 1) % _playlist.length;
+    LogService.instance
+        .info(LogTag.play, '切换下一首 → 列表位置 $next/${_playlist.length - 1}');
     await playAt(next);
   }
 
@@ -198,6 +239,8 @@ class AudioService {
     final prev = _currentIndex < 0
         ? 0
         : (_currentIndex - 1 + _playlist.length) % _playlist.length;
+    LogService.instance
+        .info(LogTag.play, '切换上一首 → 列表位置 $prev/${_playlist.length - 1}');
     await playAt(prev);
   }
 
@@ -212,6 +255,11 @@ class AudioService {
   Future<void> stop() async {
     await _player.stop();
     _emitStatus(PlayerStatus.idle);
+    final h = _currentHymn;
+    if (h != null) {
+      LogService.instance
+          .info(LogTag.play, '停止播放：第 ${h.hymnNumber} 首《${h.title}》');
+    }
   }
 
   void _emitStatus(PlayerStatus status) {
