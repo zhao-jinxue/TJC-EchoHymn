@@ -2,6 +2,10 @@
 # EchoHymn - post-commit auto release hook (Windows)
 # Runs after every git commit: builds Windows release + keeps last 5.
 # Uses Git Bash's sh (Git for Windows ships sh.exe).
+#
+# 日志：publish_windows.ps1 自身将输出写入 release/auto-release.log
+# （UTF-8 with BOM，PowerShell 5.1/7 均可正确识别中文）。
+# 不再使用 `>` 重定向，避免编码导致的乱码。
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 if [ -z "$REPO_ROOT" ]; then
@@ -12,6 +16,6 @@ fi
 mkdir -p "$REPO_ROOT/release"
 nohup pwsh -NoProfile -ExecutionPolicy Bypass \
   -File "$REPO_ROOT/tools/publish_windows.ps1" \
-  > "$REPO_ROOT/release/auto-release.log" 2>&1 &
+  > /dev/null 2>&1 &
 
 exit 0
