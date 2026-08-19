@@ -112,17 +112,14 @@ if (-not (Test-Path (Join-Path $BuildOut 'echo_hymn.exe'))) {
     exit 1
 }
 
-# 剔除 build 输出目录中「应用运行时产物」（logs/state.json），以及此前残留的
-# data/ 副本（exe 曾被直接运行拷贝 data 所致）——避免污染发布包，
-# 且防止 Copy-Item 复制 data 容器与后续拷贝 data/ 时冲突。
+# 剔除 build 输出目录中「应用运行时产物」（logs/state.json）。
+# 注意：**绝不能删除 $BuildOut/data/** —— 它是 Flutter 引擎运行资产
+# （flutter_assets/、app.so、icudtl.dat），删除后 exe 会在引擎初始化阶段
+# 以退出码 1 闪退，且 Dart 日志根本不会生成。
 Get-ChildItem -Path $BuildOut -Directory -Filter 'logs' -ErrorAction SilentlyContinue |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 Get-ChildItem -Path $BuildOut -File -Filter 'state.json' -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction SilentlyContinue
-$buildData = Join-Path $BuildOut 'data'
-if (Test-Path $buildData) {
-    Remove-Item $buildData -Recurse -Force -ErrorAction SilentlyContinue
-}
 
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
 $PkgName = "echohymn-win-$commitShort-$ts"
@@ -134,10 +131,17 @@ if (Test-Path $PkgOutDir) { Remove-Item $PkgOutDir -Recurse -Force }
 New-Item -ItemType Directory -Path $PkgOutDir -Force | Out-Null
 Copy-Item -Path (Join-Path $BuildOut '*') -Destination $PkgOutDir -Recurse -Force | Out-Null
 
-# 同时拷贝 data/（数据库 + 音频）到版本目录，保证目标机有数据
+# 同时拷贝 data/（数据库 + 音频）到版本目录，保证目标机有数据。
+# 注意：目标 $PkgOutDir/data 已存在（Flutter 引擎资产 flutter_assets/app.so/icudtl.dat），
+# 因此必须拷贝「源的内容」（${DataDir}\*）而非源目录本身，否则会产生嵌套 data/data/
+# 结构，导致 tjc_hymn.db 不在 exe 同级 data/ 顶层、AppPaths 向上查找失败。
 $DataDir = Join-Path $Root 'data'
+$PkgDataDir = Join-Path $PkgOutDir 'data'
 if (Test-Path $DataDir) {
-    Copy-Item -Path $DataDir -Destination (Join-Path $PkgOutDir 'data') -Recurse -Force | Out-Null
+    if (-not (Test-Path $PkgDataDir)) {
+        New-Item -ItemType Directory -Path $PkgDataDir -Force | Out-Null
+    }
+    Copy-Item -Path (Join-Path $DataDir '*') -Destination $PkgDataDir -Recurse -Force | Out-Null
 }
 Write-OK "产物已整理到 $PkgOutDir"
 

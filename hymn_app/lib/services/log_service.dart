@@ -139,6 +139,10 @@ class LogService {
   }
 
   /// 写入一行（自动轮转文件 + 保留 7 份清理）
+  ///
+  /// 日志文件编码为 **UTF-8 with BOM**：PowerShell 5.1 / 记事本默认按系统
+  /// ANSI（GBK）解码无 BOM 的 UTF-8 文件会导致中文乱码；带 BOM 后
+  /// Windows 全部工具（Get-Content/记事本/VSCode）均可正确识别。
   Future<void> _writeLine(String line) async {
     final dir = _logDirPath;
     if (dir == null) return;
@@ -152,6 +156,10 @@ class LogService {
 
     final file = File('$dir${Platform.pathSeparator}$fileName');
     try {
+      if (!await file.exists()) {
+        // 首次创建：先写 UTF-8 BOM（EF BB BF），再追加内容
+        await file.writeAsString('\uFEFF', flush: true);
+      }
       await file.writeAsString('$line${Platform.lineTerminator}',
           mode: FileMode.append, flush: true);
     } catch (_) {
