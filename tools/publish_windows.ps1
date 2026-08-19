@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Windows 发布流水线：git commit 后自动构建 Windows release 并整理产物。
 
@@ -87,9 +87,15 @@ Write-Step "提交 $branch@$commitShort 触发 Windows 自动发布"
 Write-Step '构建 Windows release 版本...'
 Push-Location $AppDir
 try {
+    # 临时放宽 ErrorActionPreference：flutter 正常提示（如 assets 下载）会写入
+    # stderr，在 PowerShell 5.1 + $ErrorActionPreference=Stop 下会被误判为
+    # 终止性错误（NativeCommandError），导致发布中断。构建后恢复原有设置。
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     # flutter 输出直接透传控制台（其 ANSI 特殊字符/进度动画不写入日志，
     #      保证日志文件为纯净 UTF-8 中文文本，PowerShell 5.1/7 均正常显示）。
     flutter build windows --release 2>&1 | Out-Host
+    $ErrorActionPreference = $prevEAP
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorL "flutter build windows --release 失败 (exit=$LASTEXITCODE)，已中止发布"
         exit 1
@@ -106,6 +112,18 @@ if (-not (Test-Path (Join-Path $BuildOut 'echo_hymn.exe'))) {
     exit 1
 }
 
+# 剔除 build 输出目录中「应用运行时产物」（logs/state.json），以及此前残留的
+# data/ 副本（exe 曾被直接运行拷贝 data 所致）——避免污染发布包，
+# 且防止 Copy-Item 复制 data 容器与后续拷贝 data/ 时冲突。
+Get-ChildItem -Path $BuildOut -Directory -Filter 'logs' -ErrorAction SilentlyContinue |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path $BuildOut -File -Filter 'state.json' -ErrorAction SilentlyContinue |
+    Remove-Item -Force -ErrorAction SilentlyContinue
+$buildData = Join-Path $BuildOut 'data'
+if (Test-Path $buildData) {
+    Remove-Item $buildData -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
 $PkgName = "echohymn-win-$commitShort-$ts"
 $PkgOutDir = Join-Path $ReleaseDir $PkgName
@@ -113,6 +131,7 @@ $PkgOutDir = Join-Path $ReleaseDir $PkgName
 Write-Step "打包版本目录 $PkgName ..."
 if (-not (Test-Path $ReleaseDir)) { New-Item -ItemType Directory -Path $ReleaseDir -Force | Out-Null }
 if (Test-Path $PkgOutDir) { Remove-Item $PkgOutDir -Recurse -Force }
+New-Item -ItemType Directory -Path $PkgOutDir -Force | Out-Null
 Copy-Item -Path (Join-Path $BuildOut '*') -Destination $PkgOutDir -Recurse -Force | Out-Null
 
 # 同时拷贝 data/（数据库 + 音频）到版本目录，保证目标机有数据
