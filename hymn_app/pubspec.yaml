@@ -19,8 +19,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.24
   # 简繁转换（纯 Dart 映射表，无原生依赖；见 lib/data/chinese_convert_map.dart）
   # 已弃用 OpenCC FFI（本机 DLL 与 UI 线程不兼容）
-  # 本地状态持久化（记住上次歌单/音频版本/歌词版本）
-  shared_preferences: ^2.2.3
+  # 本地状态持久化：已改用原生 exe 同级 state.json（AppStateService），无需 shared_preferences
 
 dev_dependencies:
   flutter_test:
