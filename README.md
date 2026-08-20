@@ -88,8 +88,9 @@ flutter build apk --release
 - ▶️ **音频播放**：播放 / 暂停、上一首 / 下一首、进度拖动，支持钢琴版 / 人声版多版本
 - 🎵 **默认歌单**：按数据库分类目录（一级 → 二级）浏览诗歌
 - 💾 **个人歌单**：创建 / 修改 / 删除歌单，添加诗歌并可播放歌单内诗歌
-- 🔄 **繁→简转换**：标题 / 歌词 / 分类 / 源考经 OpenCC 动态转为简体显示
-- 💡 **状态持久化**：记住上次歌单 / 诗歌 / 音频版本 / 歌词模式，切换即保存
+- 🔄 **繁→简转换**：标题 / 歌词 / 分类 / 源考经纯 Dart 字符映射表转为简体显示（无原生依赖）
+- 💡 **状态持久化**：记住上次歌单 / 诗歌 / 音频版本 / 歌词模式，切换即保存（`exe` 同级 `state.json`）
+- 📝 **应用日志**：`exe` 同级 `logs/` 目录按天输出日志（库加载 / UI / 交互 / 歌单 / 播放 / 异常），保留最近 7 份日志文件
 
 ---
 
@@ -100,8 +101,9 @@ flutter build apk --release
 | UI | Flutter / Dart（Material） |
 | 音频 | audioplayers 6.x（Windows 走 Media Foundation，`DeviceFileSource` 直读中文路径） |
 | 数据 | SQLite（`sqlite3` + `sqlite3_flutter_libs`，数据库 `data/tjc_hymn.db`） |
-| 繁转简 | flutter_opencc_ffi（OpenCC，桌面 FFI） |
-| 持久化 | shared_preferences |
+| 繁转简 | 纯 Dart 字符映射表（`lib/data/chinese_convert_map.dart`，由数据库全量字符生成） |
+| 持久化 | 原生 `exe` 同级 `state.json`（原子写，无第三方依赖） |
+| 日志 | 自研 `LogService`（`exe` 同级 `logs/`，按天轮转、保留 7 份、UTF-8 BOM） |
 
 ---
 

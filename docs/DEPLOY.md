@@ -76,7 +76,7 @@ flutter build apk --release
 
 - 平台目录：`hymn_app/ohos/`（当前仅占位 README）
 - OpenHarmony 上运行 Flutter 需使用社区维护的 **OpenHarmony Flutter SDK**（gitee `openharmony/flutter_flutter`），非官方 flutter 直接支持
-- 届时需校验 `audioplayers` / `sqlite3_flutter_libs` / `flutter_opencc_ffi` / `shared_preferences` 的鸿蒙插件支持情况
+- 届时需校验 `audioplayers` / `sqlite3_flutter_libs` 的鸿蒙插件支持情况（简繁转换已为纯 Dart 查表、状态持久化已为原生 `state.json`，均无平台插件依赖）
 - 详见 `hymn_app/ohos/README.md`
 
 ---
