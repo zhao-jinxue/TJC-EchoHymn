@@ -56,7 +56,10 @@ class Win32Window {
   RECT GetClientArea();
 
   // 设置客户区物理像素尺寸（含当前 DPI 换算），并将窗口缩放到该大小。
-  void SetClientSize(unsigned int width, unsigned int height);
+  // 当 [keep_center] 为 true 时窗口中心保持不动（左右侧栏展开向两侧扩展）。
+  void SetClientSize(unsigned int width,
+                     unsigned int height,
+                     bool keep_center = false);
 
   // 设置窗口最小客户区物理像素尺寸（用于 WM_GETMINMAXINFO 限制）。
   void SetMinClientSize(unsigned int width, unsigned int height);

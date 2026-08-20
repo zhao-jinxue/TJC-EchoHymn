@@ -35,6 +35,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   window.SetClientSize(850, 890);
   // 最小客户区同为 850×890
   window.SetMinClientSize(850, 890);
+  // 窗口居中显示在主屏工作区（上下左右均居中）
+  {
+    HWND hwnd = window.GetHandle();
+    if (hwnd != nullptr) {
+      RECT rc;
+      GetWindowRect(hwnd, &rc);
+      const int w = rc.right - rc.left;
+      const int h = rc.bottom - rc.top;
+      RECT work{0, 0, 0, 0};
+      if (SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0)) {
+        const int left = work.left + (work.right - work.left - w) / 2;
+        const int top = work.top + (work.bottom - work.top - h) / 2;
+        SetWindowPos(hwnd, nullptr, left, top, 0, 0,
+                     SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+      }
+    }
+  }
   window.SetQuitOnClose(true);
 
   ::MSG msg;

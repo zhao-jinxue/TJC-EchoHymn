@@ -33,6 +33,8 @@ class AppStateService {
     required String audioVersion,
     required String displayMode,
     required int playlistIndex,
+    bool showLeft = false,
+    bool showRight = false,
   }) {
     final data = <String, Object>{
       'leftTab': leftTab,
@@ -42,6 +44,8 @@ class AppStateService {
       'audioVersion': audioVersion,
       'displayMode': displayMode,
       'playlistIndex': playlistIndex,
+      'showLeft': showLeft,
+      'showRight': showRight,
     };
     // 排队执行，串行写入，且异常不影响后续写入
     _writeChain = _writeChain.then((_) => _doWrite(data)).catchError((_) {});
@@ -84,6 +88,8 @@ class AppStateService {
         audioVersion: (json['audioVersion'] as String?) ?? '',
         displayMode: (json['displayMode'] as String?) ?? '',
         playlistIndex: (json['playlistIndex'] as num?)?.toInt() ?? -1,
+        showLeft: (json['showLeft'] as bool?) ?? false,
+        showRight: (json['showRight'] as bool?) ?? false,
       );
     } catch (_) {
       return _defaultState;
@@ -150,6 +156,12 @@ class AppState {
   /// 当前诗歌在播放列表中的位置索引（-1 表示未记录）
   final int playlistIndex;
 
+  /// 左栏（歌单列表）是否展开
+  final bool showLeft;
+
+  /// 右栏（诗歌源考）是否展开
+  final bool showRight;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -158,5 +170,7 @@ class AppState {
     required this.audioVersion,
     required this.displayMode,
     required this.playlistIndex,
+    this.showLeft = false,
+    this.showRight = false,
   });
 }

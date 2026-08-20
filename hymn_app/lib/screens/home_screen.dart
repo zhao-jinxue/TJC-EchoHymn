@@ -137,7 +137,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         } else if (state.leftTab == 'myPlaylists') {
           _leftTab = LeftTab.myPlaylists;
         }
+        // 恢复左右侧栏展开/收起状态
+        _showLeft = state.showLeft;
+        _showRight = state.showRight;
       });
+      // 恢复侧栏状态后同步窗口宽度
+      _syncWindowSize();
 
       // 首次默认/恢复一首诗歌（只加载不播放，进度条从 0 开始）
       // 播放列表按「播放来源」构建：默认歌单二级目录 / 个人歌单 / 全部诗歌
@@ -252,6 +257,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       audioVersion: _currentAudioVersion,
       displayMode: _currentDisplayMode,
       playlistIndex: saveIndex ? (_audio?.currentIndex ?? -1) : -1,
+      showLeft: _showLeft,
+      showRight: _showRight,
     );
   }
 
@@ -274,9 +281,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_showLeft) width += kLeftPanelWidth;
     if (_showRight) width += kRightPanelWidth;
     if (kIsWeb) return; // Web 无原生窗口
+    // keepCenter=true：基座画面居中不动，侧栏向两侧扩展（左栏向左、右栏向右）
     _windowChannel.invokeMethod<void>('setClientSize', {
       'width': width,
       'height': kBaseWindowHeight,
+      'keepCenter': true,
     }).catchError((_) {
       // 非 Windows 平台无此通道，忽略
       return;
