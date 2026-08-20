@@ -3,6 +3,8 @@
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "flutter/method_channel.h"
+#include "flutter/standard_method_codec.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -26,6 +28,39 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+
+  // MethodChannel：Dart 侧控制窗口客户区尺寸（侧栏展开/收起时加宽窗口）
+  window_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "echo_hymn/window",
+          &flutter::StandardMethodCodec::GetInstance());
+  window_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        const auto& method = call.method_name();
+        if (method == "setClientSize") {
+          int width = 850;
+          int height = 890;
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args != nullptr) {
+            auto it = args->find(flutter::EncodableValue("width"));
+            if (it != args->end()) {
+              if (auto* v = std::get_if<int>(&it->second)) width = *v;
+            }
+            auto it_h = args->find(flutter::EncodableValue("height"));
+            if (it_h != args->end()) {
+              if (auto* v = std::get_if<int>(&it_h->second)) height = *v;
+            }
+          }
+          this->SetClientSize(static_cast<unsigned int>(width),
+                              static_cast<unsigned int>(height));
+          result->Success();
+        } else {
+          result->NotImplemented();
+        }
+      });
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();

@@ -26,11 +26,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  // 基座画面（最简播放画面）：850×890（左右侧栏收起时）
+  // 基座画面（最简播放画面）：850×890 客户区物理像素（左右侧栏收起时）
   Win32Window::Size size(850, 890);
   if (!window.Create(L"echo_hymn", origin, size)) {
     return EXIT_FAILURE;
   }
+  // 客户区精确设为 850×890 物理像素（不受系统 DPI 缩放影响）
+  window.SetClientSize(850, 890);
+  // 最小客户区同为 850×890
+  window.SetMinClientSize(850, 890);
   window.SetQuitOnClose(true);
 
   ::MSG msg;

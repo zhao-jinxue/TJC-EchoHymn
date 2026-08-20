@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app.dart';
 import '../models/hymn.dart';
@@ -17,6 +19,15 @@ import '../widgets/panels/my_playlists_panel.dart';
 
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
+
+/// Windows 窗口尺寸控制通道（native 侧 flutter_window.cpp 注册）
+const MethodChannel _windowChannel = MethodChannel('echo_hymn/window');
+
+/// 基座画面物理像素尺寸（用户屏幕实际像素，不受 DPI 缩放影响）
+const int kBaseWindowWidth = 850; // 基座宽度
+const int kBaseWindowHeight = 890; // 基座高度
+const int kLeftPanelWidth = 350; // 歌单列表展开宽度（物理像素）
+const int kRightPanelWidth = 600; // 诗歌源考展开宽度（物理像素）
 
 /// 主界面：顶栏 + 左栏（三面板之一）+ 主内容区 + 右栏 + 底部状态栏
 ///
@@ -255,6 +266,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ================= 构建 =================
 
+  /// 侧栏展开/收起时同步窗口宽度（物理像素）：
+  /// 基座 850 + 左栏 350（展开） + 右栏 600（展开），
+  /// 窗口整体变宽而非挤压歌词区。
+  void _syncWindowSize() {
+    var width = kBaseWindowWidth;
+    if (_showLeft) width += kLeftPanelWidth;
+    if (_showRight) width += kRightPanelWidth;
+    if (kIsWeb) return; // Web 无原生窗口
+    _windowChannel.invokeMethod<void>('setClientSize', {
+      'width': width,
+      'height': kBaseWindowHeight,
+    }).catchError((_) {
+      // 非 Windows 平台无此通道，忽略
+      return;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -288,6 +316,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _showLeft ? '收起左侧栏目' : '展开左侧栏目',
                 );
                 setState(() => _showLeft = !_showLeft);
+                _syncWindowSize();
               },
             ),
           ),
@@ -316,6 +345,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _showRight ? '收起右侧栏目' : '展开右侧栏目',
                 );
                 setState(() => _showRight = !_showRight);
+                _syncWindowSize();
               },
             ),
           ),
@@ -397,8 +427,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ---------- 左侧栏：tab + 对应面板 ----------
   Widget _buildLeftPanel(SqliteRepository repo, AudioService audio) {
+    // 物理 350px ÷ devicePixelRatio = 逻辑宽度（保证各 DPI 下物理宽度恒为 350）
+    final leftWidth = kLeftPanelWidth / MediaQuery.devicePixelRatioOf(context);
     return SizedBox(
-      width: 280,
+      width: leftWidth,
       child: Container(
         color: AppColors.sidebarBg,
         child: Column(
@@ -521,8 +553,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 右侧栏（源考） ----------
   Widget _buildRightPanel() {
     final hymn = _audio?.currentHymn;
+    // 物理 600px ÷ devicePixelRatio = 逻辑宽度（保证各 DPI 下物理宽度恒为 600）
+    final rightWidth =
+        kRightPanelWidth / MediaQuery.devicePixelRatioOf(context);
     return SizedBox(
-      width: 480,
+      width: rightWidth,
       child: Container(
         color: AppColors.sidebarBg,
         child: Column(

@@ -180,10 +180,10 @@ Win32Window::MessageHandler(HWND hwnd,
                             LPARAM const lparam) noexcept {
   switch (message) {
     case WM_GETMINMAXINFO: {
-      // 窗口最小尺寸：基座画面 850 宽（左右侧栏收起时），高 700 可缩
+      // 最小客户区尺寸（含外框换算），物理像素
       auto mmi = reinterpret_cast<MINMAXINFO*>(lparam);
-      mmi->ptMinTrackSize.x = 850;
-      mmi->ptMinTrackSize.y = 700;
+      if (min_client_width_ > 0) mmi->ptMinTrackSize.x = min_client_width_;
+      if (min_client_height_ > 0) mmi->ptMinTrackSize.y = min_client_height_;
       return 0;
     }
 
@@ -269,6 +269,26 @@ HWND Win32Window::GetHandle() {
 
 void Win32Window::SetQuitOnClose(bool quit_on_close) {
   quit_on_close_ = quit_on_close;
+}
+
+void Win32Window::SetClientSize(unsigned int width, unsigned int height) {
+  if (!window_handle_) return;
+  const LONG style = GetWindowLong(window_handle_, GWL_STYLE);
+  const LONG ex_style = GetWindowLong(window_handle_, GWL_EXSTYLE);
+  RECT rc = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+  AdjustWindowRectEx(&rc, style, FALSE, ex_style);
+  SetWindowPos(window_handle_, nullptr, 0, 0, rc.right - rc.left,
+               rc.bottom - rc.top,
+               SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void Win32Window::SetMinClientSize(unsigned int width, unsigned int height) {
+  const LONG style = WS_OVERLAPPEDWINDOW;
+  const LONG ex_style = 0L;
+  RECT rc = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+  AdjustWindowRectEx(&rc, style, FALSE, ex_style);
+  min_client_width_ = rc.right - rc.left;
+  min_client_height_ = rc.bottom - rc.top;
 }
 
 bool Win32Window::OnCreate() {

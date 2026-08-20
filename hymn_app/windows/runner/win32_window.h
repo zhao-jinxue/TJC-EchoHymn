@@ -55,6 +55,12 @@ class Win32Window {
   // Return a RECT representing the bounds of the current client area.
   RECT GetClientArea();
 
+  // 设置客户区物理像素尺寸（含当前 DPI 换算），并将窗口缩放到该大小。
+  void SetClientSize(unsigned int width, unsigned int height);
+
+  // 设置窗口最小客户区物理像素尺寸（用于 WM_GETMINMAXINFO 限制）。
+  void SetMinClientSize(unsigned int width, unsigned int height);
+
  protected:
   // Processes and route salient window messages for mouse handling,
   // size change and DPI. Delegates handling of these to member overloads that
@@ -97,6 +103,10 @@ class Win32Window {
 
   // window handle for hosted content.
   HWND child_content_ = nullptr;
+
+  // 最小客户区尺寸对应的窗口外框物理像素（WM_GETMINMAXINFO 使用）
+  LONG min_client_width_ = 0;
+  LONG min_client_height_ = 0;
 };
 
 #endif  // RUNNER_WIN32_WINDOW_H_
