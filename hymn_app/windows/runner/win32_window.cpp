@@ -277,6 +277,12 @@ void Win32Window::SetClientSize(unsigned int width,
                                 unsigned int right_panel_width) {
   if (!window_handle_) return;
 
+  // 窗口最大化时：不改变窗口尺寸，内容画布由 Flutter 侧等比缩放适配全屏
+  // （侧栏展开/收起只是改变画布内容宽度，scale 自动重算）
+  if (IsZoomed(window_handle_)) {
+    return;
+  }
+
   // 客户区实际宽度 = 基座 850 + 左右栏宽度
   const unsigned int client_w = width + left_panel_width + right_panel_width;
   const LONG style = GetWindowLong(window_handle_, GWL_STYLE);

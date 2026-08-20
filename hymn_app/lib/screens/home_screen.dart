@@ -276,17 +276,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 侧栏展开/收起时同步窗口尺寸（物理像素）：
   /// 基座画面（850 宽）永远居中，左栏向左扩展、右栏向右扩展；
   /// 向上层传左右栏宽度，native 据此计算窗口位置。
-  void _syncWindowSize() {
+  /// 同步窗口尺寸与画布宽度（native resize 完成后再重建一次，
+  /// 保证 scale 按新窗口尺寸计算，避免【收缩/展开侧栏后画面与窗口
+  /// 比例不匹配】的时序竞态）。
+  Future<void> _syncWindowSize() async {
     if (kIsWeb) return; // Web 无原生窗口
-    _windowChannel.invokeMethod<void>('setClientSize', {
-      'width': kBaseWindowWidth,
-      'height': kBaseWindowHeight,
-      'leftPanelWidth': _showLeft ? kLeftPanelWidth : 0,
-      'rightPanelWidth': _showRight ? kRightPanelWidth : 0,
-    }).catchError((_) {
+    try {
+      await _windowChannel.invokeMethod<void>('setClientSize', {
+        'width': kBaseWindowWidth,
+        'height': kBaseWindowHeight,
+        'leftPanelWidth': _showLeft ? kLeftPanelWidth : 0,
+        'rightPanelWidth': _showRight ? kRightPanelWidth : 0,
+      });
+      // native 窗口 resize 完成后强制重建：
+      // LayoutBuilder 拿到最新 constraints，scale = 新窗口/新画布，等比正确。
+      if (mounted) setState(() {});
+    } catch (_) {
       // 非 Windows 平台无此通道，忽略
-      return;
-    });
+    }
   }
 
   @override
