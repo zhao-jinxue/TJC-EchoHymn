@@ -273,19 +273,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ================= 构建 =================
 
-  /// 侧栏展开/收起时同步窗口宽度（物理像素）：
-  /// 基座 850 + 左栏 350（展开） + 右栏 600（展开），
-  /// 窗口整体变宽而非挤压歌词区。
+  /// 侧栏展开/收起时同步窗口尺寸（物理像素）：
+  /// 基座画面（850 宽）永远居中，左栏向左扩展、右栏向右扩展；
+  /// 向上层传左右栏宽度，native 据此计算窗口位置。
   void _syncWindowSize() {
-    var width = kBaseWindowWidth;
-    if (_showLeft) width += kLeftPanelWidth;
-    if (_showRight) width += kRightPanelWidth;
     if (kIsWeb) return; // Web 无原生窗口
-    // keepCenter=true：基座画面居中不动，侧栏向两侧扩展（左栏向左、右栏向右）
     _windowChannel.invokeMethod<void>('setClientSize', {
-      'width': width,
+      'width': kBaseWindowWidth,
       'height': kBaseWindowHeight,
-      'keepCenter': true,
+      'leftPanelWidth': _showLeft ? kLeftPanelWidth : 0,
+      'rightPanelWidth': _showRight ? kRightPanelWidth : 0,
     }).catchError((_) {
       // 非 Windows 平台无此通道，忽略
       return;
@@ -326,6 +323,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
                 setState(() => _showLeft = !_showLeft);
                 _syncWindowSize();
+                _saveState();
               },
             ),
           ),
@@ -355,6 +353,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
                 setState(() => _showRight = !_showRight);
                 _syncWindowSize();
+                _saveState();
               },
             ),
           ),

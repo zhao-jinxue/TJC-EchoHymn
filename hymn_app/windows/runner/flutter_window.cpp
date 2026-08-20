@@ -42,7 +42,8 @@ bool FlutterWindow::OnCreate() {
         if (method == "setClientSize") {
           int width = 850;
           int height = 890;
-          bool keep_center = false;
+          int left_panel = 0;
+          int right_panel = 0;
           const auto* args =
               std::get_if<flutter::EncodableMap>(call.arguments());
           if (args != nullptr) {
@@ -54,13 +55,19 @@ bool FlutterWindow::OnCreate() {
             if (it_h != args->end()) {
               if (auto* v = std::get_if<int>(&it_h->second)) height = *v;
             }
-            auto it_c = args->find(flutter::EncodableValue("keepCenter"));
-            if (it_c != args->end()) {
-              if (auto* v = std::get_if<bool>(&it_c->second)) keep_center = *v;
+            auto it_l = args->find(flutter::EncodableValue("leftPanelWidth"));
+            if (it_l != args->end()) {
+              if (auto* v = std::get_if<int>(&it_l->second)) left_panel = *v;
+            }
+            auto it_r = args->find(flutter::EncodableValue("rightPanelWidth"));
+            if (it_r != args->end()) {
+              if (auto* v = std::get_if<int>(&it_r->second)) right_panel = *v;
             }
           }
           this->SetClientSize(static_cast<unsigned int>(width),
-                              static_cast<unsigned int>(height), keep_center);
+                              static_cast<unsigned int>(height),
+                              static_cast<unsigned int>(left_panel),
+                              static_cast<unsigned int>(right_panel));
           result->Success();
         } else {
           result->NotImplemented();

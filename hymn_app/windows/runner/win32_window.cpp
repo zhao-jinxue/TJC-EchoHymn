@@ -273,29 +273,30 @@ void Win32Window::SetQuitOnClose(bool quit_on_close) {
 
 void Win32Window::SetClientSize(unsigned int width,
                                 unsigned int height,
-                                bool keep_center) {
+                                unsigned int left_panel_width,
+                                unsigned int right_panel_width) {
   if (!window_handle_) return;
+
+  // 客户区实际宽度 = 基座 850 + 左右栏宽度
+  const unsigned int client_w = width + left_panel_width + right_panel_width;
   const LONG style = GetWindowLong(window_handle_, GWL_STYLE);
   const LONG ex_style = GetWindowLong(window_handle_, GWL_EXSTYLE);
-  RECT rc = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+  RECT rc = {0, 0, static_cast<LONG>(client_w), static_cast<LONG>(height)};
   AdjustWindowRectEx(&rc, style, FALSE, ex_style);
   const int new_w = rc.right - rc.left;
   const int new_h = rc.bottom - rc.top;
 
-  if (keep_center) {
-    // 保持窗口中心不动：向两侧扩展（左栏向左扩、右栏向右扩）
-    RECT cur;
-    GetWindowRect(window_handle_, &cur);
-    const int cur_w = cur.right - cur.left;
-    const int cur_h = cur.bottom - cur.top;
-    const int left = cur.left - (new_w - cur_w) / 2;
-    const int top = cur.top - (new_h - cur_h) / 2;
-    SetWindowPos(window_handle_, nullptr, left, top, new_w, new_h,
-                 SWP_NOZORDER | SWP_NOACTIVATE);
-  } else {
-    SetWindowPos(window_handle_, nullptr, 0, 0, new_w, new_h,
-                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-  }
+  // 基座画面（850 宽）中心永远对齐屏幕工作区中心：
+  // 窗口左沿 = 工作区中心X - 基座半宽(425) - 左栏宽度
+  RECT work{0, 0, 0, 0};
+  SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
+  const int screen_cx = work.left + (work.right - work.left) / 2;
+  const int screen_cy = work.top + (work.bottom - work.top) / 2;
+  const int left = screen_cx - static_cast<int>(width) / 2 -
+                   static_cast<int>(left_panel_width);
+  const int top = screen_cy - new_h / 2;
+  SetWindowPos(window_handle_, nullptr, left, top, new_w, new_h,
+               SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void Win32Window::SetMinClientSize(unsigned int width, unsigned int height) {
