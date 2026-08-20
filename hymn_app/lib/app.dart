@@ -20,6 +20,9 @@ class AppColors {
   static const Color warning = Color(0xFFFF9F0A);
   static const Color danger = Color(0xFFF54A45);
   static const Color selectedBg = Color(0xFFE8F0FE);
+
+  /// 歌词显示区背景（暖白，与侧栏冷灰 #F5F6FA 形成轻微色差，便于感知区域大小）
+  static const Color lyricsBg = Color(0xFFFDF8EE);
 }
 
 /// EchoHymn 应用根组件

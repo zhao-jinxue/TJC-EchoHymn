@@ -180,9 +180,9 @@ Win32Window::MessageHandler(HWND hwnd,
                             LPARAM const lparam) noexcept {
   switch (message) {
     case WM_GETMINMAXINFO: {
-      // 设置窗口最小尺寸 1000x700（逻辑像素，DPI 已按 96 比例）
+      // 窗口最小尺寸：基座画面 850 宽（左右侧栏收起时），高 700 可缩
       auto mmi = reinterpret_cast<MINMAXINFO*>(lparam);
-      mmi->ptMinTrackSize.x = 1132;
+      mmi->ptMinTrackSize.x = 850;
       mmi->ptMinTrackSize.y = 700;
       return 0;
     }

@@ -39,8 +39,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final AppStateService _stateService = AppStateService();
 
   // ---- 布局状态 ----
-  bool _showLeft = true;
-  bool _showRight = true;
+  // 默认收起两侧栏 = 基座画面（最简播放画面，窗口 850 宽）；
+  // 需要歌单/源考时再展开（展开时窗口可手动加宽容纳）。
+  bool _showLeft = false;
+  bool _showRight = false;
 
   // ---- 左栏视图状态 ----
   LeftTab _leftTab = LeftTab.hymnList;

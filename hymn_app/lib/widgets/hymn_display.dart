@@ -258,81 +258,88 @@ class _HymnDisplayState extends State<HymnDisplay> {
     final verses = hymn.verses;
     if (verses.isEmpty) {
       return const Center(
-        child: Text('暂无歌词', style: TextStyle(color: AppColors.textTertiary)),
+        child: Text(
+          '暂无歌词',
+          style: TextStyle(color: AppColors.textTertiary),
+        ),
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 以「铺满显示区」为目标计算字号：先用基准字号测算内容高度，再按比例缩放铺满
-        const pad = 48.0; // 上下留白 24+24
-        double baseBody = 18.0;
-        // 粗估每段高度：标题 + 节标签 × N + 歌词 × N
-        final verseTexts = verses.where((v) => v.trim().isNotEmpty).toList();
-        int lineCount = 0;
-        for (final v in verseTexts) {
-          final lines = v.split('\n').length;
-          lineCount += lines + 1; // + 节标签
-        }
-        // 每行按 1.8 倍字号高度估算
-        final availH = (constraints.maxHeight - pad).clamp(100.0, 4000.0);
-        final availW = constraints.maxWidth - pad;
-        // 行高与字号关系：行距 1.8 → 每行约 2.0 倍字号
-        final maxByH = lineCount > 0 ? availH / (lineCount * 2.0) : 40.0;
-        final maxByW = availW / 14.0; // 每行约 14 个汉字
-        final bodySize = [baseBody, maxByH, maxByW]
-            .reduce((a, b) => a < b ? a : b)
-            .clamp(14.0, 30.0);
-        final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
-        final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
+    // 歌词显示区：暖白背景（与左右侧栏冷灰形成轻微色差，便于感知区域大小）
+    return Container(
+      color: AppColors.lyricsBg,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 以「铺满显示区」为目标计算字号：先用基准字号测算内容高度，再按比例缩放铺满
+          const pad = 48.0; // 上下留白 24+24
+          double baseBody = 18.0;
+          // 粗估每段高度：标题 + 节标签 × N + 歌词 × N
+          final verseTexts = verses.where((v) => v.trim().isNotEmpty).toList();
+          int lineCount = 0;
+          for (final v in verseTexts) {
+            final lines = v.split('\n').length;
+            lineCount += lines + 1; // + 节标签
+          }
+          // 每行按 1.8 倍字号高度估算
+          final availH = (constraints.maxHeight - pad).clamp(100.0, 4000.0);
+          final availW = constraints.maxWidth - pad;
+          // 行高与字号关系：行距 1.8 → 每行约 2.0 倍字号
+          final maxByH = lineCount > 0 ? availH / (lineCount * 2.0) : 40.0;
+          final maxByW = availW / 14.0; // 每行约 14 个汉字
+          final bodySize = [baseBody, maxByH, maxByW]
+              .reduce((a, b) => a < b ? a : b)
+              .clamp(14.0, 30.0);
+          final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
+          final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                ChineseConvertService.instance.toSimplified(hymn.title),
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  ChineseConvertService.instance.toSimplified(hymn.title),
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '第 ${hymn.hymnNumber} 首',
-                style: TextStyle(
-                    fontSize: labelSize, color: AppColors.textTertiary),
-              ),
-              const SizedBox(height: 24),
-              for (var i = 0; i < verses.length; i++) ...[
-                if (verses[i].trim().isNotEmpty) ...[
-                  Text(
-                    '第${i + 1}节',
-                    style: TextStyle(
-                      fontSize: labelSize,
-                      color: AppColors.textTertiary,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                Text(
+                  '第 ${hymn.hymnNumber} 首',
+                  style: TextStyle(
+                      fontSize: labelSize, color: AppColors.textTertiary),
+                ),
+                const SizedBox(height: 24),
+                for (var i = 0; i < verses.length; i++) ...[
+                  if (verses[i].trim().isNotEmpty) ...[
+                    Text(
+                      '第${i + 1}节',
+                      style: TextStyle(
+                        fontSize: labelSize,
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    ChineseConvertService.instance.toSimplified(verses[i]),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: bodySize,
-                      height: 1.8,
-                      color: AppColors.textPrimary,
+                    const SizedBox(height: 8),
+                    Text(
+                      ChineseConvertService.instance.toSimplified(verses[i]),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: bodySize,
+                        height: 1.8,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                  ],
                 ],
               ],
-            ],
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 
