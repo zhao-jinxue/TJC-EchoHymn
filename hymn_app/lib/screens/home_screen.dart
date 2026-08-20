@@ -402,12 +402,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final repo = _repo!;
     final audio = _audio!;
+    // 屏幕像素密度（125% → 1.25）
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // 基座歌词区永远保持 850 物理宽，侧栏展开时各占 350/600 物理宽，
+    // 整体内容固定宽度、居中显示——不随窗口缩放而拉伸。
+    final baseWidth = kBaseWindowWidth / dpr;
+    final totalWidth = (kBaseWindowWidth +
+            (_showLeft ? kLeftPanelWidth : 0) +
+            (_showRight ? kRightPanelWidth : 0)) /
+        dpr;
     final children = <Widget>[
       if (_showLeft) ...[
         _buildLeftPanel(repo, audio),
         const VerticalDivider(width: 1, color: AppColors.divider),
       ],
-      Expanded(
+      SizedBox(
+        width: baseWidth,
         child: HymnDisplay(
           audio: audio,
           initialMode: _currentDisplayMode,
@@ -427,9 +437,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ],
     ];
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+    // 固定宽度内容居中：基座画面永远对准窗口中心（与 native 侧对齐）
+    return Center(
+      child: SizedBox(
+        width: totalWidth,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
     );
   }
 
