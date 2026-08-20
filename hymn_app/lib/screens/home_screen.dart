@@ -292,12 +292,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          _buildTopBar(),
-          Expanded(child: _buildBody()),
-          _buildStatusBar(),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // 内容固定逻辑尺寸 = 基座 850×890 + 已展开侧栏宽，窗口缩放时整体等比放大
+          final dpr = MediaQuery.devicePixelRatioOf(context);
+          final contentW = (kBaseWindowWidth +
+                  (_showLeft ? kLeftPanelWidth : 0) +
+                  (_showRight ? kRightPanelWidth : 0)) /
+              dpr;
+          final contentH = kBaseWindowHeight / dpr;
+          return Center(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: contentW,
+                height: contentH,
+                child: Column(
+                  children: [
+                    _buildTopBar(),
+                    Expanded(child: _buildBody()),
+                    _buildStatusBar(),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -402,50 +422,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final repo = _repo!;
     final audio = _audio!;
-    // 屏幕像素密度（125% → 1.25）
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    // 基座歌词区永远保持 850 物理宽，侧栏展开时各占 350/600 物理宽，
-    // 整体内容固定宽度、居中显示——不随窗口缩放而拉伸。
-    final baseWidth = kBaseWindowWidth / dpr;
-    final totalWidth = (kBaseWindowWidth +
-            (_showLeft ? kLeftPanelWidth : 0) +
-            (_showRight ? kRightPanelWidth : 0)) /
-        dpr;
-    final children = <Widget>[
-      if (_showLeft) ...[
-        _buildLeftPanel(repo, audio),
-        const VerticalDivider(width: 1, color: AppColors.divider),
-      ],
-      SizedBox(
-        width: baseWidth,
-        child: HymnDisplay(
-          audio: audio,
-          initialMode: _currentDisplayMode,
-          onModeChanged: (mode) {
-            _currentDisplayMode = mode;
-            _saveState();
-          },
-          onAudioVersionChanged: (v) {
-            _currentAudioVersion = v;
-            _saveState();
-          },
+    // 基座歌词区永远保持 850 物理宽（对应逻辑 850/dpr），
+    // 侧栏展开时各占 350/600 物理宽；外层 FittedBox 负责窗口等比缩放。
+    final baseWidth = kBaseWindowWidth / MediaQuery.devicePixelRatioOf(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_showLeft) ...[
+          _buildLeftPanel(repo, audio),
+          const VerticalDivider(width: 1, color: AppColors.divider),
+        ],
+        SizedBox(
+          width: baseWidth,
+          child: HymnDisplay(
+            audio: audio,
+            initialMode: _currentDisplayMode,
+            onModeChanged: (mode) {
+              _currentDisplayMode = mode;
+              _saveState();
+            },
+            onAudioVersionChanged: (v) {
+              _currentAudioVersion = v;
+              _saveState();
+            },
+          ),
         ),
-      ),
-      if (_showRight) ...[
-        const VerticalDivider(width: 1, color: AppColors.divider),
-        _buildRightPanel(),
+        if (_showRight) ...[
+          const VerticalDivider(width: 1, color: AppColors.divider),
+          _buildRightPanel(),
+        ],
       ],
-    ];
-
-    // 固定宽度内容居中：基座画面永远对准窗口中心（与 native 侧对齐）
-    return Center(
-      child: SizedBox(
-        width: totalWidth,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
-        ),
-      ),
     );
   }
 
