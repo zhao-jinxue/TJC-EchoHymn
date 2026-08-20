@@ -294,16 +294,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // 内容固定逻辑尺寸 = 基座 850×890 + 已展开侧栏宽，窗口缩放时整体等比放大
+          // 内容固定逻辑尺寸 = 基座 850×890 + 已展开侧栏宽
           final dpr = MediaQuery.devicePixelRatioOf(context);
           final contentW = (kBaseWindowWidth +
                   (_showLeft ? kLeftPanelWidth : 0) +
                   (_showRight ? kRightPanelWidth : 0)) /
               dpr;
           final contentH = kBaseWindowHeight / dpr;
-          return Center(
-            child: FittedBox(
-              fit: BoxFit.contain,
+          // 等比缩放比例 = 窗口客户区 / 内容基准尺寸（contain，不裁切不变形）
+          final scale = constraints.maxWidth > 0 && constraints.maxHeight > 0
+              ? (constraints.maxWidth / contentW <
+                      constraints.maxHeight / contentH
+                  ? constraints.maxWidth / contentW
+                  : constraints.maxHeight / contentH)
+              : 1.0;
+          // Align 撑满窗口布局，child 围绕自身中心缩放并对准窗口中心：
+          // 最大化/缩放窗口时整棵树成比例放大，内容不再固定在左上角。
+          return Align(
+            alignment: Alignment.center,
+            child: Transform.scale(
+              scale: scale,
+              alignment: Alignment.center,
               child: SizedBox(
                 width: contentW,
                 height: contentH,
