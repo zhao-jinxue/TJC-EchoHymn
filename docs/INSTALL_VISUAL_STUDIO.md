@@ -105,7 +105,18 @@ cmake --version        # 输出 3.22+ 即正常
 
 ## 四、首次构建测试（走通全链路）
 
-### 1) 构建 C++ 原生引擎
+### 1) 构建 Flutter Windows 桌面应用
+
+```powershell
+Set-Location e:\EchoHymn\hymn_app
+flutter build windows --release
+```
+
+产物：`hymn_app\build\windows\x64\runner\Release\echo_hymn.exe`
+
+> ✅ **当前架构为纯 Dart**（简繁转换/搜索/状态/日志均在 Dart 层），**不需要**手动构建 `hymn_app/native` 的 C++ 引擎，也无需拷贝任何 DLL。`native/` 目录为历史可选组件，详见 `docs/README.native.md`。
+
+### 2)（可选）构建 C++ 原生引擎（仅恢复 FFI 时）
 
 ```powershell
 Set-Location e:\EchoHymn\hymn_app\native
@@ -113,23 +124,12 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-产物：`hymn_app\native\build\Release\hymn_engine.dll`
-
-### 2) 构建 Flutter Windows 桌面应用
-
-```powershell
-Set-Location e:\EchoHymn\hymn_app
-flutter build windows --release
-```
-
-产物：`hymn_app\build\windows\x64\runner\Release\EchoHymn.exe`
-
-> ⚠️ **别忘了发布时把 `hymn_engine.dll` 拷贝到 exe 同目录**，否则运行时会报"无法加载 hymn_engine 原生库"。参见 `docs/README.native.md`。
+产物：`hymn_app\native\build\Release\hymn_engine.dll`（当前 Flutter 应用不引用）
 
 ### 3)（可选）VS Code 里直接运行
 
 - Flutter 侧：VS Code 打开 `hymn_app/`，按 `F5`（使用 Dart 配置）或 `flutter run -d windows`。
-- C++ 侧调试：需安装 **Microsoft C/C++ 扩展**，然后取消注释 `docs/RECOMMENDED_TOOLS.md` 中的 `cppvsdbg` launch 配置。
+- C++ 侧调试（仅恢复 FFI 后）：需安装 **Microsoft C/C++ 扩展**，配置 `cppvsdbg` launch。
 
 ---
 

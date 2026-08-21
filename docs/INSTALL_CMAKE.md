@@ -5,7 +5,9 @@
 > | 路径 | 命令 | 是否依赖 PATH 中的 cmake |
 > | --- | --- | --- |
 > | Flutter Windows 应用 | `flutter build windows` | ❌ 不需要（Flutter 自动用 VS 内置 CMake） |
-> | C++ 原生引擎 | `cmake -S . -B build` | ✅ **需要**（这个命令要自己敲） |
+> | C++ 原生引擎（历史可选组件） | `cmake -S . -B build` | ✅ **需要**（当前项目已不使用，仅恢复 FFI 时才需要） |
+
+> **现状说明（2026-08-21）**：当前 EchoHymn 无 C++ 原生引擎依赖（简繁转换/搜索/状态均在 Dart 层），`flutter build windows` 会自动使用 VS 内置 CMake。下方 CMake 安装方案**仅**在需要手动构建 `hymn_app/native/`（历史可选组件）时才需要。
 >
 > 因此，命令行里需要能敲出 `cmake`。下面是三种手动方案，**推荐方案一**（零下载、最省事）。
 
@@ -165,9 +167,9 @@ pip install --user cmake
 ### Q4：装完 CMake 后如何完整验证项目？
 
 ```powershell
-Set-Location e:\EchoHymn\hymn_app\native
+Set-Location e:\EchoHymn\hymn_app\native        # 仅历史可选组件
 cmake -S . -B build
 cmake --build build --config Release
 ```
 
-看到生成 `build\Release\hymn_engine.dll` 即全链路 OK。
+看到生成 `build\Release\hymn_engine.dll` 即全链路 OK（当前 Flutter 应用不依赖该 DLL，主流程验证用 `flutter build windows --release` 即可）。
