@@ -95,7 +95,7 @@
 9. ✅ **v1.2.x 窗口重构**：基座画面 850×890、抽屉式侧栏、等比缩放、最大化/竞态处理、日志系统
 10. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
 11. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
-12. 发布产物中残留 `just_audio_windows_plugin.dll` 旧缓存（无害，如需干净可 `flutter clean` 重建）
+12. ✅ **just_audio 残留清理（2026-08-28）**：核实全部发布产物与构建目录已无 `just_audio_windows_plugin.dll`；移除 `windows/CMakeLists.txt` 过时 coroutine 宏与注释、删除无调用方的一次性脚本 `tools/patch_cmake.py`、同步修正 docs 过时表述
 
 ---
 

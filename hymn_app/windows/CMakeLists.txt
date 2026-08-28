@@ -40,8 +40,6 @@ add_definitions(-DUNICODE -D_UNICODE)
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_17)
   target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100" /utf-8)
-  # just_audio_windows 插件使用已弃用的 <experimental/coroutine>，抑制其静态断言
-  target_compile_definitions(${TARGET} PRIVATE _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
   target_compile_options(${TARGET} PRIVATE /EHsc)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
@@ -90,7 +88,7 @@ if(PLUGIN_BUNDLED_LIBRARIES)
 endif()
 
 # 随程序打包 VC++ 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1），
-# 使 opencc.dll 等原生库就近加载，不依赖系统是否安装 VC++ Redistributable。
+# 使 sqlite3.dll 等原生库就近加载，不依赖系统是否安装 VC++ Redistributable。
 # 源取自本机 Visual Studio 运行库安装目录。
 set(VC_REDIST_DIR "C:/Windows/System32")
 install(FILES
