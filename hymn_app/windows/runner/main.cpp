@@ -7,6 +7,24 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // ---- 单实例保护（UI 测试 A02）----
+  // 已有实例运行时，再次启动只聚焦已有窗口并退出本进程，
+  // 避免音频播放应用出现多实例。
+  {
+    HANDLE single_mutex =
+        ::CreateMutexW(nullptr, FALSE, L"EchoHymn_SingleInstanceMutex");
+    if (single_mutex != nullptr &&
+        ::GetLastError() == ERROR_ALREADY_EXISTS) {
+      HWND existing = ::FindWindowW(nullptr, L"echo_hymn");
+      if (existing != nullptr) {
+        ::ShowWindow(existing, SW_RESTORE);
+        ::SetForegroundWindow(existing);
+      }
+      return EXIT_SUCCESS;
+    }
+    // mutex 句柄由系统持有至进程退出，届时自动释放
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {

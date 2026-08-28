@@ -277,6 +277,10 @@ void Win32Window::SetClientSize(unsigned int width,
                                 unsigned int right_panel_width) {
   if (!window_handle_) return;
 
+  // 最小客户区尺寸随侧栏展开同步更新 = 基座 850×890 + 展开栏宽。
+  // （修复 UI 测试 A09/K10：侧栏展开后窗口仍可缩到基座宽度，导致侧栏内容被裁）
+  SetMinClientSize(width + left_panel_width + right_panel_width, height);
+
   // 窗口最大化时：不改变窗口尺寸，内容画布由 Flutter 侧等比缩放适配全屏
   // （侧栏展开/收起只是改变画布内容宽度，scale 自动重算）
   if (IsZoomed(window_handle_)) {
