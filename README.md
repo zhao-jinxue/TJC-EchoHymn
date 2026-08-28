@@ -117,7 +117,7 @@ flutter build apk --release
 | **Android** | Android Studio + SDK | `build/app/outputs/flutter-apk/app-release.apk` |
 | **OpenHarmony 鸿蒙** | 待接入（目录占位） | — |
 
-> **自动发布**：每次 `git commit` 到 master/main 会自动构建 **Windows 桌面版**并发布到 `release/echohymn-win-<短哈希>-<时间戳>/`（保留最近 5 份）。日志见 `release/auto-release.log`。
+> **自动发布**：每次 `git commit` 到 master/main 会自动构建 **Windows 桌面版**并发布到 `release/echohymn_win_<时间戳>_<短哈希>/`（保留最近 5 份，目录名可直接按名称排序）。日志见 `release/auto-release.log`。
 > 手动发布：`pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1`
 
 ---

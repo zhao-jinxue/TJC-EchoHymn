@@ -110,6 +110,6 @@ flutter build apk --release
 ### Q4：之前提到的 Web 自动发布还能用吗？
 
 - **不能**。Web 已从目标平台移除；但已恢复 **Windows 自动发布**：
-  - 每次 `git commit` 到 master/main，post-commit 钩子自动运行 `tools/publish_windows.ps1`，构建 Windows 桌面版并发布到 `release/echohymn-win-<短哈希>-<时间戳>/`（保留 5 份）
+  - 每次 `git commit` 到 master/main，post-commit 钩子自动运行 `tools/publish_windows.ps1`，构建 Windows 桌面版并发布到 `release/echohymn_win_<时间戳>_<短哈希>/`（保留 5 份）
   - 日志：`release/auto-release.log`
 - 若日后需要 Web，需重新评估（`sqlite3` 的 `dart:ffi` 在 Web 不可用，需要做数据层降级/替换）

@@ -11,10 +11,11 @@
     行为：
       1. 仅当当前分支为 master/main 时才自动发布（避免特性分支误触发）
       2. flutter build windows --release 构建桌面版
-      3. 将产物拷贝到 release\echohymn-win-<短commitHash>-<时间戳>\ 版本化目录
+      3. 将产物拷贝到 release\echohymn_win_<时间戳>_<短commitHash>\ 版本化目录
       4. 删除 release\ 下多余的旧版本目录，只保留最近 [KeepCount] 个
 
-    版本名自动生成：短commitHash-时间戳，如 e26cb8c-20260814-214507
+    版本名自动生成：时间戳_短commitHash，如 20260814-214507_e26cb8c
+    （时间戳前置、下划线分隔，目录名可直接按名称排序定位最新版本）
 
     日志：
       输出同时写控制台与 release\auto-release.log。
@@ -122,7 +123,7 @@ Get-ChildItem -Path $BuildOut -File -Filter 'state.json' -ErrorAction SilentlyCo
     Remove-Item -Force -ErrorAction SilentlyContinue
 
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-$PkgName = "echohymn-win-$commitShort-$ts"
+$PkgName = "echohymn_win_${ts}_${commitShort}"
 $PkgOutDir = Join-Path $ReleaseDir $PkgName
 
 Write-Step "打包版本目录 $PkgName ..."
@@ -148,9 +149,10 @@ Write-OK "产物已整理到 $PkgOutDir"
 # ---- 4. 只保留最近 KeepCount 个版本目录 ----
 Write-Step "清理旧版本（保留最近 $KeepCount 个）..."
 if (Test-Path $ReleaseDir) {
+    # 新命名 echohymn_win_<时间戳>_<短哈希> 保证名称排序=时间排序（最新在最前）
     $versionDirs = Get-ChildItem -Path $ReleaseDir -Directory |
-        Where-Object { $_.Name -like 'echohymn-win-*' } |
-        Sort-Object CreationTime -Descending
+        Where-Object { $_.Name -like 'echohymn_win_*' } |
+        Sort-Object Name -Descending
 
     $toDelete = $versionDirs | Select-Object -Skip $KeepCount
     foreach ($d in $toDelete) {
@@ -170,6 +172,6 @@ Write-Log "  Windows 自动发布完成 (commit $commitShort)" -Color Green
 Write-Log "  最新版本: $PkgName" -Color Green
 Write-Log "  位置:     $PkgOutDir" -Color Green
 $kept = Get-ChildItem -Path $ReleaseDir -Directory -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -like 'echohymn-win-*' }
+    Where-Object { $_.Name -like 'echohymn_win_*' }
 Write-Log "  当前保留: $($kept.Count) 个版本（上限 $KeepCount）" -Color Green
 Write-Log '==============================================' -Color Green

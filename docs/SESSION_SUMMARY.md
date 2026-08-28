@@ -62,7 +62,7 @@
 3. **状态锚点**：记录「当前播放/选择的诗歌 + 音频版本 + 歌词模式 + 来源歌单 + **播放列表位置索引**」，重启后统一恢复并**校验**（滚动偏移/左栏/版本/位置逐项比对，底部状态栏异常报告）
 4. **状态存储**：离开 `%APPDATA%` 改为 `exe` 同级 `state.json`（便携、原子写 `.tmp`+rename、加载失败兜底默认、旧数据自动迁移）
 5. **架构拆分**（用户要求）：三个左栏栏目用 **Dart 基类/子类**拆开——`LeftPanel`（抽象基类，含 `buildHymnTile` 抽象渲染接口/`playHymn` 公共播放/`scrollToCurrent`/`restoreSaved`/`syncWithPlayback`）+ `HymnListPanel`/`DefaultPlaylistsPanel`/`MyPlaylistsPanel`（各自实现行渲染、滚动列、展开逻辑、交互、来源透传），防止改动互相影响
-6. **自动发布**：git post-commit → `tools/publish_windows.ps1` → `flutter build windows --release` → `release/echohymn-win-<hash>-<ts>/`（保留 5 份）；Web 已移除不发布
+6. **自动发布**：git post-commit → `tools/publish_windows.ps1` → `flutter build windows --release` → `release/echohymn_win_<时间戳>_<短哈希>/`（保留 5 份；目录名按名称可直接排序）；Web 已移除不发布
 
 ### 2026-08-16 ~ 17 会话追加决策
 
@@ -112,7 +112,7 @@
 
 ## 六、自动发布机制（git post-commit hook，Windows）
 
-> **新会话必读**：每次 `git commit` 到 **master/main** 会自动构建并发布 Windows 桌面版，提交后核对 `release/auto-release.log` 与 `release/echohymn-win-*` 目录。
+> **新会话必读**：每次 `git commit` 到 **master/main** 会自动构建并发布 Windows 桌面版，提交后核对 `release/auto-release.log` 与 `release/echohymn_win_*` 目录。
 
 ### 触发链路
 
@@ -124,7 +124,7 @@
 
 1. 仅 master/main 分支触发
 2. `flutter build windows --release`
-3. 拷贝 `build/windows/x64/runner/Release/*` + `data/` → `release/echohymn-win-<短哈希>-<时间戳>/`
+3. 拷贝 `build/windows/x64/runner/Release/*` + `data/` → `release/echohymn_win_<时间戳>_<短哈希>/`
 4. 保留最近 5 份，旧版本自动删除
 
 ---

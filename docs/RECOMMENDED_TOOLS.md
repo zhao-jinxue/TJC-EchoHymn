@@ -145,7 +145,7 @@ flutter build windows --release
     ↓
 运行 echo_hymn.exe（exe 同级 state.json / logs/）
     ↓
-git commit → 自动发布（release/echohymn-win-*）
+git commit → 自动发布（release/echohymn_win_*）
 ```
 
 > 纯 Dart 架构：所有逻辑（简繁转换 / 搜索 / 状态 / 日志）均在 Dart 层，无需维护 FFI 符号表或原生构建产物。
