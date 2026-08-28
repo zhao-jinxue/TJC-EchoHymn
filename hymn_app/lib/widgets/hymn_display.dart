@@ -390,46 +390,59 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   Widget _buildControls(Hymn? hymn) {
     final voices = hymn == null ? <String>[] : voiceVersions(hymn);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // F03：控制按钮组固定居中；人声版本列表按钮（>1 时）固定在右侧，
+    // 出现/消失不导致按钮组整体位移。
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        IconButton(
-          icon: const Icon(Icons.skip_previous, color: AppColors.textPrimary),
-          tooltip: '上一首',
-          onPressed: () => widget.audio.playPrev(),
-        ),
-        StreamBuilder<PlayerStatus>(
-          stream: widget.audio.statusStream,
-          builder: (context, snap) {
-            final status = snap.data ?? PlayerStatus.idle;
-            final playing = status == PlayerStatus.playing;
-            return IconButton(
-              iconSize: 42,
-              icon: Icon(
-                playing ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                color: AppColors.primary,
-              ),
-              tooltip: playing ? '暂停' : '播放',
-              onPressed: () {
-                LogService.instance.info(
-                  LogTag.action,
-                  playing ? '点击播放条：暂停' : '点击播放条：播放',
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              icon:
+                  const Icon(Icons.skip_previous, color: AppColors.textPrimary),
+              tooltip: '上一首',
+              onPressed: () => widget.audio.playPrev(),
+            ),
+            StreamBuilder<PlayerStatus>(
+              stream: widget.audio.statusStream,
+              builder: (context, snap) {
+                final status = snap.data ?? PlayerStatus.idle;
+                final playing = status == PlayerStatus.playing;
+                return IconButton(
+                  iconSize: 42,
+                  icon: Icon(
+                    playing
+                        ? Icons.pause_circle_filled
+                        : Icons.play_circle_filled,
+                    color: AppColors.primary,
+                  ),
+                  tooltip: playing ? '暂停' : '播放',
+                  onPressed: () {
+                    LogService.instance.info(
+                      LogTag.action,
+                      playing ? '点击播放条：暂停' : '点击播放条：播放',
+                    );
+                    widget.audio.togglePlayPause();
+                  },
                 );
-                widget.audio.togglePlayPause();
               },
-            );
-          },
+            ),
+            IconButton(
+              icon: const Icon(Icons.skip_next, color: AppColors.textPrimary),
+              tooltip: '下一首',
+              onPressed: () => widget.audio.playNext(),
+            ),
+          ],
         ),
-        IconButton(
-          icon: const Icon(Icons.skip_next, color: AppColors.textPrimary),
-          tooltip: '下一首',
-          onPressed: () => widget.audio.playNext(),
-        ),
-        // 人声版本列表（>1 时显示，悬停提示 10 秒，与下一首拉开间距）
-        if (voices.length > 1) ...[
-          const SizedBox(width: 24),
-          _buildVoiceListButton(hymn!, voices),
-        ],
+        // 人声版本列表（>1 时显示，悬停提示 10 秒，固定右侧不挤压居中按钮组）
+        if (voices.length > 1)
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(child: _buildVoiceListButton(hymn!, voices)),
+          ),
       ],
     );
   }

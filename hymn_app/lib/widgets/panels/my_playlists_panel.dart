@@ -392,6 +392,8 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
         }
       });
     } else if (result == 'delete') {
+      // I14：真正删除数据库记录（此前只清空 UI 选中态，歌单仍留在数据库中）
+      repo.deletePlaylist(pl.id);
       setState(() {
         if (_selectedPlaylist?.id == pl.id) {
           _selectedPlaylist = null;

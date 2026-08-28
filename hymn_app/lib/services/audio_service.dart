@@ -28,6 +28,9 @@ class AudioService {
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
+  /// 上一次「上一首/下一首」切换时间（K17 快速连点防抖）
+  DateTime _lastSwitchAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   /// 当前歌曲变化回调（播放新歌/加载恢复歌时触发，供上层保存状态）
   void Function()? onCurrentChanged;
 
@@ -197,6 +200,12 @@ class AudioService {
   }
 
   Future<void> playAt(int index) async {
+    // K17：快速连续点击「上一首/下一首」防抖（250ms），避免并发播放操作错乱
+    final now = DateTime.now();
+    if (now.difference(_lastSwitchAt) < const Duration(milliseconds: 250)) {
+      return;
+    }
+    _lastSwitchAt = now;
     if (index < 0 || index >= _playlist.length) return;
     await playHymn(_playlist[index], index: index);
   }
