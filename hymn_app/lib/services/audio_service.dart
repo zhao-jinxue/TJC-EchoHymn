@@ -123,13 +123,17 @@ class AudioService {
     if (index != null) _currentIndex = index;
     onCurrentChanged?.call();
 
-    // 选择音频版本
+    // 选择音频版本：
+    // - 请求/记忆版本可用 → 使用并记忆
+    // - 当前歌无该版本 → 临时用第一个可用版本（不覆盖记忆版本）
+    //   （C14：记忆「人声版」播放中遇到无人声版歌自动降级钢琴，
+    //    再遇到有人声版歌时仍能用记忆版本人声版播放）
     var audioVersion = version ?? _currentAudioVersion;
-    if (!hymn.audioVersions.containsKey(audioVersion) &&
-        hymn.audioVersionList.isNotEmpty) {
+    if (hymn.audioVersions.containsKey(audioVersion)) {
+      _currentAudioVersion = audioVersion;
+    } else if (hymn.audioVersionList.isNotEmpty) {
       audioVersion = hymn.audioVersionList.first;
     }
-    _currentAudioVersion = audioVersion;
 
     final rel = hymn.audioVersions[audioVersion];
     if (rel == null || rel.isEmpty) {

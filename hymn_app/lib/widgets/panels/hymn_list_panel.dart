@@ -154,32 +154,10 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   }
 
   void _onSearchChanged(String v) {
-    final kw = v.trim();
-    if (kw.isEmpty) {
-      // 清空输入：保持当前定位结果
+    // 输入变化不再即时搜索（C03：back 键删除不应触发定位 / K11：回车才搜索），
+    // 仅当输入被清空（back 删空 / × 清除）时回到分页列表，且保持当前定位结果。
+    if (v.trim().isEmpty) {
       setState(() => _titleResults = null);
-      return;
-    }
-    if (int.tryParse(kw) != null) {
-      // 编号 → 即时定位最匹配项（编号精确 / 前缀）
-      final target = _findByNumber(kw);
-      if (target != null) {
-        LogService.instance.info(
-          LogTag.action,
-          '搜索编号定位: $kw',
-          detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
-        );
-        _locateTo(target);
-      }
-    } else {
-      // 标题 → 显示匹配列表供点击选择
-      final matches = _titleMatches(kw);
-      LogService.instance.info(
-        LogTag.action,
-        '搜索标题: $kw',
-        detail: '匹配 ${matches.length} 首',
-      );
-      setState(() => _titleResults = matches);
     }
   }
 
@@ -188,7 +166,17 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     if (kw.isEmpty) return;
     final target = _findByNumber(kw) ?? _findByTitle(kw);
     if (target == null) {
+      // K11：无匹配时提示空态，不崩溃、保持原位
       LogService.instance.info(LogTag.action, '搜索提交无匹配: $kw');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('未找到相关诗歌：$kw'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
     final all = repo.getAllHymns();
@@ -280,7 +268,9 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
                   onPressed: () {
                     _searchCtrl.clear();
                     setState(() => _titleResults = null);
-                    // 保持当前页与高亮，不重置
+                    // C08：清空后保持定位——滚回当前歌曲所在位置，不回最上方
+                    final cur = currentHymn;
+                    if (cur != null) _locateAndScroll(cur);
                   },
                 ),
           isDense: true,

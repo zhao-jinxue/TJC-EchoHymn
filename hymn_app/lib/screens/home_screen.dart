@@ -672,7 +672,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
               ),
             ),
-          const SizedBox(width: 16),
+          // C02：播放进度（位置 / 总时长 · 百分比）
+          StreamBuilder<Duration>(
+            stream: _audio?.positionStream ?? const Stream<Duration>.empty(),
+            builder: (context, posSnap) {
+              final pos = posSnap.data ?? Duration.zero;
+              return StreamBuilder<Duration>(
+                stream: _audio?.durationStream ?? const Stream<Duration>.empty(),
+                builder: (context, durSnap) {
+                  final dur = durSnap.data ?? Duration.zero;
+                  final pct = dur.inMilliseconds > 0
+                      ? (pos.inMilliseconds * 100 / dur.inMilliseconds).floor()
+                      : 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Text(
+                      '${formatTime(pos)} / ${formatTime(dur)} · $pct%',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ],
       ),
     );
