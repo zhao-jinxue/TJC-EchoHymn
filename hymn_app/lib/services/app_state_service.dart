@@ -74,8 +74,13 @@ class AppStateService {
     try {
       final file = File(_statePath);
       if (!await file.exists()) {
-        // 尝试从旧位置迁移一次（用户旧版本状态）
-        return _migrateFromLegacy();
+        // 无状态文件 = 全新环境：返回默认状态（首次运行默认第 1 首、收起侧栏）。
+        // 不再从旧版本 %APPDATA% shared_preferences.json 迁移——
+        // 迁移逻辑已被旧版本（v1.0.4 前）完成使命；若继续迁移，
+        // 会污染「首次启动 / 删除 state.json 后启动」的默认行为
+        // （测试实测：删除 state.json 后从 Roaming 迁出旧状态导致
+        //  恢复异常，见 UI 测试 A01/A03/A04/J04）。
+        return _defaultState;
       }
       final text = await file.readAsString();
       final json = jsonDecode(text);
@@ -91,44 +96,6 @@ class AppStateService {
         showLeft: (json['showLeft'] as bool?) ?? false,
         showRight: (json['showRight'] as bool?) ?? false,
       );
-    } catch (_) {
-      return _defaultState;
-    }
-  }
-
-  /// 从旧位置（Roaming\com.example\echo_hymn\shared_preferences.json）迁移一次
-  AppState _migrateFromLegacy() {
-    try {
-      final roaming = Platform.environment['APPDATA'] ?? '';
-      if (roaming.isEmpty) return _defaultState;
-      final legacy =
-          File('$roaming\\com.example\\echo_hymn\\shared_preferences.json');
-      if (!legacy.existsSync()) return _defaultState;
-      final text = legacy.readAsStringSync();
-      final json = jsonDecode(text);
-      if (json is! Map<String, dynamic>) return _defaultState;
-      // 旧键带 flutter. 前缀
-      String s(String k) => (json['flutter.$k'] as String?) ?? '';
-      final state = AppState(
-        leftTab: s('left_tab'),
-        subcategory: s('subcategory'),
-        playlistName: s('playlist_name'),
-        hymnNumber: s('hymn_number'),
-        audioVersion: s('audio_version'),
-        displayMode: s('display_mode'),
-        playlistIndex: (json['flutter.playlist_index'] as num?)?.toInt() ?? -1,
-      );
-      // 迁移完成后写入新位置
-      saveAll(
-        leftTab: state.leftTab,
-        subcategory: state.subcategory,
-        playlistName: state.playlistName,
-        hymnNumber: state.hymnNumber,
-        audioVersion: state.audioVersion,
-        displayMode: state.displayMode,
-        playlistIndex: state.playlistIndex,
-      );
-      return state;
     } catch (_) {
       return _defaultState;
     }

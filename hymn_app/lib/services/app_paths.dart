@@ -63,13 +63,23 @@ class AppPaths {
   }
 
   /// 从当前目录向上查找 data/ 目录（最多 12 层）
+  ///
+  /// **判据**：只接受「含 `tjc_hymn.db` 的 data/ 目录」——Flutter Windows 构建产物
+  /// 的 `data/` 是引擎资产目录（flutter_assets/icudtl.dat，无数据库），不能当作数据根。
+  ///
+  /// **发布包禁向上**：当前目录名以 `echohymn_win_` 开头（发布包目录）时，数据只允许
+  /// 位于 exe 同级 `data/`，不再向上查找——否则发布包内删除数据库后会向上穿透到
+  /// 仓库根误命中开发旧库（UI 测试 K12/K13）。
   static String? _locateDesktopDataRoot() {
     var dir = Directory.current;
+    final dirName = dir.path.split(Platform.pathSeparator).last;
+    final isBundleDir = dirName.startsWith('echohymn_win_');
     for (var i = 0; i < 12; i++) {
       final candidate = '${dir.path}${Platform.pathSeparator}data';
       if (File('$candidate${Platform.pathSeparator}tjc_hymn.db').existsSync()) {
         return candidate;
       }
+      if (isBundleDir) return null; // 发布包内禁止向上查找
       final parent = dir.parent;
       if (parent.path == dir.path) break;
       dir = parent;

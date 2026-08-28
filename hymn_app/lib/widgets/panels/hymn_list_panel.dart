@@ -216,12 +216,23 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   @override
   void restoreSaved(AppState anchor) {
     final all = repo.getAllHymns();
-    // 优先按播放索引定位；越界/缺失时按诗歌编号兜底
-    var idx = anchor.playlistIndex;
-    if (idx < 0 || idx >= all.length) {
-      if (anchor.hymnNumber.isEmpty) return;
-      idx = all.indexWhere((h) => h.hymnNumber == anchor.hymnNumber);
-      if (idx < 0) return;
+    if (all.isEmpty) return;
+    int? idx;
+    // ① 当前播放歌曲优先：用户最终留下的播放状态最可靠
+    // （修复 G11：切 Tab 重建后面板用旧页码快照定位，导致高亮与播放歌曲错位）
+    final cur = currentHymn;
+    if (cur != null) {
+      final i = all.indexWhere((h) => h.id == cur.id);
+      if (i >= 0) idx = i;
+    }
+    // ② 兜底：播放索引 → 诗歌编号（J06：搜索定位播放后重启按编号恢复）
+    if (idx == null) {
+      idx = anchor.playlistIndex;
+      if (idx < 0 || idx >= all.length) {
+        if (anchor.hymnNumber.isEmpty) return;
+        idx = all.indexWhere((h) => h.hymnNumber == anchor.hymnNumber);
+        if (idx < 0) return;
+      }
     }
     final page = idx ~/ _pageSize;
     if (page != _listPage) {
@@ -230,7 +241,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final local = idx - _listPage * _pageSize;
+      final local = idx! - _listPage * _pageSize;
       scrollToCurrent(_scroll, local);
     });
   }

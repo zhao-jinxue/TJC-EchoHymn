@@ -12,7 +12,24 @@ import 'log_service.dart';
 class SqliteRepository {
   final Database _db;
 
-  SqliteRepository._(this._db);
+  /// 核心表（tjc_hymn / hymn_category）是否存在。
+  ///
+  /// 数据库文件缺失/被删除后由 sqlite3.open 重建的空库没有这些表；
+  /// 此时各查询方法返回空列表（UI 显示空态），而不是抛异常导致初始化失败
+  /// （UI 测试 K12/K13：删库后应显示「暂无分类/暂无诗歌」空态）。
+  final bool hasCoreTables;
+
+  SqliteRepository._(this._db) : hasCoreTables = _probeCoreTables(_db);
+
+  static bool _probeCoreTables(Database db) {
+    try {
+      final rows = db.select(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('tjc_hymn','hymn_category')");
+      return rows.length == 2;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// 打开数据库并确保个人歌单表存在（含旧双表结构自动迁移）
   static Future<SqliteRepository> open() async {
@@ -141,6 +158,7 @@ class SqliteRepository {
 
   /// 按编号排序的全部诗歌
   List<Hymn> getAllHymns() {
+    if (!hasCoreTables) return const [];
     final rows = _db.select(
         'SELECT * FROM tjc_hymn ORDER BY CAST(hymn_number AS INTEGER), hymn_number');
     return rows.map((r) => Hymn.fromDbRow(_rowToMap(r))).toList();
@@ -148,6 +166,7 @@ class SqliteRepository {
 
   /// 按编号或标题搜索（不含作者/作曲，按需求限定范围）
   List<Hymn> searchHymns(String keyword) {
+    if (!hasCoreTables) return const [];
     final kw = keyword.trim();
     if (kw.isEmpty) return getAllHymns();
     final like = '%$kw%';
@@ -169,6 +188,7 @@ class SqliteRepository {
 
   /// 分页加载诗歌列表
   List<Hymn> getHymnsPage(int offset, int limit) {
+    if (!hasCoreTables) return const [];
     final rows = _db.select(
       'SELECT * FROM tjc_hymn ORDER BY CAST(hymn_number AS INTEGER) LIMIT ? OFFSET ?',
       [limit, offset],
@@ -177,6 +197,7 @@ class SqliteRepository {
   }
 
   Hymn? hymnByNumber(String number) {
+    if (!hasCoreTables) return null;
     final rows = _db.select(
       'SELECT * FROM tjc_hymn WHERE hymn_number = ? LIMIT 1',
       [number],
@@ -186,6 +207,7 @@ class SqliteRepository {
   }
 
   Hymn? hymnById(int id) {
+    if (!hasCoreTables) return null;
     final rows = _db.select(
       'SELECT * FROM tjc_hymn WHERE id = ? LIMIT 1',
       [id],
@@ -198,6 +220,7 @@ class SqliteRepository {
 
   /// 全部分类（默认歌单目录）
   List<HymnCategory> getAllCategories() {
+    if (!hasCoreTables) return const [];
     final rows = _db.select('SELECT * FROM hymn_category ORDER BY id');
     return rows.map((r) => HymnCategory.fromDbRow(_rowToMap(r))).toList();
   }
