@@ -34,6 +34,9 @@ class FlutterWindow : public Win32Window {
   // MethodChannel for window size control from Dart.
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_channel_;
+
+  // 最近一次推送给 Dart 的最大化状态（避免 WM_SIZE 频繁重复推送）
+  bool last_maximized_ = false;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

@@ -31,19 +31,25 @@
 | `5433195`（**tag v1.1.0**） | **纯 Dart 简繁转换 + 搜索定位/切歌联动/状态稳定**：弃用 OpenCC FFI（本机 DLL 与 UI 线程不兼容）改用数据库全量字符映射表；搜索框「定位跳转」语义（编号即时定位/标题匹配列表/×保持定位）；切歌联动高亮滚动（避搜索框/标题栏）；state.json 串行写入防损坏；VC 运行库就近打包 |
 | `e4e3875`（**tag v1.2.0**） | **日志系统 + 过时依赖清理**：`LogService` 文本日志（exe 同级 `logs/`，UTF-8 BOM，保留 7 份，全局异常捕获）；移除 `shared_preferences` 依赖；发布包可运行性修复（乱码/闪退） |
 | `b39967f`~`06c61f5`（v1.2.x 窗口重构） | **基座画面 + 抽屉式侧栏 + 等比缩放**：基座画面物理像素 **850×890**；侧栏改为**抽屉式向两侧扩展**（左 350 / 右 600，窗口整体加宽，基座永远居中）；侧栏状态持久化（`showLeft/showRight`）；窗口**等比缩放**（`Transform.scale` 渲染层缩放，不再依赖布局约束）；最大化感知 + resize 后重建消除时序竞态 |
+| `bb5a0e6`（tag v1.2.1） | **四轮 UI 回归测试收尾（2026-08-29~30）**：回归清单纯测试视角化；27 条 NG 分批修复——窗口单实例保护/最小尺寸随侧栏同步、歌词字号随窗口铺满 + 整体 +4、搜索回车与焦点保持、弹窗 Toast 就地/字数计数/重名检查/删除落库、播放条防抖/版本高亮、just_audio 残留清理 |
+| `v1.3.0`（2026-08-30） | **自定义标题栏 + 全局播放快捷键 + 用户手册**：移除系统标题栏（`WS_CAPTION`），Flutter 顶栏自绘「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组，标题区空白处可拖拽窗口、双击最大化；全局快捷键（空格/Ctrl+P 播放暂停、Ctrl/Alt+方向键切歌、Ctrl+↑↓ 音量、Ctrl+M 静音、F1 手册、通用媒体键）；用户手册弹窗（软件介绍 / 操作说明 / 快捷键说明）；`AudioService` 新增音量/静音控制 |
 
 **关键文件**：
 
 - 面板：`hymn_app/lib/widgets/panels/{left_panel_base, hymn_list_panel, default_playlists_panel, my_playlists_panel}.dart`
-- 协调者：`hymn_app/lib/screens/home_screen.dart`
+- 协调者：`hymn_app/lib/screens/home_screen.dart`（含自定义标题栏/窗口按钮组）
+- 全局快捷键：`hymn_app/lib/app.dart`（根 `Focus` 包裹 `MaterialApp` + `kNavigatorKey`）
+- 用户手册弹窗：`hymn_app/lib/widgets/user_manual_dialog.dart`
 - 其他：`widgets/{hymn_display, playlist_dialog}.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
-- 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（MethodChannel `echo_hymn/window` 控制客户区尺寸/居中对齐）
+- 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
 
 ---
 
 ## 二、当前技术栈
 
-- **UI**：Flutter（Material），**基座画面 850×890 物理像素** + 侧栏抽屉式展开（左 **350** / 右 **600**）；顶栏收起按钮 + 底部状态栏；窗口**等比缩放**（`Transform.scale`，最大化铺满不裁切）；最小客户区 850×890
+- **UI**：Flutter（Material），**基座画面 850×890 物理像素** + 侧栏抽屉式展开（左 **350** / 右 **600**）；**自定义标题栏**（v1.3.0 移除系统 `WS_CAPTION`，顶栏自绘「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮 + 标题区拖拽/双击最大化）+ 底部状态栏；窗口**等比缩放**（`Transform.scale`，最大化铺满不裁切）；最小客户区 850×890
+- **操作**：**全局快捷键**（v1.3.0）：空格/Ctrl+P 播放暂停、Ctrl+→ 或 Alt+→ 下一首、Ctrl+← 或 Alt+← 上一首、Ctrl+↑/↓ 音量、Ctrl+M 静音、F1 用户手册、通用媒体键；根 `Focus` 包裹 `MaterialApp`，任意焦点（含弹窗）事件冒泡统一处理；输入框聚焦时空格放行输入
+- **用户手册**：顶栏「？」按钮或 F1 打开（软件介绍 / 操作说明 / 快捷键说明），Esc 或 ✕ 关闭
 - **数据**：SQLite `tjc_hymn.db`（474 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
 - **简繁转换**：**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`，由 `tools/gen_convert_map.py` 从数据库全量字符生成：繁→简 1052 / 简→繁 1025）；**弃用 OpenCC FFI**（本机 opencc.dll 与 UI 线程不兼容，导致白屏/崩溃）
 - **音频播放**：`audioplayers` 6.8.1 → Windows Media Foundation；`DeviceFileSource(abs)` 直读中文路径
@@ -80,6 +86,14 @@
 4. **时序竞态消除**：native 窗口 resize 完成后强制重建一次（`setState`），`LayoutBuilder` 拿最新 constraints 重算 scale；最大化感知（`IsZoomed` 时不改窗口尺寸，只重算画布比例）
 5. **日志系统**：`LogService` 文本日志落地 `exe` 同级 `logs/`（UTF-8 BOM 防乱码，保留 7 份），`FlutterError.onError` + `PlatformDispatcher.onError` 全局捕获，错误不崩溃
 
+### 2026-08-30 会话追加决策（v1.3.0 自定义标题栏 + 快捷键 + 用户手册）
+
+1. **自定义标题栏方案**：`CreateWindow` 创建后 `style &= ~WS_CAPTION`（保留 `WS_THICKFRAME`/`WS_MINIMIZEBOX`/`WS_MAXIMIZEBOX`/`WS_SYSMENU`），窗口右上角改为 Flutter 顶栏自绘「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组；拖拽用 `ReleaseCapture + SendMessage(WM_NCLBUTTONDOWN, HTCAPTION)` 进入系统标题栏拖拽循环（最大化拖拽自动还原）；`SetMinClientSize` 改用**实际窗口样式**计算外框（无标题时不含标题高度），保证最小尺寸 = 基座 850×890 客户区 + 侧栏宽
+2. **最大化状态同步**：native `WM_SIZE` 检测 `IsZoomed` 变化后经 `echo_hymn/window` 通道 `onWindowMaximizedChanged` 推送给 Dart（`last_maximized_` 去重），切换「最大化/还原」按钮图标，覆盖 Win+↑、拖到屏幕顶部等系统操作
+3. **全局快捷键**：`app.dart` 用根 `Focus(autofocus, onKeyEvent)` 包裹 `MaterialApp`（`kNavigatorKey` 供 F1 弹窗），任意焦点（含弹窗路由）的事件沿 Focus 链冒泡统一处理；**切换类动作**（播放/暂停、切歌、静音）忽略 `KeyRepeat`，**音量允许长按**连续调节；**输入框聚焦时空格放行**（`_isTextInputFocused` 检测 `EditableText` 祖先），避免搜索/命名时误触发
+4. **音量/静音**：`AudioService` 新增 `_volume/_muted` 与 `changeVolume/toggleMute`（快捷键用，不持久化）；`AudioService.instance` 静态引用供全局快捷键调用（dispose 清空）
+5. **用户手册**：`widgets/user_manual_dialog.dart`（软件介绍 / 操作说明 / 快捷键说明），顶栏「？」按钮或 F1 打开、Esc/✕ 关闭；快捷键表与 `app.dart` 实现共用 `kShortcutList` 常量保持一致
+
 ---
 
 ## 四、剩余/遗留任务清单
@@ -93,9 +107,10 @@
 7. ✅ 左栏三栏目基类/子类重构
 8. ✅ **重构后逐项验证（v1.1.0 完成）**：搜索定位跳转、切歌联动高亮滚动、个人歌单编辑后播放顺序同步、状态恢复（含搜索结果由编号定位）
 9. ✅ **v1.2.x 窗口重构**：基座画面 850×890、抽屉式侧栏、等比缩放、最大化/竞态处理、日志系统
-10. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-11. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
-12. ✅ **just_audio 残留清理（2026-08-28）**：核实全部发布产物与构建目录已无 `just_audio_windows_plugin.dll`；移除 `windows/CMakeLists.txt` 过时 coroutine 宏与注释、删除无调用方的一次性脚本 `tools/patch_cmake.py`、同步修正 docs 过时表述
+10. ✅ **v1.2.1 四轮 UI 回归测试（2026-08-29~30）**：27 条 NG 分批修复并复测归档（窗口/歌词/搜索/弹窗/播放条）
+11. ✅ **v1.3.0 自定义标题栏 + 全局快捷键 + 用户手册（2026-08-30）**：移除系统标题栏，Flutter 自绘窗口按钮组（用户手册在最小化左侧）；通用播放快捷键 + 媒体键；用户手册弹窗（软件介绍/操作说明/快捷键说明）
+12. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
+13. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
 
 ---
 

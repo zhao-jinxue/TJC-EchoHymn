@@ -69,6 +69,29 @@ bool FlutterWindow::OnCreate() {
                               static_cast<unsigned int>(left_panel),
                               static_cast<unsigned int>(right_panel));
           result->Success();
+        } else if (method == "minimize") {
+          // 自定义标题栏最小化按钮（等价系统最小化，音频播放不中断）
+          ::ShowWindow(this->GetHandle(), SW_MINIMIZE);
+          result->Success();
+        } else if (method == "maximizeToggle") {
+          // 自定义标题栏最大化/还原按钮（拖到屏幕顶部/ Win+↑ 等同理）
+          HWND hwnd = this->GetHandle();
+          if (::IsZoomed(hwnd)) {
+            ::ShowWindow(hwnd, SW_RESTORE);
+          } else {
+            ::ShowWindow(hwnd, SW_MAXIMIZE);
+          }
+          result->Success();
+        } else if (method == "close") {
+          // 自定义标题栏关闭按钮（走 WM_CLOSE 正常关闭流程，状态落盘）
+          ::PostMessage(this->GetHandle(), WM_CLOSE, 0, 0);
+          result->Success();
+        } else if (method == "startWindowDrag") {
+          // 让系统进入标题栏拖拽循环：窗口跟随鼠标移动；
+          // 最大化状态下拖拽会自动还原为浮动窗口（系统默认行为）。
+          ::ReleaseCapture();
+          ::SendMessage(this->GetHandle(), WM_NCLBUTTONDOWN, HTCAPTION, 0);
+          result->Success();
         } else {
           result->NotImplemented();
         }
@@ -112,6 +135,20 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
+    case WM_SIZE: {
+      // 最大化/还原状态变化时通知 Dart（切换最大化按钮图标）。
+      // 处理完仍会落入 Win32Window::MessageHandler 走默认子窗口铺满逻辑。
+      const bool zoomed = ::IsZoomed(hwnd) != FALSE;
+      if (zoomed != last_maximized_) {
+        last_maximized_ = zoomed;
+        if (window_channel_) {
+          window_channel_->InvokeMethod(
+              "onWindowMaximizedChanged",
+              std::make_unique<flutter::EncodableValue>(zoomed));
+        }
+      }
+      break;
+    }
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);

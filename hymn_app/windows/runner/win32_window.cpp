@@ -144,6 +144,18 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  // 自定义标题栏：移除系统标题栏（WS_CAPTION），窗口右上角改为
+  // Flutter 自绘的「用户手册 / 最小化 / 最大化 / 关闭」按钮组。
+  // 保留 WS_THICKFRAME / WS_MINIMIZEBOX / WS_MAXIMIZEBOX / WS_SYSMENU：
+  //  - WS_THICKFRAME  → 保留 8px 隐形缩放边框与边缘拖拽 resize
+  //  - WS_MINIMIZEBOX/WS_MAXIMIZEBOX → 允许任务栏最小化 / Win+方向键等系统操作
+  //  - 拖拽到屏幕顶部仍可触发 Windows 最大化吸附
+  LONG style = GetWindowLong(window, GWL_STYLE);
+  style &= ~WS_CAPTION;
+  SetWindowLong(window, GWL_STYLE, style);
+  SetWindowPos(window, nullptr, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
   UpdateTheme(window);
 
   return OnCreate();
@@ -310,8 +322,11 @@ void Win32Window::SetClientSize(unsigned int width,
 }
 
 void Win32Window::SetMinClientSize(unsigned int width, unsigned int height) {
-  const LONG style = WS_OVERLAPPEDWINDOW;
-  const LONG ex_style = 0L;
+  if (!window_handle_) return;
+  // 用实际窗口样式计算外框尺寸（无标题栏时不含标题高度），
+  // 保证「最小窗口」恰好等于 基座 850×890 客户区 + 已展开侧栏宽。
+  const LONG style = GetWindowLong(window_handle_, GWL_STYLE);
+  const LONG ex_style = GetWindowLong(window_handle_, GWL_EXSTYLE);
   RECT rc = {0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
   AdjustWindowRectEx(&rc, style, FALSE, ex_style);
   min_client_width_ = rc.right - rc.left;

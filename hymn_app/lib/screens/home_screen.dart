@@ -16,6 +16,7 @@ import '../widgets/panels/default_playlists_panel.dart';
 import '../widgets/panels/hymn_list_panel.dart';
 import '../widgets/panels/left_panel_base.dart';
 import '../widgets/panels/my_playlists_panel.dart';
+import '../widgets/user_manual_dialog.dart';
 
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
@@ -55,6 +56,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showLeft = false;
   bool _showRight = false;
 
+  // 窗口是否最大化（自定义标题栏「最大化/还原」按钮图标切换，native 推送）
+  bool _windowMaximized = false;
+
   // ---- 左栏视图状态 ----
   LeftTab _leftTab = LeftTab.hymnList;
   int _restoredPlaylistIndex = -1;
@@ -78,6 +82,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     LogService.instance.info(LogTag.ui, 'HomeScreen 初始化（initState）');
     WidgetsBinding.instance.addObserver(this);
+    // 接收 native 推送的窗口最大化/还原状态（切换自定义标题栏按钮图标）
+    _windowChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onWindowMaximizedChanged') {
+        final zoomed = call.arguments is bool && call.arguments as bool;
+        if (mounted && zoomed != _windowMaximized) {
+          setState(() => _windowMaximized = zoomed);
+        }
+      }
+    });
     _init();
   }
 
@@ -312,59 +325,104 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ---------- 顶栏 ----------
+  // ---------- 顶栏（自定义标题栏） ----------
+  // 原生标题栏已移除（win32_window.cpp 去掉 WS_CAPTION），本顶栏即窗口标题栏：
+  //  - 标题区空白处：按住拖动窗口 / 双击最大化·还原
+  //  - 右侧按钮组：侧栏开关 + 用户手册 + 最小化 + 最大化/还原 + 关闭
   Widget _buildTopBar() {
     return Container(
       height: 40,
       color: AppColors.cardBg,
-      child: Row(
+      child: Stack(
         children: [
-          SizedBox(
-            width: 60,
-            height: 30,
-            child: _toggleButton(
-              icon: _showLeft ? Icons.chevron_right : Icons.chevron_left,
-              tooltip: _showLeft ? '收起左侧栏目' : '展开左侧栏目',
-              active: !_showLeft,
-              onTap: () {
-                LogService.instance.info(
-                  LogTag.action,
-                  _showLeft ? '收起左侧栏目' : '展开左侧栏目',
-                );
-                setState(() => _showLeft = !_showLeft);
-                _syncWindowSize();
-                _saveState();
-              },
-            ),
-          ),
-          const Expanded(
-            child: Center(
-              child: Text(
-                'EchoHymn · 聆听赞美诗',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+          // 整条顶栏空白区 = 拖拽/双击区域（下层，按钮在上层可正常点击）
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onDoubleTap: _toggleMaximize,
+              onPanStart: (_) => _startWindowDrag(),
+              child: const Center(
+                child: Text(
+                  'EchoHymn · 聆听赞美诗',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ),
           ),
-          SizedBox(
-            width: 60,
-            height: 30,
-            child: _toggleButton(
-              icon: _showRight ? Icons.chevron_left : Icons.chevron_right,
-              tooltip: _showRight ? '收起右侧栏目' : '展开右侧栏目',
-              active: !_showRight,
-              onTap: () {
-                LogService.instance.info(
-                  LogTag.action,
-                  _showRight ? '收起右侧栏目' : '展开右侧栏目',
-                );
-                setState(() => _showRight = !_showRight);
-                _syncWindowSize();
-                _saveState();
-              },
+          // 左侧：左栏展开/收起
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: 60,
+              height: 30,
+              child: _toggleButton(
+                icon: _showLeft ? Icons.chevron_right : Icons.chevron_left,
+                tooltip: _showLeft ? '收起左侧栏目' : '展开左侧栏目',
+                active: !_showLeft,
+                onTap: () {
+                  LogService.instance.info(
+                    LogTag.action,
+                    _showLeft ? '收起左侧栏目' : '展开左侧栏目',
+                  );
+                  setState(() => _showLeft = !_showLeft);
+                  _syncWindowSize();
+                  _saveState();
+                },
+              ),
+            ),
+          ),
+          // 右侧：右栏展开/收起 + 窗口控制按钮组（用户手册在最小化左侧）
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 60,
+                  height: 30,
+                  child: _toggleButton(
+                    icon: _showRight ? Icons.chevron_left : Icons.chevron_right,
+                    tooltip: _showRight ? '收起右侧栏目' : '展开右侧栏目',
+                    active: !_showRight,
+                    onTap: () {
+                      LogService.instance.info(
+                        LogTag.action,
+                        _showRight ? '收起右侧栏目' : '展开右侧栏目',
+                      );
+                      setState(() => _showRight = !_showRight);
+                      _syncWindowSize();
+                      _saveState();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 4),
+                _WindowButton(
+                  icon: Icons.help_outline,
+                  tooltip: '用户手册（F1）',
+                  onTap: _showManual,
+                ),
+                _WindowButton(
+                  icon: Icons.minimize,
+                  tooltip: '最小化',
+                  onTap: _minimizeWindow,
+                ),
+                _WindowButton(
+                  icon:
+                      _windowMaximized ? Icons.filter_none : Icons.crop_square,
+                  tooltip: _windowMaximized ? '还原' : '最大化',
+                  onTap: _toggleMaximize,
+                ),
+                _WindowButton(
+                  icon: Icons.close,
+                  tooltip: '关闭',
+                  danger: true,
+                  onTap: _closeWindow,
+                ),
+              ],
             ),
           ),
         ],
@@ -399,6 +457,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  // ---------- 窗口控制（自定义标题栏，native 通道） ----------
+
+  /// 打开用户手册弹窗
+  void _showManual() {
+    LogService.instance.info(LogTag.action, '打开用户手册');
+    UserManualDialog.show(context);
+  }
+
+  /// 最小化窗口（等价系统最小化，播放不中断）
+  Future<void> _minimizeWindow() async {
+    LogService.instance.info(LogTag.action, '窗口最小化');
+    try {
+      await _windowChannel.invokeMethod<void>('minimize');
+    } catch (_) {
+      // 非 Windows 平台无此通道，忽略
+    }
+  }
+
+  /// 最大化 / 还原窗口
+  Future<void> _toggleMaximize() async {
+    LogService.instance
+        .info(LogTag.action, _windowMaximized ? '窗口还原' : '窗口最大化');
+    try {
+      await _windowChannel.invokeMethod<void>('maximizeToggle');
+    } catch (_) {
+      // 非 Windows 平台无此通道，忽略
+    }
+  }
+
+  /// 关闭窗口（走 WM_CLOSE 正常关闭，状态落盘）
+  Future<void> _closeWindow() async {
+    LogService.instance.info(LogTag.action, '点击关闭按钮');
+    try {
+      await _windowChannel.invokeMethod<void>('close');
+    } catch (_) {
+      // 非 Windows 平台无此通道，忽略
+    }
+  }
+
+  /// 标题栏拖拽：native 进入系统标题栏拖拽循环（ReleaseCapture + HTCAPTION）
+  Future<void> _startWindowDrag() async {
+    try {
+      await _windowChannel.invokeMethod<void>('startWindowDrag');
+    } catch (_) {
+      // 非 Windows 平台无此通道，忽略
+    }
   }
 
   // ---------- 主体 ----------
@@ -667,6 +773,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 顶栏窗口控制按钮（用户手册 / 最小化 / 最大化 / 关闭）
+///
+/// 风格仿系统窗口按钮：无边框、悬停变灰；关闭按钮悬停变红白字。
+class _WindowButton extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool danger;
+
+  const _WindowButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  @override
+  State<_WindowButton> createState() => _WindowButtonState();
+}
+
+class _WindowButtonState extends State<_WindowButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: SizedBox(
+        width: 42,
+        height: 40,
+        child: Tooltip(
+          message: widget.tooltip,
+          child: InkWell(
+            onTap: widget.onTap,
+            child: Container(
+              color: _hover
+                  ? (widget.danger ? const Color(0xFFE81123) : const Color(0xFFE5E6EB))
+                  : Colors.transparent,
+              child: Icon(
+                widget.icon,
+                size: 16,
+                color: _hover && widget.danger
+                    ? Colors.white
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

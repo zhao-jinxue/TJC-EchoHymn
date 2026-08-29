@@ -15,6 +15,10 @@ enum PlayerStatus { idle, loading, playing, paused, error }
 /// 根治中文/繁体路径经 `Uri.file` 编码导致的「Loading interrupted」问题。
 /// 走 Windows Media Foundation 系统解码器（m4a/mp3 原生支持），零外部下载。
 class AudioService {
+  /// 全局唯一实例引用（供全局快捷键等场景使用；由 HomeScreen 创建后赋值，
+  /// dispose 时清空）。与 LogService.instance 同一风格。
+  static AudioService? instance;
+
   final AudioPlayer _player = AudioPlayer();
   final StreamController<PlayerStatus> _statusCtrl =
       StreamController<PlayerStatus>.broadcast();
@@ -29,6 +33,10 @@ class AudioService {
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
+  // 音量 / 静音（快捷键控制，默认 100%）
+  double _volume = 1.0;
+  bool _muted = false;
+
   /// 上一次「上一首/下一首」切换时间（K17 快速连点防抖）
   DateTime _lastSwitchAt = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -40,6 +48,7 @@ class AudioService {
   int _currentIndex = -1;
 
   AudioService() {
+    instance = this;
     LogService.instance
         .info(LogTag.lib, '音频播放库加载完成（audioplayers / Windows Media Foundation）');
     _init();
@@ -274,8 +283,27 @@ class AudioService {
     await _player.seek(position);
   }
 
+  /// 音量 / 静音状态（快捷键控制用）
+  double get volume => _volume;
+  bool get muted => _muted;
+
+  /// 绝对设置音量（0.0~1.0）；静音时保持记忆音量
   Future<void> setVolume(double volume) async {
-    await _player.setVolume(volume.clamp(0.0, 1.0));
+    _volume = volume.clamp(0.0, 1.0);
+    await _player.setVolume(_muted ? 0 : _volume);
+    LogService.instance
+        .info(LogTag.play, '音量设置为 ${(_volume * 100).round()}%');
+  }
+
+  /// 相对调节音量（快捷键 Ctrl+↑/↓ 使用）
+  Future<void> changeVolume(double delta) => setVolume(_volume + delta);
+
+  /// 静音 / 取消静音切换（快捷键 Ctrl+M 使用）
+  Future<void> toggleMute() async {
+    _muted = !_muted;
+    await _player.setVolume(_muted ? 0 : _volume);
+    LogService.instance.info(LogTag.play,
+        _muted ? '静音开启' : '静音取消（音量 ${(_volume * 100).round()}%）');
   }
 
   Future<void> stop() async {
@@ -295,6 +323,7 @@ class AudioService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    if (instance == this) instance = null;
     await _player.dispose();
     await _statusCtrl.close();
     await _positionCtrl.close();
