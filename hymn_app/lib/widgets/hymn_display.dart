@@ -288,9 +288,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
           // K10c：字号完全由窗口尺寸决定（maxByH/maxByW）。
           // 不再用固定 baseBody=18 参与最小值运算——否则窗口放大后
           // 字号被 18 卡住、无法随窗口增大铺满歌词区。
-          final bodySize = [maxByH, maxByW]
-              .reduce((a, b) => a < b ? a : b)
-              .clamp(12.0, 100.0);
+          // 优化（2026-08-28）：整体字号 +4，改善最小尺寸界面的可读性。
+          final bodySize =
+              ([maxByH, maxByW].reduce((a, b) => a < b ? a : b) + 4.0)
+                  .clamp(12.0, 100.0);
           final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
           final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
 
