@@ -270,12 +270,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
       color: AppColors.lyricsBg,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // 以「铺满显示区」为目标计算字号：先用基准字号测算内容高度，再按比例缩放铺满
+          // 以「铺满显示区」为目标计算字号：用内容行数估算高度，再按比例放大字号
           const pad = 48.0; // 上下留白 24+24
-          double baseBody = 18.0;
-          // 粗估每段高度：标题 + 节标签 × N + 歌词 × N
+          // 粗估总行数：标题 + 「第 N 首」 + 每节（节标签 + 歌词行）
           final verseTexts = verses.where((v) => v.trim().isNotEmpty).toList();
-          int lineCount = 0;
+          int lineCount = 2; // 标题 + 「第 N 首」
           for (final v in verseTexts) {
             final lines = v.split('\n').length;
             lineCount += lines + 1; // + 节标签
@@ -286,56 +285,68 @@ class _HymnDisplayState extends State<HymnDisplay> {
           // 行高与字号关系：行距 1.8 → 每行约 2.0 倍字号
           final maxByH = lineCount > 0 ? availH / (lineCount * 2.0) : 40.0;
           final maxByW = availW / 14.0; // 每行约 14 个汉字
-          final bodySize = [baseBody, maxByH, maxByW]
+          // K10c：字号完全由窗口尺寸决定（maxByH/maxByW）。
+          // 不再用固定 baseBody=18 参与最小值运算——否则窗口放大后
+          // 字号被 18 卡住、无法随窗口增大铺满歌词区。
+          final bodySize = [maxByH, maxByW]
               .reduce((a, b) => a < b ? a : b)
-              .clamp(12.0, 100.0); // K10c：窗口放大时字号继续增大铺满（不再 30 封顶）
+              .clamp(12.0, 100.0);
           final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
           final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  ChineseConvertService.instance.toSimplified(hymn.title),
-                  style: TextStyle(
-                    fontSize: titleSize,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+            // K10c：内容垂直铺满——不足显示区高度时用 spaceBetween 均匀分布
+            // 各节（标题贴顶、结尾贴底），避免「底部大片空白」；超出时正常滚动
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    (constraints.maxHeight - pad).clamp(0.0, double.infinity),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    ChineseConvertService.instance.toSimplified(hymn.title),
+                    style: TextStyle(
+                      fontSize: titleSize,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '第 ${hymn.hymnNumber} 首',
-                  style: TextStyle(
-                      fontSize: labelSize, color: AppColors.textTertiary),
-                ),
-                const SizedBox(height: 24),
-                for (var i = 0; i < verses.length; i++) ...[
-                  if (verses[i].trim().isNotEmpty) ...[
-                    Text(
-                      '第${i + 1}节',
-                      style: TextStyle(
-                        fontSize: labelSize,
-                        color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(height: 4),
+                  Text(
+                    '第 ${hymn.hymnNumber} 首',
+                    style: TextStyle(
+                        fontSize: labelSize, color: AppColors.textTertiary),
+                  ),
+                  const SizedBox(height: 24),
+                  for (var i = 0; i < verses.length; i++) ...[
+                    if (verses[i].trim().isNotEmpty) ...[
+                      Text(
+                        '第${i + 1}节',
+                        style: TextStyle(
+                          fontSize: labelSize,
+                          color: AppColors.textTertiary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      ChineseConvertService.instance.toSimplified(verses[i]),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: bodySize,
-                        height: 1.8,
-                        color: AppColors.textPrimary,
+                      const SizedBox(height: 8),
+                      Text(
+                        ChineseConvertService.instance.toSimplified(verses[i]),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: bodySize,
+                          height: 1.8,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
+                    ],
                   ],
                 ],
-              ],
+              ),
             ),
           );
         },
