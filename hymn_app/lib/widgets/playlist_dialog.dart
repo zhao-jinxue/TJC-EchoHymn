@@ -39,6 +39,9 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   final GlobalKey<ScaffoldMessengerState> _messengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  /// Toast 是否正在显示（K20~K23 快速重复触发去重）
+  bool _toastShowing = false;
+
   /// 歌单名称（弹窗关闭前暂存在内存，提交时才写库）
   String _playlistName = '';
 
@@ -385,13 +388,18 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   }
 
   void _showToast(String msg) {
-    _messengerKey.currentState?.showSnackBar(
+    final ms = _messengerKey.currentState;
+    if (ms == null) return;
+    // K20~K23：已有显示中的 Toast 时忽略新请求（快速重复触发只弹一次）
+    if (_toastShowing) return;
+    _toastShowing = true;
+    ms.showSnackBar(
       SnackBar(
         content: Text(msg),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
-    );
+    ).closed.whenComplete(() => _toastShowing = false);
   }
 }
 

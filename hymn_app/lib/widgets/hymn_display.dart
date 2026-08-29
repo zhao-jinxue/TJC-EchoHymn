@@ -288,7 +288,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
           final maxByW = availW / 14.0; // 每行约 14 个汉字
           final bodySize = [baseBody, maxByH, maxByW]
               .reduce((a, b) => a < b ? a : b)
-              .clamp(14.0, 30.0);
+              .clamp(12.0, 100.0); // K10c：窗口放大时字号继续增大铺满（不再 30 封顶）
           final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
           final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
 

@@ -49,10 +49,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(L"echo_hymn", origin, size)) {
     return EXIT_FAILURE;
   }
-  // 客户区精确设为 850×890 物理像素（不受系统 DPI 缩放影响）
+  // 客户区精确设为 850×890 物理像素（不受系统 DPI 缩放影响）。
+  // 注意：不要再单独调用 SetMinClientSize(850,890)——
+  // SetClientSize 内部已设置最小客户区；若此处再显式设置一次，
+  // 其执行时序可能在 Dart 恢复侧栏展开（setClientSize）之后，
+  // 把已随展开同步更新的最小尺寸覆盖回基座尺寸（UI 测试 K10b）。
   window.SetClientSize(850, 890);
-  // 最小客户区同为 850×890
-  window.SetMinClientSize(850, 890);
   // 窗口居中显示在主屏工作区（上下左右均居中）
   {
     HWND hwnd = window.GetHandle();

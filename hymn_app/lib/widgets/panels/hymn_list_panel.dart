@@ -31,6 +31,9 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   static const int _pageSize = 35;
   final ScrollController _scroll = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
+
+  /// 搜索框焦点：第一次回车搜索后保持焦点，使第二次回车能继续触发（K11b/K11c）
+  final FocusNode _searchFocus = FocusNode();
   int _listPage = 0;
 
   /// 标题搜索匹配结果（非 null 时列表区显示匹配列表供点击选择）
@@ -43,6 +46,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   void dispose() {
     _scroll.dispose();
     _searchCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -206,9 +210,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
       LogService.instance.info(LogTag.action, '搜索无匹配: $kw');
       setState(() => _titleResults = const []);
       _showSearchToast('未找到相关诗歌：$kw');
-      return;
-    }
-    if (int.tryParse(kw) != null) {
+    } else if (int.tryParse(kw) != null) {
       // 编号：定位高亮（不播放，第二次回车才播放）
       LogService.instance.info(
         LogTag.action,
@@ -226,6 +228,10 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
       );
       setState(() => _titleResults = matches);
     }
+    // K11b/K11c：第一次回车后保持搜索框焦点，使第二次回车仍能触发 onSubmitted 播放
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
   }
 
   void _showSearchToast(String msg) {
@@ -306,6 +312,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
       padding: const EdgeInsets.all(8),
       child: TextField(
         controller: _searchCtrl,
+        focusNode: _searchFocus,
         decoration: InputDecoration(
           hintText: '搜索编号/标题',
           prefixIcon: const Icon(Icons.search, size: 18),
