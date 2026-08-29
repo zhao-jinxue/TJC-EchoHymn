@@ -24,7 +24,8 @@ class AudioService {
       StreamController<Duration>.broadcast();
 
   Hymn? _currentHymn;
-  String _currentAudioVersion = '鋼琴版';
+  String _currentAudioVersion = '鋼琴版'; // 记忆版本（用户偏好，切歌选版本用）
+  String _actualAudioVersion = '鋼琴版'; // 实际播放版本（UI 高亮用，含降级场景）
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
@@ -82,7 +83,13 @@ class AudioService {
   Stream<Duration> get durationStream => _durationCtrl.stream;
 
   Hymn? get currentHymn => _currentHymn;
-  String get currentAudioVersion => _currentAudioVersion;
+
+  /// 当前**实际播放**的音频版本（UI 版本栏高亮用；降级场景显示实际版本，C14）
+  String get currentAudioVersion => _actualAudioVersion;
+
+  /// 用户**记忆**的音频版本（切歌选版本用；降级不覆盖记忆）
+  String get preferredAudioVersion => _currentAudioVersion;
+
   int get currentIndex => _currentIndex;
   bool get isPlaying => _player.state == PlayerState.playing;
 
@@ -109,7 +116,10 @@ class AudioService {
   Future<void> loadHymn(Hymn hymn, {int? index, String? version}) async {
     _currentHymn = hymn;
     if (index != null) _currentIndex = index;
-    if (version != null) _currentAudioVersion = version;
+    if (version != null) {
+      _currentAudioVersion = version;
+      _actualAudioVersion = version;
+    }
     onCurrentChanged?.call();
     await _player.stop(); // 停止旧源，确保进度归零
     _emitStatus(PlayerStatus.idle);
@@ -127,15 +137,18 @@ class AudioService {
     onCurrentChanged?.call();
 
     // 选择音频版本：
-    // - 请求/记忆版本可用 → 使用并记忆
+    // - 请求/记忆版本可用 → 使用并记忆（用户显式切换或记忆版本可用）
     // - 当前歌无该版本 → 临时用第一个可用版本（不覆盖记忆版本）
     //   （C14：记忆「人声版」播放中遇到无人声版歌自动降级钢琴，
     //    再遇到有人声版歌时仍能用记忆版本人声版播放）
+    // 实际播放版本始终记录在 _actualAudioVersion，供 UI 高亮（含降级场景）。
     var audioVersion = version ?? _currentAudioVersion;
     if (hymn.audioVersions.containsKey(audioVersion)) {
       _currentAudioVersion = audioVersion;
+      _actualAudioVersion = audioVersion;
     } else if (hymn.audioVersionList.isNotEmpty) {
       audioVersion = hymn.audioVersionList.first;
+      _actualAudioVersion = audioVersion;
     }
 
     final rel = hymn.audioVersions[audioVersion];

@@ -298,44 +298,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // K10：解除等比缩放限制（不再 Transform.scale 锁定 850:890 长宽比）。
+    // 内容直接随窗口长宽铺满——放大时窗口多大内容多大，无顶部/底部空白；
+    // 最小尺寸由 native WM_GETMINMAXINFO（SetMinClientSize）保证。
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // 内容固定逻辑尺寸 = 基座 850×890 + 已展开侧栏宽
-          final dpr = MediaQuery.devicePixelRatioOf(context);
-          final contentW = (kBaseWindowWidth +
-                  (_showLeft ? kLeftPanelWidth : 0) +
-                  (_showRight ? kRightPanelWidth : 0)) /
-              dpr;
-          final contentH = kBaseWindowHeight / dpr;
-          // 等比缩放比例 = 窗口客户区 / 内容基准尺寸（contain，不裁切不变形）
-          final scale = constraints.maxWidth > 0 && constraints.maxHeight > 0
-              ? (constraints.maxWidth / contentW <
-                      constraints.maxHeight / contentH
-                  ? constraints.maxWidth / contentW
-                  : constraints.maxHeight / contentH)
-              : 1.0;
-          // Align 撑满窗口布局，child 围绕自身中心缩放并对准窗口中心：
-          // 最大化/缩放窗口时整棵树成比例放大，内容不再固定在左上角。
-          return Align(
-            alignment: Alignment.center,
-            child: Transform.scale(
-              scale: scale,
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: contentW,
-                height: contentH,
-                child: Column(
-                  children: [
-                    _buildTopBar(),
-                    Expanded(child: _buildBody()),
-                    _buildStatusBar(),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+      body: Column(
+        children: [
+          _buildTopBar(),
+          Expanded(child: _buildBody()),
+          _buildStatusBar(),
+        ],
       ),
     );
   }
@@ -440,9 +412,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final repo = _repo!;
     final audio = _audio!;
-    // 基座歌词区永远保持 850 物理宽（对应逻辑 850/dpr），
-    // 侧栏展开时各占 350/600 物理宽；外层 FittedBox 负责窗口等比缩放。
-    final baseWidth = kBaseWindowWidth / MediaQuery.devicePixelRatioOf(context);
+    // K10：歌词区不再固定 850 逻辑宽，改 Expanded 填满剩余空间——
+    // 窗口放大时歌词区随之变宽变高（配合 HymnDisplay 的 LayoutBuilder 自适应字号）。
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -450,8 +421,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _buildLeftPanel(repo, audio),
           const VerticalDivider(width: 1, color: AppColors.divider),
         ],
-        SizedBox(
-          width: baseWidth,
+        Expanded(
           child: HymnDisplay(
             audio: audio,
             initialMode: _currentDisplayMode,

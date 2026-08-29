@@ -36,6 +36,9 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   /// 标题搜索匹配结果（非 null 时列表区显示匹配列表供点击选择）
   List<Hymn>? _titleResults;
 
+  /// 已完成的搜索关键字（第一次回车后设置；第二次回车播放，输入变化重置）
+  String? _activeSearchKw;
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -154,41 +157,86 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   }
 
   void _onSearchChanged(String v) {
-    // 输入变化不再即时搜索（C03：back 键删除不应触发定位 / K11：回车才搜索），
-    // 仅当输入被清空（back 删空 / × 清除）时回到分页列表，且保持当前定位结果。
-    if (v.trim().isEmpty) {
-      setState(() => _titleResults = null);
+    // 输入变化不再即时搜索（C03/K11）：只做状态重置，等回车触发搜索。
+    final kw = v.trim();
+    if (kw.isEmpty) {
+      // 输入清空（back 删空 / × 清除）：回到分页列表，保持当前定位
+      setState(() {
+        _titleResults = null;
+        _activeSearchKw = null;
+      });
+    } else if (_activeSearchKw != null && kw != _activeSearchKw) {
+      // 已搜索后修改输入：重置已搜索状态，需重新回车
+      _activeSearchKw = null;
     }
   }
 
   void _onSearchSubmitted(String v) {
     final kw = v.trim();
     if (kw.isEmpty) return;
-    final target = _findByNumber(kw) ?? _findByTitle(kw);
+    // 第一次回车：结束输入并开始搜索（只搜索/定位，不播放）
+    if (_activeSearchKw == null) {
+      _activeSearchKw = kw;
+      _performSearch(kw);
+      return;
+    }
+    // 第二次回车：播放搜索结果（标题列表第一首，或编号定位的歌曲）
+    final target = (_titleResults != null && _titleResults!.isNotEmpty)
+        ? _titleResults!.first
+        : _findByNumber(kw) ?? _findByTitle(kw);
     if (target == null) {
-      // K11：无匹配时提示空态，不崩溃、保持原位
-      LogService.instance.info(LogTag.action, '搜索提交无匹配: $kw');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('未找到相关诗歌：$kw'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      _showSearchToast('未找到相关诗歌：$kw');
       return;
     }
     final all = repo.getAllHymns();
     final idx = all.indexWhere((h) => h.id == target.id);
     LogService.instance.info(
       LogTag.action,
-      '搜索回车定位并播放: $kw',
+      '搜索回车播放: $kw',
       detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
     );
     _locateTo(target);
-    // 回车 = 定位 + 播放
     playHymn(target, idx, all);
+  }
+
+  /// 执行搜索（第一次回车）：编号 → 定位高亮；标题 → 显示匹配列表；无匹配 → Toast
+  void _performSearch(String kw) {
+    final target = _findByNumber(kw) ?? _findByTitle(kw);
+    if (target == null) {
+      LogService.instance.info(LogTag.action, '搜索无匹配: $kw');
+      setState(() => _titleResults = const []);
+      _showSearchToast('未找到相关诗歌：$kw');
+      return;
+    }
+    if (int.tryParse(kw) != null) {
+      // 编号：定位高亮（不播放，第二次回车才播放）
+      LogService.instance.info(
+        LogTag.action,
+        '搜索编号: $kw',
+        detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
+      );
+      _locateTo(target);
+    } else {
+      // 标题：显示匹配列表供点击/二次回车播放
+      final matches = _titleMatches(kw);
+      LogService.instance.info(
+        LogTag.action,
+        '搜索标题: $kw',
+        detail: '匹配 ${matches.length} 首',
+      );
+      setState(() => _titleResults = matches);
+    }
+  }
+
+  void _showSearchToast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   // ================= 切歌联动 / 恢复 =================
@@ -230,7 +278,8 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final local = idx! - _listPage * _pageSize;
-      scrollToCurrent(_scroll, local);
+      // G11：避开顶部搜索栏（56px），否则高亮行被搜索栏遮挡
+      scrollCurrentIntoView(_scroll, local, headerHeight: 56);
     });
   }
 

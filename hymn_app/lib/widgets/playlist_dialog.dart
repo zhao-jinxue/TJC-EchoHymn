@@ -34,6 +34,11 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   final _nameCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
 
+  /// 弹窗内 ScaffoldMessenger 的 key：Toast 就地显示在弹窗中（I03/I05/I08）。
+  /// 不能用 State.context 向上找——它会命中根 ScaffoldMessenger 显示在主界面底部。
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   /// 歌单名称（弹窗关闭前暂存在内存，提交时才写库）
   String _playlistName = '';
 
@@ -64,6 +69,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldMessenger(
+      key: _messengerKey,
       // 弹窗内嵌 ScaffoldMessenger：Toast（SnackBar）显示在弹窗中，
       // 而不是主界面底部（修复 I03/I05/I08）
       child: Dialog(
@@ -341,6 +347,18 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
     }
     final repo = widget.repo;
     final existing = widget.existing;
+    // I15：重名检查——新建不得与现有歌单同名；修改不得与其他歌单同名
+    final dup = repo.getPlaylists().any((p) =>
+        p.name == _playlistName && p.id != (existing?.id ?? -1));
+    if (dup) {
+      LogService.instance.warning(
+        LogTag.playlist,
+        '保存歌单失败：名称重复',
+        detail: '名称: $_playlistName',
+      );
+      _showToast('歌单名称已存在，请更换名称');
+      return;
+    }
     if (existing == null) {
       // 新建
       final id = repo.createPlaylist(_playlistName);
@@ -367,7 +385,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   }
 
   void _showToast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    _messengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(msg),
         duration: const Duration(seconds: 2),
