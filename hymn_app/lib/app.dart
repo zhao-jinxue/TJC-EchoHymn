@@ -29,6 +29,7 @@ class AppColors {
   static Color get playBarBg => _p.playBarBg;
   static Color get statusBarBg => _p.statusBarBg;
   static Color get controlBg => _p.controlBg;
+  static Color get controlBorder => _p.controlBorder;
   static Color get textPrimary => _p.textPrimary;
   static Color get textSecondary => _p.textSecondary;
   static Color get textTertiary => _p.textTertiary;

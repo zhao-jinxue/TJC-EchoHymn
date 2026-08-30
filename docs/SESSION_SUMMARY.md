@@ -38,6 +38,7 @@
 | `19c1af0`（v1.4.0 完善②，2026-08-30） | **歌词区回归同色相层次**：晨光蓝歌词区 `#FDF8EE`（暖白特例）→`#F2F6FD`（浅蓝白）；静谧绿→`#EEF8F2`、典雅紫→`#F1EBFA`、暖阳金→`#FCF4E0`；微调相邻分区确保层次可辨 |
 | `bd02c90`（v1.4.0 NG 修复，2026-08-30） | **首轮测试 6 项 NG 修复**：① 暗夜墨顶部白带→native `SetAppearance` 随主题设 DWM 深色模式+边框色；② 换肤整树重建→HomeScreen 外包 ValueListenableBuilder；③/④ 暗夜墨改 `ThemeData.dark()`（弹窗输入框深底浅字）；⑤⑥ 左栏列表行 `cardBg→sidebarBg`（实机=预览）；新增 `v140_theme_retest_checklist.md`（R01~R14） |
 | `bc308dd`（v1.4.0 完善③，2026-08-30） | **未选中控件底色 `controlBg`（二轮复测 R03）**：新增语义色槽（26 色），顶栏切换/版本/模式按钮未选中背景由纯白/侧栏色改为**同色相浅色**（晨光蓝 `#EDF3FB` 等 5 套），严格匹配主题；新增 `v140_theme_retest2_checklist.md`（R15~R23） |
+| `<待提交>`（v1.4.0 完善④，2026-08-30） | **未选中控件描边 `controlBorder`（三轮前复测 R15/R16）**：新增语义色槽（27 色），三处未选中按钮加 1px 明显描边（晨光蓝 `#98A1B2` 等 5 套），选中态无边框；PrintWindow 扫描确认矩形描边轮廓；新增 `v140_theme_retest3_checklist.md`（R24~R32） |
 
 **关键文件**：
 
@@ -62,7 +63,7 @@
 - **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**）
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
-- **换肤**：`AppPalette` 语义色槽（**26 色，含 8 个分区底色 + controlBg 未选中控件底色**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
+- **换肤**：`AppPalette` 语义色槽（**27 色，含 8 个分区底色 + controlBg/controlBorder 未选中控件底色与描边**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
@@ -170,6 +171,13 @@
 2. **方案**：`AppPalette` 新增 **`controlBg`（未选中/未激活控件底色）** 语义槽（25→26 色），5 套各配同色相浅色（晨光蓝 `#EDF3FB` / 暖阳金 `#F7EFDC` / 静谧绿 `#EAF4EE` / 典雅紫 `#ECE6F8` / 暗夜墨 `#262C38`，均介于所在栏背景与版本栏背景之间，可辨带主题色相）。
 3. **应用**：`_toggleButton`（顶栏切换）、`_versionBtn`（版本按钮）、`_modeBtn`（模式按钮）三处未选中背景统一改 `controlBg`；选中态保持 primary / selectedBg 不变。
 4. **验证**：analyze 0 issues；构建成功；千问视觉确认各按钮为淡蓝底（带主题色相、比栏背景略深），非纯白。
+
+### 2026-08-30 会话追加（v1.4.0 完善④：未选中控件描边 controlBorder）
+
+1. **问题**：三轮前复测 R15a/b/c、R16b——controlBg 背景与所在栏「深一档但肉眼不可见」，用户建议**加深边框形成直观对比**。
+2. **方案**：`AppPalette` 新增 **`controlBorder`（未选中控件边框色）** 语义槽（26→27 色），5 套各配明显深色描边（晨光蓝 `#98A1B2` / 暖阳金 `#A2947A` / 静谧绿 `#95A89D` / 典雅紫 `#A095BA` / 暗夜墨 `#3E4654`）；三个未选中按钮 Material `shape` 加 1px 边框（选中态无边框）。
+3. **验证**：analyze 0 issues；clean 全量重建；PrintWindow 像素扫描确认顶栏左侧按钮（x[14..78]×y[54..90]）与版本栏/模式按钮形成**完整矩形描边轮廓**（`#98A1B2` 像素成框）。
+4. **教训**：flutter 增量 build 曾未更新 exe（旧 exe 验证误导），`flutter clean` 全量重建后确认。
 
 ---
 

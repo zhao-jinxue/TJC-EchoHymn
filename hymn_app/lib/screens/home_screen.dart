@@ -525,7 +525,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         message: tooltip,
         child: Material(
           color: active ? AppColors.primary : AppColors.controlBg,
-          borderRadius: BorderRadius.circular(6),
+          // 未选中态加 1px 语义边框色（与预览一致），形成直观边界对比；
+          // 选中态无边框（靠主色背景区分）。
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(
+              color: active ? Colors.transparent : AppColors.controlBorder,
+              width: 1,
+            ),
+          ),
           child: InkWell(
             borderRadius: BorderRadius.circular(6),
             onTap: onTap,

@@ -119,7 +119,13 @@ class _HymnDisplayState extends State<HymnDisplay> {
   }) {
     return Material(
       color: active ? AppColors.primary : AppColors.controlBg,
-      borderRadius: BorderRadius.circular(6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(
+          color: active ? Colors.transparent : AppColors.controlBorder,
+          width: 1,
+        ),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
         onTap: onTap,
@@ -176,7 +182,13 @@ class _HymnDisplayState extends State<HymnDisplay> {
     final selected = _mode == mode;
     return Material(
       color: selected ? AppColors.selectedBg : AppColors.controlBg,
-      borderRadius: BorderRadius.circular(6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(
+          color: selected ? Colors.transparent : AppColors.controlBorder,
+          width: 1,
+        ),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
         onTap: () => _setMode(mode),
