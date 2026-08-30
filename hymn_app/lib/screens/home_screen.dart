@@ -130,8 +130,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ));
 
       if (!mounted) return;
-      // 切歌（上一首/下一首/播放完成）时自动保存状态
-      audio.onCurrentChanged = _saveState;
+      // 切歌（上一首/下一首/播放完成）时自动保存状态 + 刷新顶栏当前歌曲信息
+      audio.onCurrentChanged = () {
+        _saveState();
+        if (mounted) setState(() {});
+      };
       setState(() {
         _repo = repo;
         _audio = audio;
@@ -317,6 +320,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Scaffold(
       body: Column(
         children: [
+          // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
+          // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
+          _buildTitleBar(),
+          const Divider(height: 1, color: AppColors.divider),
           _buildTopBar(),
           Expanded(child: _buildBody()),
           _buildStatusBar(),
@@ -325,81 +332,62 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ---------- 顶栏（自定义标题栏） ----------
-  // 原生标题栏已移除（win32_window.cpp 去掉 WS_CAPTION），本顶栏即窗口标题栏：
-  //  - 标题区空白处：按住拖动窗口 / 双击最大化·还原
-  //  - 右侧按钮组：侧栏开关 + 用户手册 + 最小化 + 最大化/还原 + 关闭
-  Widget _buildTopBar() {
+  // ---------- 自绘窗口标题栏（30px，最顶部） ----------
+  // 原生系统标题栏已移除（win32_window.cpp 去掉 WS_CAPTION），本栏自绘窗口标题栏：
+  //  - 左侧：logo + 应用名称
+  //  - 右侧：窗口按钮组 = 用户手册 / 最小化 / 最大化·还原 / 关闭（用户手册在最小化左侧）
+  //  - 整条空白处：按住拖动窗口 / 双击最大化·还原
+  Widget _buildTitleBar() {
     return Container(
-      height: 40,
+      height: 30,
       color: AppColors.cardBg,
       child: Stack(
         children: [
-          // 整条顶栏空白区 = 拖拽/双击区域（下层，按钮在上层可正常点击）
+          // 整条标题栏空白区 = 拖拽/双击区域（下层，按钮在上层可正常点击）
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onDoubleTap: _toggleMaximize,
               onPanStart: (_) => _startWindowDrag(),
-              child: const Center(
-                child: Text(
-                  'EchoHymn · 聆听赞美诗',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
             ),
           ),
-          // 左侧：左栏展开/收起
+          // 左侧：logo + 应用名称
           Align(
             alignment: Alignment.centerLeft,
-            child: SizedBox(
-              width: 60,
-              height: 30,
-              child: _toggleButton(
-                icon: _showLeft ? Icons.chevron_right : Icons.chevron_left,
-                tooltip: _showLeft ? '收起左侧栏目' : '展开左侧栏目',
-                active: !_showLeft,
-                onTap: () {
-                  LogService.instance.info(
-                    LogTag.action,
-                    _showLeft ? '收起左侧栏目' : '展开左侧栏目',
-                  );
-                  setState(() => _showLeft = !_showLeft);
-                  _syncWindowSize();
-                  _saveState();
-                },
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.music_note,
+                        size: 14, color: Colors.white),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'EchoHymn · 聆听赞美诗',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          // 右侧：右栏展开/收起 + 窗口控制按钮组（用户手册在最小化左侧）
+          // 右侧：窗口控制按钮组（用户手册在最小化左侧）
           Align(
             alignment: Alignment.centerRight,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 60,
-                  height: 30,
-                  child: _toggleButton(
-                    icon: _showRight ? Icons.chevron_left : Icons.chevron_right,
-                    tooltip: _showRight ? '收起右侧栏目' : '展开右侧栏目',
-                    active: !_showRight,
-                    onTap: () {
-                      LogService.instance.info(
-                        LogTag.action,
-                        _showRight ? '收起右侧栏目' : '展开右侧栏目',
-                      );
-                      setState(() => _showRight = !_showRight);
-                      _syncWindowSize();
-                      _saveState();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 4),
                 _WindowButton(
                   icon: Icons.help_outline,
                   tooltip: '用户手册（F1）',
@@ -411,8 +399,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onTap: _minimizeWindow,
                 ),
                 _WindowButton(
-                  icon:
-                      _windowMaximized ? Icons.filter_none : Icons.crop_square,
+                  icon: _windowMaximized
+                      ? Icons.filter_none
+                      : Icons.crop_square,
                   tooltip: _windowMaximized ? '还原' : '最大化',
                   onTap: _toggleMaximize,
                 ),
@@ -423,6 +412,74 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onTap: _closeWindow,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------- 顶栏（40px 功能栏） ----------
+  // 顶部已有自绘窗口标题栏，本栏为功能栏：
+  // 左右两侧 = 侧栏展开/收起按钮；中央 = 当前播放/选中歌曲（无则显示应用名）。
+  Widget _buildTopBar() {
+    final hymn = _audio?.currentHymn;
+    final centerText = hymn != null
+        ? '第 ${hymn.hymnNumber} 首《'
+            '${ChineseConvertService.instance.toSimplified(hymn.title)}》'
+        : 'EchoHymn · 聆听赞美诗';
+    return Container(
+      height: 40,
+      color: AppColors.cardBg,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 60,
+            height: 30,
+            child: _toggleButton(
+              icon: _showLeft ? Icons.chevron_right : Icons.chevron_left,
+              tooltip: _showLeft ? '收起左侧栏目' : '展开左侧栏目',
+              active: !_showLeft,
+              onTap: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  _showLeft ? '收起左侧栏目' : '展开左侧栏目',
+                );
+                setState(() => _showLeft = !_showLeft);
+                _syncWindowSize();
+                _saveState();
+              },
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Text(
+                centerText,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 60,
+            height: 30,
+            child: _toggleButton(
+              icon: _showRight ? Icons.chevron_left : Icons.chevron_right,
+              tooltip: _showRight ? '收起右侧栏目' : '展开右侧栏目',
+              active: !_showRight,
+              onTap: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  _showRight ? '收起右侧栏目' : '展开右侧栏目',
+                );
+                setState(() => _showRight = !_showRight);
+                _syncWindowSize();
+                _saveState();
+              },
             ),
           ),
         ],
@@ -727,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildStatusBar() {
     final hymn = _audio?.currentHymn;
     return Container(
-      height: 40,
+      height: 30,
       color: AppColors.cardBg,
       child: Row(
         children: [
@@ -778,7 +835,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-/// 顶栏窗口控制按钮（用户手册 / 最小化 / 最大化 / 关闭）
+/// 标题栏窗口控制按钮（用户手册 / 最小化 / 最大化 / 关闭）
 ///
 /// 风格仿系统窗口按钮：无边框、悬停变灰；关闭按钮悬停变红白字。
 class _WindowButton extends StatefulWidget {
@@ -808,7 +865,7 @@ class _WindowButtonState extends State<_WindowButton> {
       onExit: (_) => setState(() => _hover = false),
       child: SizedBox(
         width: 42,
-        height: 40,
+        height: 30,
         child: Tooltip(
           message: widget.tooltip,
           child: InkWell(
