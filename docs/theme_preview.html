@@ -35,7 +35,9 @@
   /* ========== 5 套配色（CSS 变量 = 语义色槽，与 AppPalette 字段一一对应） ========== */
   .t-morning {
     --primary:#2B6AE0; --primary-hover:#1E57C8; --accent:#00A870;
-    --page-bg:#FAFBFC; --card-bg:#FFFFFF; --sidebar-bg:#F5F6FA; --lyrics-bg:#FDF8EE;
+    --page-bg:#FAFBFC; --card-bg:#FFFFFF;
+    --titlebar-bg:#FFFFFF; --topbar-bg:#F5F8FF; --sidebar-bg:#EFF4FC; --right-bg:#F2F5FB;
+    --versionbar-bg:#EAF1FC; --playbar-bg:#FBFCFE; --statusbar-bg:#F4F6FB; --lyrics-bg:#FDF8EE;
     --text-1:#1F2329; --text-2:#646A73; --text-3:#8F959E;
     --divider:#E5E6EB; --border:#D0D3D9; --selected-bg:#E8F0FE;
     --success:#00A870; --warning:#FF9F0A; --danger:#F54A45;
@@ -43,7 +45,9 @@
   }
   .t-gold {
     --primary:#C68A1B; --primary-hover:#A8730F; --accent:#5B8C5A;
-    --page-bg:#FBF8F1; --card-bg:#FFFFFF; --sidebar-bg:#F7F1E4; --lyrics-bg:#FDF4DE;
+    --page-bg:#FDFBF6; --card-bg:#FFFFFF;
+    --titlebar-bg:#FFFFFF; --topbar-bg:#FBF6EA; --sidebar-bg:#F6EFDD; --right-bg:#F8F2E5;
+    --versionbar-bg:#F3EAD3; --playbar-bg:#FCFAF4; --statusbar-bg:#F8F4EA; --lyrics-bg:#FDF4DE;
     --text-1:#3A3124; --text-2:#6B6152; --text-3:#97896F;
     --divider:#E9DFC8; --border:#D6C9AE; --selected-bg:#F5E7C3;
     --success:#5B8C5A; --warning:#D97A06; --danger:#C0392B;
@@ -51,7 +55,9 @@
   }
   .t-green {
     --primary:#2F7D5A; --primary-hover:#25654A; --accent:#5BA37E;
-    --page-bg:#F7FBF8; --card-bg:#FFFFFF; --sidebar-bg:#F0F7F2; --lyrics-bg:#F5FAF6;
+    --page-bg:#FBFFFC; --card-bg:#FFFFFF;
+    --titlebar-bg:#FFFFFF; --topbar-bg:#F2F8F4; --sidebar-bg:#EDF6F0; --right-bg:#F1F7F3;
+    --versionbar-bg:#E6F1EA; --playbar-bg:#F8FCF9; --statusbar-bg:#F2F7F4; --lyrics-bg:#F0F9F4;
     --text-1:#22322B; --text-2:#5C6E65; --text-3:#8A9A92;
     --divider:#DEE8E1; --border:#C9D6CE; --selected-bg:#E1F0E7;
     --success:#3E8F6A; --warning:#D9840A; --danger:#D04A44;
@@ -59,7 +65,9 @@
   }
   .t-purple {
     --primary:#6E56CF; --primary-hover:#5B46B3; --accent:#1FA8A0;
-    --page-bg:#FAF8FC; --card-bg:#FFFFFF; --sidebar-bg:#F4F1F9; --lyrics-bg:#FAF7FD;
+    --page-bg:#FBFAFD; --card-bg:#FFFFFF;
+    --titlebar-bg:#FFFFFF; --topbar-bg:#F4F1FB; --sidebar-bg:#EFEAF9; --right-bg:#F2EFF8;
+    --versionbar-bg:#E8E2F5; --playbar-bg:#FAF8FD; --statusbar-bg:#F3F0F9; --lyrics-bg:#F5F0FB;
     --text-1:#2E2A3C; --text-2:#6A6480; --text-3:#9790AC;
     --divider:#E4DFEE; --border:#CEC6DE; --selected-bg:#ECE5FA;
     --success:#17A094; --warning:#E08B0C; --danger:#D34D55;
@@ -67,7 +75,9 @@
   }
   .t-dark {
     --primary:#4A8DF7; --primary-hover:#3B75D4; --accent:#22C3A6;
-    --page-bg:#171A21; --card-bg:#1F232C; --sidebar-bg:#1A1E26; --lyrics-bg:#21262F;
+    --page-bg:#171A21; --card-bg:#1F232C;
+    --titlebar-bg:#1E232D; --topbar-bg:#242B37; --sidebar-bg:#191D26; --right-bg:#1C212B;
+    --versionbar-bg:#29303D; --playbar-bg:#1E232C; --statusbar-bg:#252B36; --lyrics-bg:#20252F;
     --text-1:#E8EAED; --text-2:#A9B0BC; --text-3:#7D8595;
     --divider:#2C313C; --border:#3A4150; --selected-bg:#26344A;
     --success:#2FC38A; --warning:#E8A33D; --danger:#E0564F;
@@ -76,7 +86,7 @@
 
   /* ========== 主窗口内部布局样式 ========== */
   .mockup { background:var(--page-bg); color:var(--text-1); font-size:14px; }
-  .titlebar { height:30px; background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; padding-left:12px; position:relative; }
+  .titlebar { height:30px; background:var(--titlebar-bg); display:flex; align-items:center; justify-content:space-between; padding-left:12px; position:relative; }
   .titlebar .app-logo { width:22px; height:22px; border-radius:6px; background:var(--primary); display:flex; align-items:center; justify-content:center; }
   .titlebar .app-logo svg { width:12px; height:12px; }
   .titlebar .app-name { font-size:13px; font-weight:600; margin-left:8px; }
@@ -85,7 +95,7 @@
   .win-btn:hover { background:var(--win-hover); color:var(--text-1); }
   .win-btn.close:hover { background:#E81123; color:#fff; }
   .divider-h { height:1px; background:var(--divider); }
-  .topbar { height:40px; background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; padding:0 10px; position:relative; }
+  .topbar { height:40px; background:var(--topbar-bg); display:flex; align-items:center; justify-content:space-between; padding:0 10px; position:relative; }
   .toggle-group { display:flex; gap:6px; align-items:center; }
   .toggle-btn { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
   .toggle-btn.on { background:var(--primary); color:var(--on-primary); }
@@ -97,7 +107,7 @@
   .body-row { display:flex; height:788px; }
   .sidebar { background:var(--sidebar-bg); padding:12px; display:flex; flex-direction:column; }
   .left-panel { width:350px; flex:none; }
-  .right-panel { width:600px; flex:none; }
+  .right-panel { width:600px; flex:none; background:var(--right-bg); }
   .content { flex:1; background:var(--page-bg); display:flex; flex-direction:column; }
   .divider-v { width:1px; background:var(--divider); }
   .tabs { display:flex; background:var(--card-bg); border-radius:8px; border:1px solid var(--border); overflow:hidden; height:32px; margin-bottom:10px; }
@@ -115,7 +125,7 @@
   .hymn-item .num { width:52px; color:var(--text-3); font-size:12px; }
   .hymn-item.sel .num { color:var(--primary); }
 
-  .versionbar { height:44px; background:var(--card-bg); border-bottom:1px solid var(--divider); display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
+  .versionbar { height:44px; background:var(--versionbar-bg); border-bottom:1px solid var(--divider); display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
   .pill-group { display:flex; gap:6px; }
   .pill { height:26px; padding:0 12px; border-radius:4px; display:flex; align-items:center; font-size:12px; border:1px solid var(--border); color:var(--text-2); cursor:default; }
   .pill.on { background:var(--primary); border-color:var(--primary); color:var(--on-primary); font-weight:600; }
@@ -126,7 +136,7 @@
   .lyrics .verse { font-size:19px; line-height:2.1; text-align:center; letter-spacing:.5px; }
   .lyrics .chorus { font-size:19px; line-height:2.1; text-align:center; margin-top:10px; font-weight:600; }
 
-  .playbar { background:var(--card-bg); border-top:1px solid var(--divider); padding:8px 16px 6px; }
+  .playbar { background:var(--playbar-bg); border-top:1px solid var(--divider); padding:8px 16px 6px; }
   .progress { height:4px; border-radius:2px; background:var(--divider); position:relative; margin-bottom:8px; }
   .progress .fill { position:absolute; left:0; top:0; bottom:0; width:54%; border-radius:2px; background:var(--primary); }
   .progress .thumb { position:absolute; left:54%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; border-radius:50%; background:var(--primary); border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.3); }
@@ -148,7 +158,7 @@
   .right-body p { font-size:13px; line-height:1.9; color:var(--text-2); margin-bottom:10px; }
   .right-body b { color:var(--text-1); }
 
-  .statusbar { height:30px; background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; padding:0 14px; font-size:12px; color:var(--text-2); }
+  .statusbar { height:30px; background:var(--statusbar-bg); display:flex; align-items:center; justify-content:space-between; padding:0 14px; font-size:12px; color:var(--text-2); }
   .statusbar b { color:var(--text-1); }
 
   /* 调色板明细表 */
@@ -182,16 +192,16 @@
   </footer>
 <script>
 const THEMES = [
-  {id:'t-morning', name:'晨光蓝 · 经典', desc:'当前默认配色（v1.3.1）。清爽晴空蓝 + 冷灰基底，专业、安静、耐看，改动最小。',
-   sw:[['主色 primary','#2B6AE0'],['主色悬停','#1E57C8'],['强调 accent','#00A870'],['页面背景','#FAFBFC'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F5F6FA'],['歌词区','#FDF8EE'],['一级文字','#1F2329'],['二级文字','#646A73'],['三级文字','#8F959E'],['分隔线','#E5E6EB'],['选中背景','#E8F0FE'],['危险','#F54A45']]},
-  {id:'t-gold', name:'暖阳金 · 圣堂', desc:'复古圣殿风：暖奶油纸感 + 圣金黄 + 深橄榄绿点缀，庄重典雅，最贴合赞美诗气质。',
-   sw:[['主色 primary','#C68A1B'],['主色悬停','#A8730F'],['强调 accent','#5B8C5A'],['页面背景','#FBF8F1'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F7F1E4'],['歌词区','#FDF4DE'],['一级文字','#3A3124'],['二级文字','#6B6152'],['三级文字','#97896F'],['分隔线','#E9DFC8'],['选中背景','#F5E7C3'],['危险','#C0392B']]},
-  {id:'t-green', name:'静谧绿 · 草木', desc:'自然安宁的鼠尾草绿 + 薄荷白，视觉放松护眼，适合长时间阅读歌词。',
-   sw:[['主色 primary','#2F7D5A'],['主色悬停','#25654A'],['强调 accent','#5BA37E'],['页面背景','#F7FBF8'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F0F7F2'],['歌词区','#F5FAF6'],['一级文字','#22322B'],['二级文字','#5C6E65'],['三级文字','#8A9A92'],['分隔线','#DEE8E1'],['选中背景','#E1F0E7'],['危险','#D04A44']]},
-  {id:'t-purple', name:'典雅紫 · 暮云', desc:'深邃紫罗兰 + 青碧强调，晚祷般的静谧与尊贵感，沉稳有格调。',
-   sw:[['主色 primary','#6E56CF'],['主色悬停','#5B46B3'],['强调 accent','#1FA8A0'],['页面背景','#FAF8FC'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F4F1F9'],['歌词区','#FAF7FD'],['一级文字','#2E2A3C'],['二级文字','#6A6480'],['三级文字','#9790AC'],['分隔线','#E4DFEE'],['选中背景','#ECE5FA'],['危险','#D34D55']]},
-  {id:'t-dark', name:'暗夜墨 · 深色', desc:'现代深色模式：深空灰蓝底 + 明亮青蓝强调，夜读护眼、沉稳内敛。',
-   sw:[['主色 primary','#4A8DF7'],['主色悬停','#3B75D4'],['强调 accent','#22C3A6'],['页面背景','#171A21'],['卡片/顶栏','#1F232C'],['侧栏背景','#1A1E26'],['歌词区','#21262F'],['一级文字','#E8EAED'],['二级文字','#A9B0BC'],['三级文字','#7D8595'],['分隔线','#2C313C'],['选中背景','#26344A'],['危险','#E0564F']]},
+  {id:'t-morning', name:'晨光蓝 · 经典', desc:'白色主调 + 极浅蓝层次分区：标题栏纯白、顶栏/侧栏/版本栏逐级浅蓝、歌词区暖白，按钮用主色。',
+   sw:[['主色 primary','#2B6AE0'],['主色悬停','#1E57C8'],['强调 accent','#00A870'],['标题栏','#FFFFFF'],['顶栏','#F5F8FF'],['左栏','#EFF4FC'],['右栏','#F2F5FB'],['版本栏','#EAF1FC'],['播放条','#FBFCFE'],['状态栏','#F4F6FB'],['歌词区','#FDF8EE'],['一级文字','#1F2329'],['二级文字','#646A73'],['分隔线','#E5E6EB'],['选中背景','#E8F0FE'],['危险','#F54A45']]},
+  {id:'t-gold', name:'暖阳金 · 圣堂', desc:'复古圣殿风：暖奶油纸感 + 圣金黄 + 深橄榄绿点缀，各分区以极浅暖金层次区分。',
+   sw:[['主色 primary','#C68A1B'],['主色悬停','#A8730F'],['强调 accent','#5B8C5A'],['标题栏','#FFFFFF'],['顶栏','#FBF6EA'],['左栏','#F6EFDD'],['右栏','#F8F2E5'],['版本栏','#F3EAD3'],['播放条','#FCFAF4'],['状态栏','#F8F4EA'],['歌词区','#FDF4DE'],['一级文字','#3A3124'],['二级文字','#6B6152'],['分隔线','#E9DFC8'],['选中背景','#F5E7C3'],['危险','#C0392B']]},
+  {id:'t-green', name:'静谧绿 · 草木', desc:'自然安宁的鼠尾草绿 + 薄荷白，各分区以极浅绿层次区分，长时间阅读护眼。',
+   sw:[['主色 primary','#2F7D5A'],['主色悬停','#25654A'],['强调 accent','#5BA37E'],['标题栏','#FFFFFF'],['顶栏','#F2F8F4'],['左栏','#EDF6F0'],['右栏','#F1F7F3'],['版本栏','#E6F1EA'],['播放条','#F8FCF9'],['状态栏','#F2F7F4'],['歌词区','#F0F9F4'],['一级文字','#22322B'],['二级文字','#5C6E65'],['分隔线','#DEE8E1'],['选中背景','#E1F0E7'],['危险','#D04A44']]},
+  {id:'t-purple', name:'典雅紫 · 暮云', desc:'深邃紫罗兰 + 青碧强调，各分区以极浅薰衣草层次区分，晚祷般的静谧与尊贵。',
+   sw:[['主色 primary','#6E56CF'],['主色悬停','#5B46B3'],['强调 accent','#1FA8A0'],['标题栏','#FFFFFF'],['顶栏','#F4F1FB'],['左栏','#EFEAF9'],['右栏','#F2EFF8'],['版本栏','#E8E2F5'],['播放条','#FAF8FD'],['状态栏','#F3F0F9'],['歌词区','#F5F0FB'],['一级文字','#2E2A3C'],['二级文字','#6A6480'],['分隔线','#E4DFEE'],['选中背景','#ECE5FA'],['危险','#D34D55']]},
+  {id:'t-dark', name:'暗夜墨 · 深色', desc:'现代深色模式：深空灰蓝底 + 明亮青蓝强调，各分区以相近深色层次区分，夜读护眼。',
+   sw:[['主色 primary','#4A8DF7'],['主色悬停','#3B75D4'],['强调 accent','#22C3A6'],['标题栏','#1E232D'],['顶栏','#242B37'],['左栏','#191D26'],['右栏','#1C212B'],['版本栏','#29303D'],['播放条','#1E232C'],['状态栏','#252B36'],['歌词区','#20252F'],['一级文字','#E8EAED'],['二级文字','#A9B0BC'],['分隔线','#2C313C'],['选中背景','#26344A'],['危险','#E0564F']]},
 ];
 const ICONS = {
   note:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>',

@@ -87,7 +87,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   Widget _buildVersionBar(Hymn? hymn) {
     return Container(
       height: 44,
-      color: AppColors.cardBg,
+      color: AppColors.versionBarBg,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
@@ -385,7 +385,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   // ============ 播放条（两层） ============
   Widget _buildPlayerBar(Hymn? hymn) {
     return Container(
-      color: AppColors.cardBg,
+      color: AppColors.playBarBg,
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,

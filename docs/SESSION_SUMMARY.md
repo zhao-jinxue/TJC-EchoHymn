@@ -34,6 +34,7 @@
 | `bb5a0e6`（tag v1.2.1） | **四轮 UI 回归测试收尾（2026-08-29~30）**：回归清单纯测试视角化；27 条 NG 分批修复——窗口单实例保护/最小尺寸随侧栏同步、歌词字号随窗口铺满 + 整体 +4、搜索回车与焦点保持、弹窗 Toast 就地/字数计数/重名检查/删除落库、播放条防抖/版本高亮、just_audio 残留清理 |
 | `9a9452c`（v1.3.0，2026-08-30） | **自定义标题栏 + 全局播放快捷键 + 用户手册**：移除系统标题栏（`WS_CAPTION`），Flutter 顶栏自绘「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组，标题区空白处可拖拽窗口、双击最大化；全局快捷键（空格/Ctrl+P 播放暂停、Ctrl/Alt+方向键切歌、Ctrl+↑↓ 音量、Ctrl+M 静音、F1 手册、通用媒体键）；用户手册弹窗（软件介绍 / 操作说明 / 快捷键说明）；`AudioService` 新增音量/静音控制 |
 | `debcf20`（v1.4.0，2026-08-30） | **五套换肤配色 + 标题栏换肤按钮**：`AppPalette` 语义色槽（19 色）设计 5 套方案（晨光蓝=默认/v1.3.1 一致、暖阳金·圣堂、静谧绿·草木、典雅紫·暮云、暗夜墨·深色）；`AppColors` 由 static const 改为「当前调色板门面」，`EchoHymnApp` 用 `ValueListenableBuilder` 监听重建实现即时换肤；标题栏新增「调色盘」按钮（用户手册左侧）弹出配色菜单；配色持久化 `state.json appTheme`，重启保持；`docs/theme_preview.html` 交互式效果图预览 |
+| `<待提交>`（v1.4.0 完善，2026-08-30） | **分区极浅底色 + 配色全称**：`AppPalette` 扩展 6 个分区底色槽（titleBarBg/topBarBg/rightPanelBg/versionBarBg/playBarBg/statusBarBg，共 25 色）——白主调下各 UI 分区用**同色相极浅色**区分（晨光蓝：标题栏纯白→顶栏/侧栏/版本栏逐级浅蓝→歌词区暖白；暗夜墨：相近深色层次）；配色名改**全称**（晨光蓝 · 经典 等） |
 
 **关键文件**：
 
@@ -58,7 +59,7 @@
 - **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**）
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
-- **换肤**：`AppPalette` 语义色槽（19 色）+ 5 套方案（晨光蓝/暖阳金/静谧绿/典雅紫/暗夜墨）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
+- **换肤**：`AppPalette` 语义色槽（**25 色，含 8 个分区底色**：标题栏/顶栏/左栏/右栏/版本栏/播放条/状态栏/歌词区）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
@@ -146,6 +147,14 @@
 3. **入口与持久化**：标题栏新增「调色盘」按钮（用户手册左侧，Tooltip 显示当前配色名）→ `showMenu` 弹出 5 套（主色圆点+名称+当前✓）→ 切换即 `_saveState()` 写入 `state.json` 的 `appTheme`；`main()` 启动时恢复（缺失/非法回退晨光蓝）。
 4. **效果图**：`docs/theme_preview.html` 交互式高保真预览（1800×890 = 基座+双抽屉），5 套一键切换/对比全部/缩放，调色板明细与 Flutter 字段一一对应。
 5. **硬编码收敛**：滚动条滑块 `#C1C1C1` → `palette.scrollbarThumb`；标题栏按钮悬停灰 `#E5E6EB` → `palette.windowBtnHover`；关闭悬停红 `#E81123` 与「主色底白字」`Colors.white` 保留（5 套配色下均正确）。
+
+### 2026-08-30 会话追加（v1.4.0 完善：分区极浅底色 + 配色全称）
+
+1. **需求**：用户反馈「分区已用分割线区分，但希望不同区域也有不同底色」——白主调风格下，标题栏/顶栏/左栏/内容区/版本栏/播放条/右栏/状态栏用**同色相极浅色**分层；并希望配色名用全称。
+2. **色槽扩展**：`AppPalette` 由 19 色扩展为 **25 色**，新增 6 个分区底色槽：`titleBarBg`（标题栏）/ `topBarBg`（顶栏）/ `rightPanelBg`（右栏）/ `versionBarBg`（版本栏）/ `playBarBg`（播放条）/ `statusBarBg`（状态栏）；左栏沿用 `sidebarBg`。5 套方案分别配置同色相极浅层次（如晨光蓝：#FFFFFF→#F5F8FF→#EFF4FC→#EAF1FC→#FDF8EE 暖白；暗夜墨：深色相近层次 #1E232D~#29303D）。
+3. **应用**：标题栏/顶栏/右栏/状态栏（`home_screen.dart`）、版本栏/播放条（`hymn_display.dart`）背景改读新色槽；其余按钮/卡片保持 cardBg 白底，弹窗不受影响。
+4. **全称**：`kThemes` 的 `name` 改为「晨光蓝 · 经典 / 暖阳金 · 圣堂 / 静谧绿 · 草木 / 典雅紫 · 暮云 / 暗夜墨 · 深色」，菜单/日志/Tooltip/用户手册同步。
+5. **验证**：analyze 0 issues；构建成功；截图像素采样确认 标题栏=白、顶栏=#F5F8FF、右栏=#F2F5FB、歌词区=#FDF8EE 与设计一致（其余为近白色，截图管线舍入不可分辨）。
 
 ---
 

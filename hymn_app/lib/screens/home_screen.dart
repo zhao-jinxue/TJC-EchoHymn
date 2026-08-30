@@ -348,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildTitleBar() {
     return Container(
       height: 30,
-      color: AppColors.cardBg,
+      color: AppColors.titleBarBg,
       child: Stack(
         children: [
           // 整条标题栏空白区 = 拖拽/双击区域（下层，按钮在上层可正常点击）
@@ -445,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         : 'EchoHymn · 聆听赞美诗';
     return Container(
       height: 40,
-      color: AppColors.cardBg,
+      color: AppColors.topBarBg,
       child: Row(
         children: [
           SizedBox(
@@ -808,7 +808,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return SizedBox(
       width: rightWidth,
       child: Container(
-        color: AppColors.sidebarBg,
+        color: AppColors.rightPanelBg,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -853,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final hymn = _audio?.currentHymn;
     return Container(
       height: 30,
-      color: AppColors.cardBg,
+      color: AppColors.statusBarBg,
       child: Row(
         children: [
           const SizedBox(width: 16),

@@ -14,10 +14,16 @@ class AppPalette {
   final Color primaryHover; // 主色悬停
   final Color accent; // 强调色（音量滑条/成功语义）
 
-  // 背景系
-  final Color pageBg; // 页面背景
-  final Color cardBg; // 卡片/标题栏/顶栏/底栏背景
-  final Color sidebarBg; // 侧栏背景
+  // 背景系（分区极浅底色：白主调下用同色相极浅色区分各 UI 区域）
+  final Color pageBg; // 内容区外层背景
+  final Color cardBg; // 卡片/弹窗/按钮底色
+  final Color titleBarBg; // 标题栏背景
+  final Color topBarBg; // 顶栏背景
+  final Color sidebarBg; // 左栏背景
+  final Color rightPanelBg; // 右栏（源考）背景
+  final Color versionBarBg; // 版本栏背景
+  final Color playBarBg; // 播放条背景
+  final Color statusBarBg; // 状态栏背景
   final Color lyricsBg; // 歌词显示区背景
 
   // 文字系
@@ -47,7 +53,13 @@ class AppPalette {
     required this.accent,
     required this.pageBg,
     required this.cardBg,
+    required this.titleBarBg,
+    required this.topBarBg,
     required this.sidebarBg,
+    required this.rightPanelBg,
+    required this.versionBarBg,
+    required this.playBarBg,
+    required this.statusBarBg,
     required this.lyricsBg,
     required this.textPrimary,
     required this.textSecondary,
@@ -63,16 +75,22 @@ class AppPalette {
   });
 }
 
-/// ① 晨光蓝 · 经典（默认，与 v1.3.1 现行效果完全一致）
+/// ① 晨光蓝 · 经典（默认，白色主调 + 极浅蓝层次分区）
 const kPaletteMorning = AppPalette(
   id: 'morningBlue',
-  name: '晨光蓝',
+  name: '晨光蓝 · 经典',
   primary: Color(0xFF2B6AE0),
   primaryHover: Color(0xFF1E57C8),
   accent: Color(0xFF00A870),
   pageBg: Color(0xFFFAFBFC),
   cardBg: Color(0xFFFFFFFF),
-  sidebarBg: Color(0xFFF5F6FA),
+  titleBarBg: Color(0xFFFFFFFF),
+  topBarBg: Color(0xFFF5F8FF),
+  sidebarBg: Color(0xFFEFF4FC),
+  rightPanelBg: Color(0xFFF2F5FB),
+  versionBarBg: Color(0xFFEAF1FC),
+  playBarBg: Color(0xFFFBFCFE),
+  statusBarBg: Color(0xFFF4F6FB),
   lyricsBg: Color(0xFFFDF8EE),
   textPrimary: Color(0xFF1F2329),
   textSecondary: Color(0xFF646A73),
@@ -90,13 +108,19 @@ const kPaletteMorning = AppPalette(
 /// ② 暖阳金 · 圣堂：复古圣殿风，暖奶油纸感 + 圣金黄 + 深橄榄绿点缀
 const kPaletteWarmGold = AppPalette(
   id: 'warmGold',
-  name: '暖阳金',
+  name: '暖阳金 · 圣堂',
   primary: Color(0xFFC68A1B),
   primaryHover: Color(0xFFA8730F),
   accent: Color(0xFF5B8C5A),
-  pageBg: Color(0xFFFBF8F1),
+  pageBg: Color(0xFFFDFBF6),
   cardBg: Color(0xFFFFFFFF),
-  sidebarBg: Color(0xFFF7F1E4),
+  titleBarBg: Color(0xFFFFFFFF),
+  topBarBg: Color(0xFFFBF6EA),
+  sidebarBg: Color(0xFFF6EFDD),
+  rightPanelBg: Color(0xFFF8F2E5),
+  versionBarBg: Color(0xFFF3EAD3),
+  playBarBg: Color(0xFFFCFAF4),
+  statusBarBg: Color(0xFFF8F4EA),
   lyricsBg: Color(0xFFFDF4DE),
   textPrimary: Color(0xFF3A3124),
   textSecondary: Color(0xFF6B6152),
@@ -114,14 +138,20 @@ const kPaletteWarmGold = AppPalette(
 /// ③ 静谧绿 · 草木：鼠尾草绿 + 薄荷白，自然安宁、长时间阅读护眼
 const kPaletteCalmGreen = AppPalette(
   id: 'calmGreen',
-  name: '静谧绿',
+  name: '静谧绿 · 草木',
   primary: Color(0xFF2F7D5A),
   primaryHover: Color(0xFF25654A),
   accent: Color(0xFF5BA37E),
-  pageBg: Color(0xFFF7FBF8),
+  pageBg: Color(0xFFFBFFFC),
   cardBg: Color(0xFFFFFFFF),
-  sidebarBg: Color(0xFFF0F7F2),
-  lyricsBg: Color(0xFFF5FAF6),
+  titleBarBg: Color(0xFFFFFFFF),
+  topBarBg: Color(0xFFF2F8F4),
+  sidebarBg: Color(0xFFEDF6F0),
+  rightPanelBg: Color(0xFFF1F7F3),
+  versionBarBg: Color(0xFFE6F1EA),
+  playBarBg: Color(0xFFF8FCF9),
+  statusBarBg: Color(0xFFF2F7F4),
+  lyricsBg: Color(0xFFF0F9F4),
   textPrimary: Color(0xFF22322B),
   textSecondary: Color(0xFF5C6E65),
   textTertiary: Color(0xFF8A9A92),
@@ -138,14 +168,20 @@ const kPaletteCalmGreen = AppPalette(
 /// ④ 典雅紫 · 暮云：紫罗兰 + 青碧强调，晚祷般的静谧与尊贵
 const kPaletteElegantPurple = AppPalette(
   id: 'elegantPurple',
-  name: '典雅紫',
+  name: '典雅紫 · 暮云',
   primary: Color(0xFF6E56CF),
   primaryHover: Color(0xFF5B46B3),
   accent: Color(0xFF1FA8A0),
-  pageBg: Color(0xFFFAF8FC),
+  pageBg: Color(0xFFFBFAFD),
   cardBg: Color(0xFFFFFFFF),
-  sidebarBg: Color(0xFFF4F1F9),
-  lyricsBg: Color(0xFFFAF7FD),
+  titleBarBg: Color(0xFFFFFFFF),
+  topBarBg: Color(0xFFF4F1FB),
+  sidebarBg: Color(0xFFEFEAF9),
+  rightPanelBg: Color(0xFFF2EFF8),
+  versionBarBg: Color(0xFFE8E2F5),
+  playBarBg: Color(0xFFFAF8FD),
+  statusBarBg: Color(0xFFF3F0F9),
+  lyricsBg: Color(0xFFF5F0FB),
   textPrimary: Color(0xFF2E2A3C),
   textSecondary: Color(0xFF6A6480),
   textTertiary: Color(0xFF9790AC),
@@ -159,17 +195,23 @@ const kPaletteElegantPurple = AppPalette(
   windowBtnHover: Color(0xFFE9E3F2),
 );
 
-/// ⑤ 暗夜墨 · 深色：深空灰蓝底 + 明亮青蓝强调，夜读护眼
+/// ⑤ 暗夜墨 · 深色：深空灰蓝底 + 明亮青蓝强调，夜读护眼（分区用相近深色层次）
 const kPaletteMidnightDark = AppPalette(
   id: 'midnightDark',
-  name: '暗夜墨',
+  name: '暗夜墨 · 深色',
   primary: Color(0xFF4A8DF7),
   primaryHover: Color(0xFF3B75D4),
   accent: Color(0xFF22C3A6),
   pageBg: Color(0xFF171A21),
   cardBg: Color(0xFF1F232C),
-  sidebarBg: Color(0xFF1A1E26),
-  lyricsBg: Color(0xFF21262F),
+  titleBarBg: Color(0xFF1E232D),
+  topBarBg: Color(0xFF242B37),
+  sidebarBg: Color(0xFF191D26),
+  rightPanelBg: Color(0xFF1C212B),
+  versionBarBg: Color(0xFF29303D),
+  playBarBg: Color(0xFF1E232C),
+  statusBarBg: Color(0xFF252B36),
+  lyricsBg: Color(0xFF20252F),
   textPrimary: Color(0xFFE8EAED),
   textSecondary: Color(0xFFA9B0BC),
   textTertiary: Color(0xFF7D8595),

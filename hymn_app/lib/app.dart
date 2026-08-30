@@ -21,7 +21,13 @@ class AppColors {
   static Color get accent => _p.accent;
   static Color get pageBg => _p.pageBg;
   static Color get cardBg => _p.cardBg;
+  static Color get titleBarBg => _p.titleBarBg;
+  static Color get topBarBg => _p.topBarBg;
   static Color get sidebarBg => _p.sidebarBg;
+  static Color get rightPanelBg => _p.rightPanelBg;
+  static Color get versionBarBg => _p.versionBarBg;
+  static Color get playBarBg => _p.playBarBg;
+  static Color get statusBarBg => _p.statusBarBg;
   static Color get textPrimary => _p.textPrimary;
   static Color get textSecondary => _p.textSecondary;
   static Color get textTertiary => _p.textTertiary;
