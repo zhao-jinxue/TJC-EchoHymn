@@ -455,7 +455,64 @@ class _HymnDisplayState extends State<HymnDisplay> {
             bottom: 0,
             child: Center(child: _buildVoiceListButton(hymn!, voices)),
           ),
+        // 音量调节（通用方案）：图标=静音切换 / 滑条=调节 / 百分比=当前音量
+        // 与全局快捷键（Ctrl+↑↓/Ctrl+M）共用 AudioService 同一数据源，实时联动
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: Center(child: _buildVolumeControl()),
+        ),
       ],
+    );
+  }
+
+  /// 播放条左侧音量控件：静音图标 + 滑条 + 音量百分比
+  ///
+  /// 数据源为 `AudioService.volumeNotifier/mutedNotifier`（ValueNotifier）：
+  /// 拖动滑条 / 点击静音 / 快捷键调节，都会更新同一来源并互相刷新。
+  Widget _buildVolumeControl() {
+    return ValueListenableBuilder<double>(
+      valueListenable: widget.audio.volumeNotifier,
+      builder: (context, volume, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: widget.audio.mutedNotifier,
+          builder: (context, muted, _) {
+            final effective = muted ? 0.0 : volume;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    muted ? Icons.volume_off : Icons.volume_up,
+                    color: AppColors.textPrimary,
+                  ),
+                  tooltip: muted ? '取消静音（Ctrl+M）' : '静音（Ctrl+M）',
+                  onPressed: () => widget.audio.toggleMute(),
+                ),
+                SizedBox(
+                  width: 80,
+                  child: Slider(
+                    value: effective,
+                    onChanged: (v) => widget.audio.setVolume(v),
+                  ),
+                ),
+                SizedBox(
+                  width: 38,
+                  child: Text(
+                    '${(effective * 100).round()}%',
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/hymn.dart';
 import 'app_paths.dart';
@@ -33,9 +34,15 @@ class AudioService {
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
-  // 音量 / 静音（快捷键控制，默认 100%）
+  // 音量 / 静音（默认 100%）
   double _volume = 1.0;
   bool _muted = false;
+
+  /// 音量状态通知（**UI 与快捷键共用的唯一数据源**）：
+  /// 播放条音量控件（图标/滑条/百分比）与全局快捷键（Ctrl+↑↓ / Ctrl+M）
+  /// 都通过 AudioService 读写，任何一方改变都经此通知刷新对方，避免各调各的。
+  final ValueNotifier<double> volumeNotifier = ValueNotifier<double>(1.0);
+  final ValueNotifier<bool> mutedNotifier = ValueNotifier<bool>(false);
 
   /// 上一次「上一首/下一首」切换时间（K17 快速连点防抖）
   DateTime _lastSwitchAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -287,9 +294,16 @@ class AudioService {
   double get volume => _volume;
   bool get muted => _muted;
 
-  /// 绝对设置音量（0.0~1.0）；静音时保持记忆音量
+  /// 绝对设置音量（0.0~1.0）；设置非零音量时自动取消静音
   Future<void> setVolume(double volume) async {
-    _volume = volume.clamp(0.0, 1.0);
+    final v = volume.clamp(0.0, 1.0);
+    // 调非零音量 = 用户明确要出声 → 自动取消静音（拖动滑条 / 快捷键调高均生效）
+    if (v > 0 && _muted) {
+      _muted = false;
+      mutedNotifier.value = false;
+    }
+    _volume = v;
+    volumeNotifier.value = v; // 通知播放条音量控件刷新（滑条/百分比/图标）
     await _player.setVolume(_muted ? 0 : _volume);
     LogService.instance
         .info(LogTag.play, '音量设置为 ${(_volume * 100).round()}%');
@@ -298,9 +312,10 @@ class AudioService {
   /// 相对调节音量（快捷键 Ctrl+↑/↓ 使用）
   Future<void> changeVolume(double delta) => setVolume(_volume + delta);
 
-  /// 静音 / 取消静音切换（快捷键 Ctrl+M 使用）
+  /// 静音 / 取消静音切换（快捷键 Ctrl+M / 播放条音量图标使用）
   Future<void> toggleMute() async {
     _muted = !_muted;
+    mutedNotifier.value = _muted; // 通知播放条音量控件刷新（图标/百分比）
     await _player.setVolume(_muted ? 0 : _volume);
     LogService.instance.info(LogTag.play,
         _muted ? '静音开启' : '静音取消（音量 ${(_volume * 100).round()}%）');
@@ -324,6 +339,8 @@ class AudioService {
     if (_disposed) return;
     _disposed = true;
     if (instance == this) instance = null;
+    volumeNotifier.dispose();
+    mutedNotifier.dispose();
     await _player.dispose();
     await _statusCtrl.close();
     await _positionCtrl.close();

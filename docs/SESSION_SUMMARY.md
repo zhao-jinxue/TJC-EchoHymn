@@ -109,6 +109,13 @@
 3. **状态栏分隔线**：`home_screen.dart` 在内容区与 `_buildStatusBar` 之间新增 `Divider`，与标题栏/顶栏分隔线一致（#E5E6EB 1px）。
 4. **复测清单**：新建 `hymn_app/test/v130_retest_checklist.md`（12 项：H11a~H11d 修复复测 / D01~D03 状态栏分隔线 / R01~R05 相关回归）。
 
+### 2026-08-30 会话追加（v1.3.1 音量调节控件 + 快捷键联动）
+
+1. **播放条音量控件**：播放条左侧新增音量调节（通用方案）= 静音图标 + 滑条 + 音量百分比文字（42px 内不挤压居中播放按钮组，与右侧人声版本按钮对称 Positioned）。
+2. **单一音量数据源（关键设计）**：`AudioService` 增加 `volumeNotifier` / `mutedNotifier`（`ValueNotifier`），`setVolume` / `toggleMute` / `changeVolume` 全部更新并通知；播放条 UI 用 `ValueListenableBuilder` 监听——**快捷键（Ctrl+↑↓/Ctrl+M）与 UI 控件是同一系统**，任一方改变实时刷新另一方；设置非零音量自动取消静音。
+3. **验证**：`flutter analyze` 0 issues；构建成功；SendKeys 模拟 Ctrl+↓×3（日志 100→95→90→85%）+ CopyFromScreen 真实屏幕截图 + 千问视觉识别确认 UI 显示 85%、滑条在 85% 位置（PrintWindow 截旧帧，故用真实屏幕截图验证）。
+4. **测试清单**：新建 `hymn_app/test/v131_volume_test_cases.md`（20 项：V01~V07 音量控件 UI / V08~V14 快捷键联动 / V15~V20 布局回归）。
+
 ---
 
 ## 四、剩余/遗留任务清单
