@@ -116,6 +116,14 @@
 3. **验证**：`flutter analyze` 0 issues；构建成功；SendKeys 模拟 Ctrl+↓×3（日志 100→95→90→85%）+ CopyFromScreen 真实屏幕截图 + 千问视觉识别确认 UI 显示 85%、滑条在 85% 位置（PrintWindow 截旧帧，故用真实屏幕截图验证）。
 4. **测试清单**：新建 `hymn_app/test/v131_volume_test_cases.md`（20 项：V01~V07 音量控件 UI / V08~V14 快捷键联动 / V15~V20 布局回归）。
 
+### 2026-08-30 会话补充（v1.3.1 滑条加长 + 初始化为系统音量）
+
+1. **滑条加长**：音量滑条宽度 80 → **150px**（约播放条宽 1/3），精细化调节能力显著提升；实测千问识别滑块可精确到 ±2%。
+2. **初始化为系统音量**：原生 `flutter_window.cpp` 新增 `GetSystemVolume`（Core Audio `IAudioEndpointVolume` 读取默认输出设备音量 scalar + 静音状态），经 `echo_hymn/window` 通道 `getSystemVolume` 返回；`AudioService.loadSystemVolume()` 启动时应用，UI 滑条/百分比/图标与系统一致（含系统静音跟随）；非 Windows 平台保持默认 100%。
+   - CMake 链接 `ole32.lib` / `uuid.lib`。
+   - 实测验证：独立 COM 读取系统音量 **40%** = 应用启动日志「初始化为系统音量 40%」；真实屏幕截图确认 UI 显示 40%、滑块在 40% 处。
+   - 语义说明：应用音量相对系统音量（audioplayers setVolume 会话音量），初始化=系统音量后实际响度 = 系统×应用；如需不同策略可再调整。
+
 ---
 
 ## 四、剩余/遗留任务清单

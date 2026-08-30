@@ -491,7 +491,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   onPressed: () => widget.audio.toggleMute(),
                 ),
                 SizedBox(
-                  width: 80,
+                  width: 150,
                   child: Slider(
                     value: effective,
                     onChanged: (v) => widget.audio.setVolume(v),

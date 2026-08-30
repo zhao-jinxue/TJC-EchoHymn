@@ -119,6 +119,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       LogService.instance.info(LogTag.ui, 'HomeScreen 初始化数据中...');
       final repo = await SqliteRepository.open();
       final audio = AudioService();
+      // 初始音量为系统默认输出设备音量（Windows Core Audio；非 Windows 保持 100%）
+      await audio.loadSystemVolume();
       final state = await _stateService.load().catchError((_) => const AppState(
             leftTab: '',
             subcategory: '',

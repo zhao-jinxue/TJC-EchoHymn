@@ -2,10 +2,14 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/hymn.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
+
+/// Windows 窗口/系统通道（复用 `echo_hymn/window`，native flutter_window.cpp 统一处理）
+const MethodChannel _windowChannel = MethodChannel('echo_hymn/window');
 
 /// 播放器状态
 enum PlayerStatus { idle, loading, playing, paused, error }
@@ -319,6 +323,29 @@ class AudioService {
     await _player.setVolume(_muted ? 0 : _volume);
     LogService.instance.info(LogTag.play,
         _muted ? '静音开启' : '静音取消（音量 ${(_volume * 100).round()}%）');
+  }
+
+  /// 初始化音量为**系统默认输出设备音量**（Windows Core Audio）。
+  /// 由 HomeScreen 启动时调用；非 Windows 平台无该通道时保持默认 100%。
+  Future<void> loadSystemVolume() async {
+    try {
+      final result = await _windowChannel
+          .invokeMethod<Map<dynamic, dynamic>>('getSystemVolume');
+      if (result == null) return;
+      final v = (result['volume'] as num?)?.toDouble();
+      final m = result['muted'] as bool? ?? false;
+      if (v == null) return;
+      _volume = v.clamp(0.0, 1.0);
+      volumeNotifier.value = _volume; // 通知播放条音量控件刷新
+      _muted = m;
+      mutedNotifier.value = _muted;
+      await _player.setVolume(_muted ? 0 : _volume);
+      LogService.instance.info(LogTag.play,
+          '初始化为系统音量 ${(_volume * 100).round()}%'
+          '${_muted ? '（系统静音）' : ''}');
+    } catch (_) {
+      // 非 Windows 平台无该通道，保持默认 100%
+    }
   }
 
   Future<void> stop() async {

@@ -2,9 +2,53 @@
 
 #include <optional>
 
+#include <endpointvolume.h>
+#include <mmdeviceapi.h>
+
 #include "flutter/generated_plugin_registrant.h"
 #include "flutter/method_channel.h"
 #include "flutter/standard_method_codec.h"
+
+namespace {
+
+// 读取系统默认音频输出设备的音量（0.0~1.0）与静音状态（Core Audio / WASAPI）。
+// 用于「应用初始化音量 = 系统音量」，避免启动时固定 100% 与系统不一致。
+bool GetSystemVolume(double* volume, bool* muted) {
+  *volume = 1.0;
+  *muted = false;
+  HRESULT hr = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  // S_OK = 本线程新初始化（需配套 CoUninitialize）；S_FALSE = 已初始化过
+  const bool need_uninit = hr == S_OK;
+  if (!SUCCEEDED(hr)) return false;
+
+  IMMDeviceEnumerator* enumerator = nullptr;
+  IMMDevice* device = nullptr;
+  IAudioEndpointVolume* endpoint = nullptr;
+  hr = ::CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                          IID_PPV_ARGS(&enumerator));
+  if (SUCCEEDED(hr)) {
+    hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
+  }
+  if (SUCCEEDED(hr)) {
+    hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                          reinterpret_cast<void**>(&endpoint));
+  }
+  if (SUCCEEDED(hr) && endpoint != nullptr) {
+    float level = 1.0f;
+    BOOL is_muted = FALSE;
+    endpoint->GetMasterVolumeLevelScalar(&level);
+    endpoint->GetMute(&is_muted);
+    *volume = static_cast<double>(level);
+    *muted = is_muted != FALSE;
+  }
+  if (endpoint != nullptr) endpoint->Release();
+  if (device != nullptr) device->Release();
+  if (enumerator != nullptr) enumerator->Release();
+  if (need_uninit) ::CoUninitialize();
+  return SUCCEEDED(hr);
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -92,6 +136,17 @@ bool FlutterWindow::OnCreate() {
           ::ReleaseCapture();
           ::SendMessage(this->GetHandle(), WM_NCLBUTTONDOWN, HTCAPTION, 0);
           result->Success();
+        } else if (method == "getSystemVolume") {
+          // 初始化音量 = 系统默认输出设备音量（非固定 100%）
+          double volume = 1.0;
+          bool muted = false;
+          GetSystemVolume(&volume, &muted);
+          flutter::EncodableMap map;
+          map[flutter::EncodableValue("volume")] =
+              flutter::EncodableValue(volume);
+          map[flutter::EncodableValue("muted")] =
+              flutter::EncodableValue(muted);
+          result->Success(flutter::EncodableValue(map));
         } else {
           result->NotImplemented();
         }
