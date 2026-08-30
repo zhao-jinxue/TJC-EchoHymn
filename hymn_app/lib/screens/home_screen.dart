@@ -11,6 +11,7 @@ import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
+import '../theme/app_palette.dart';
 import '../widgets/hymn_display.dart';
 import '../widgets/panels/default_playlists_panel.dart';
 import '../widgets/panels/hymn_list_panel.dart';
@@ -58,6 +59,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // 窗口是否最大化（自定义标题栏「最大化/还原」按钮图标切换，native 推送）
   bool _windowMaximized = false;
+
+  // 标题栏「换肤」按钮的锚点（弹出配色菜单定位用）
+  final GlobalKey _themeButtonKey = GlobalKey();
 
   // ---- 左栏视图状态 ----
   LeftTab _leftTab = LeftTab.hymnList;
@@ -277,6 +281,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       playlistIndex: saveIndex ? (_audio?.currentIndex ?? -1) : -1,
       showLeft: _showLeft,
       showRight: _showRight,
+      appTheme: ThemeController.instance.current.id,
     );
   }
 
@@ -325,10 +330,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
           // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
           _buildTitleBar(),
-          const Divider(height: 1, color: AppColors.divider),
+          Divider(height: 1, color: AppColors.divider),
           _buildTopBar(),
           Expanded(child: _buildBody()),
-          const Divider(height: 1, color: AppColors.divider),
+          Divider(height: 1, color: AppColors.divider),
           _buildStatusBar(),
         ],
       ),
@@ -373,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         size: 14, color: Colors.white),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'EchoHymn · 聆听赞美诗',
                     style: TextStyle(
                       fontSize: 13,
@@ -391,6 +396,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 换肤按钮（调色盘）：切换 5 套配色
+                _WindowButton(
+                  key: _themeButtonKey,
+                  icon: Icons.palette_outlined,
+                  tooltip: '切换配色（${ThemeController.instance.current.name}）',
+                  onTap: _showThemeMenu,
+                ),
                 _WindowButton(
                   icon: Icons.help_outline,
                   tooltip: '用户手册（F1）',
@@ -458,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Center(
               child: Text(
                 centerText,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
@@ -527,6 +539,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     UserManualDialog.show(context);
   }
 
+  /// 打开换肤菜单：在调色盘按钮下方弹出 5 套配色列表
+  Future<void> _showThemeMenu() async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final btnBox =
+        _themeButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (overlay == null || btnBox == null) return;
+    final current = ThemeController.instance.current;
+    final chosen = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          btnBox.localToGlobal(Offset.zero),
+          btnBox.localToGlobal(btnBox.size.bottomRight(Offset.zero)),
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: kThemes.map((t) {
+        return PopupMenuItem<String>(
+          value: t.id,
+          height: 36,
+          child: Row(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: t.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(t.name, style: const TextStyle(fontSize: 13)),
+              const Spacer(),
+              if (t.id == current.id)
+                Icon(Icons.check,
+                    size: 16, color: AppColors.textSecondary),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+    if (chosen != null && mounted) _switchTheme(themeById(chosen));
+  }
+
+  /// 切换配色并持久化（state.json appTheme）
+  void _switchTheme(AppPalette palette) {
+    if (palette.id == ThemeController.instance.current.id) return;
+    LogService.instance.info(LogTag.action, '切换配色: ${palette.name}');
+    ThemeController.instance.switchTo(palette);
+    _saveState();
+  }
+
   /// 最小化窗口（等价系统最小化，播放不中断）
   Future<void> _minimizeWindow() async {
     LogService.instance.info(LogTag.action, '窗口最小化');
@@ -585,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       children: [
         if (_showLeft) ...[
           _buildLeftPanel(repo, audio),
-          const VerticalDivider(width: 1, color: AppColors.divider),
+          VerticalDivider(width: 1, color: AppColors.divider),
         ],
         Expanded(
           child: HymnDisplay(
@@ -602,7 +667,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
         if (_showRight) ...[
-          const VerticalDivider(width: 1, color: AppColors.divider),
+          VerticalDivider(width: 1, color: AppColors.divider),
           _buildRightPanel(),
         ],
       ],
@@ -621,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildLeftTabBar(),
-            const Divider(height: 1, color: AppColors.divider),
+            Divider(height: 1, color: AppColors.divider),
             // 三 Tab 面板分发：各自持有显示/交互/恢复逻辑，互不影响
             Expanded(
               child: switch (_leftTab) {
@@ -747,8 +812,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(10),
+            Padding(
+              padding: const EdgeInsets.all(10),
               child: Text(
                 '诗歌源考',
                 style: TextStyle(
@@ -758,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Divider(height: 1, color: AppColors.divider),
             Expanded(
               child: hymn == null
                   ? const _EmptyHint(text: '请选择一首诗歌')
@@ -769,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             hymn.sourceInfo.isEmpty
                                 ? '暂无源考资料'
                                 : hymn.sourceInfo),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           height: 1.6,
                           color: AppColors.textSecondary,
@@ -796,13 +861,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Expanded(
               child: Text(
                 ChineseConvertService.instance.toSimplified(hymn.statusMeta),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12, color: AppColors.textSecondary),
                 overflow: TextOverflow.ellipsis,
               ),
             )
           else
-            const Expanded(
+            Expanded(
               child: Text(
                 '就绪',
                 style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
@@ -824,7 +889,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     padding: const EdgeInsets.only(right: 16),
                     child: Text(
                       '${formatTime(pos)} / ${formatTime(dur)} · $pct%',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, color: AppColors.textSecondary),
                     ),
                   );
@@ -848,6 +913,7 @@ class _WindowButton extends StatefulWidget {
   final bool danger;
 
   const _WindowButton({
+    super.key,
     required this.icon,
     required this.tooltip,
     required this.onTap,
@@ -875,7 +941,9 @@ class _WindowButtonState extends State<_WindowButton> {
             onTap: widget.onTap,
             child: Container(
               color: _hover
-                  ? (widget.danger ? const Color(0xFFE81123) : const Color(0xFFE5E6EB))
+                  ? (widget.danger
+                      ? const Color(0xFFE81123)
+                      : AppColors.windowBtnHover)
                   : Colors.transparent,
               child: Icon(
                 widget.icon,
@@ -903,10 +971,10 @@ class _EmptyHint extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
+          Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(text,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),

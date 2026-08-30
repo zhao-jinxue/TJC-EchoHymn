@@ -66,7 +66,7 @@ class UserManualDialog extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         '用户手册',
                         style: TextStyle(
@@ -77,7 +77,7 @@ class UserManualDialog extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close,
+                      icon: Icon(Icons.close,
                           size: 18, color: AppColors.textSecondary),
                       tooltip: '关闭（Esc）',
                       onPressed: () => Navigator.of(context).pop(),
@@ -85,7 +85,7 @@ class UserManualDialog extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: AppColors.divider),
+              Divider(height: 1, color: AppColors.divider),
               // ---- 手册内容 ----
               Expanded(
                 child: SingleChildScrollView(
@@ -105,8 +105,8 @@ class UserManualDialog extends StatelessWidget {
                       _buildGuideList(context),
                       const SizedBox(height: 16),
                       const _SectionTitle('快捷键说明'),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           '支持通用媒体键（播放 / 暂停、上一首、下一首、音量）直接控制；'
                           '输入框获得焦点时，空格仍用于输入文字。',
@@ -131,6 +131,7 @@ class UserManualDialog extends StatelessWidget {
 
   Widget _buildGuideList(BuildContext context) {
     const items = <String>[
+      '标题栏最右侧（关闭按钮左侧）新增「调色盘」按钮：一键切换 5 套界面配色（晨光蓝 / 暖阳金 / 静谧绿 / 典雅紫 / 暗夜墨），选择自动记忆，重启保持。',
       '顶栏：左侧「诗歌列表 / 歌单」箭头按钮展开或收起左栏；右侧「源考」箭头按钮展开或收起右栏。标题栏空白处按住可拖动窗口，双击可最大化 / 还原。',
       '左侧栏三个栏目：「诗歌列表」按编号分页浏览全部诗歌；「默认歌单」按分类目录浏览；「个人歌单」管理自己创建的歌单（可新建 / 编辑 / 删除）。',
       '搜索定位：输入编号即时定位并翻页高亮；输入标题显示匹配列表；在搜索框按回车可播放定位到的诗歌。',
@@ -148,15 +149,15 @@ class UserManualDialog extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 5, right: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 5, right: 8),
                   child:
                       Icon(Icons.circle, size: 6, color: AppColors.textTertiary),
                 ),
                 Expanded(
                   child: Text(
                     item,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.5,
                       color: AppColors.textSecondary,
@@ -180,9 +181,9 @@ class UserManualDialog extends StatelessWidget {
         columnWidths: const {0: FlexColumnWidth(1.4), 1: FlexColumnWidth(1.6)},
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         children: [
-          const TableRow(
+          TableRow(
             decoration: BoxDecoration(color: AppColors.sidebarBg),
-            children: [
+            children: const [
               _Cell('功能', bold: true),
               _Cell('快捷键', bold: true),
             ],
@@ -212,7 +213,7 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -231,7 +232,7 @@ class _SectionBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         height: 1.6,
         color: AppColors.textSecondary,

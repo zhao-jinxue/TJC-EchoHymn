@@ -4,7 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'services/app_state_service.dart';
 import 'services/log_service.dart';
+import 'theme/app_palette.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +14,14 @@ Future<void> main() async {
   // 初始化日志系统（exe 同级 logs/ 目录，保留 7 份日志文件）
   await LogService.instance.init();
   LogService.instance.info(LogTag.system, '应用启动');
+
+  // 恢复上次配色（state.json 的 appTheme；缺失/非法回退默认晨光蓝）
+  try {
+    final state = await AppStateService().load();
+    ThemeController.instance.switchTo(themeById(state.appTheme));
+  } catch (e) {
+    LogService.instance.error(LogTag.error, '恢复配色失败，使用默认', detail: '$e');
+  }
 
   // 全局异常捕获（Flutter 框架层）
   FlutterError.onError = (FlutterErrorDetails details) {

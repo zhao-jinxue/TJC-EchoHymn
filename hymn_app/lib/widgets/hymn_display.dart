@@ -74,9 +74,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildVersionBar(hymn),
-          const Divider(height: 1, color: AppColors.divider),
+          Divider(height: 1, color: AppColors.divider),
           Expanded(child: _buildContent(hymn)),
-          const Divider(height: 1, color: AppColors.divider),
+          Divider(height: 1, color: AppColors.divider),
           _buildPlayerBar(hymn),
         ],
       ),
@@ -236,7 +236,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   // ============ 内容区 ============
   Widget _buildContent(Hymn? hymn) {
     if (hymn == null) {
-      return const Center(
+      return Center(
         child: Text(
           '请在左侧选择一首诗歌',
           style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
@@ -257,7 +257,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   Widget _buildLyrics(Hymn hymn) {
     final verses = hymn.verses;
     if (verses.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           '暂无歌词',
           style: TextStyle(color: AppColors.textTertiary),
@@ -360,7 +360,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
     if (abs.isEmpty || !(abs.contains('http') || _fileExists(abs))) {
       return Center(
         child: Text(isEmpty,
-            style: const TextStyle(color: AppColors.textTertiary)),
+            style: TextStyle(color: AppColors.textTertiary)),
       );
     }
     return Center(
@@ -412,7 +412,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
           children: [
             IconButton(
               icon:
-                  const Icon(Icons.skip_previous, color: AppColors.textPrimary),
+                  Icon(Icons.skip_previous, color: AppColors.textPrimary),
               tooltip: '上一首',
               onPressed: () => widget.audio.playPrev(),
             ),
@@ -441,7 +441,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.skip_next, color: AppColors.textPrimary),
+              icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
               tooltip: '下一首',
               onPressed: () => widget.audio.playNext(),
             ),
@@ -502,7 +502,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   child: Text(
                     '${(effective * 100).round()}%',
                     textAlign: TextAlign.left,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
@@ -527,7 +527,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
         initialValue:
             voices.contains(currentVoice) ? currentVoice : voices.first,
         onSelected: (v) => _switchVersion(hymn, v),
-        icon: const Icon(Icons.groups, size: 22, color: AppColors.textPrimary),
+        icon: Icon(Icons.groups, size: 22, color: AppColors.textPrimary),
         itemBuilder: (ctx) => [
           for (final v in voices)
             PopupMenuItem(value: v, child: Text(_voiceLabel(v))),
@@ -548,7 +548,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
             return Row(
               children: [
                 Text(formatTime(pos),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
                 Expanded(
                   child: Slider(
@@ -565,7 +565,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   ),
                 ),
                 Text(formatTime(dur),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
               ],
             );

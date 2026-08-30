@@ -35,6 +35,7 @@ class AppStateService {
     required int playlistIndex,
     bool showLeft = false,
     bool showRight = false,
+    String appTheme = '',
   }) {
     final data = <String, Object>{
       'leftTab': leftTab,
@@ -46,6 +47,7 @@ class AppStateService {
       'playlistIndex': playlistIndex,
       'showLeft': showLeft,
       'showRight': showRight,
+      'appTheme': appTheme,
     };
     // 排队执行，串行写入，且异常不影响后续写入
     _writeChain = _writeChain.then((_) => _doWrite(data)).catchError((_) {});
@@ -95,6 +97,7 @@ class AppStateService {
         playlistIndex: (json['playlistIndex'] as num?)?.toInt() ?? -1,
         showLeft: (json['showLeft'] as bool?) ?? false,
         showRight: (json['showRight'] as bool?) ?? false,
+        appTheme: (json['appTheme'] as String?) ?? '',
       );
     } catch (_) {
       return _defaultState;
@@ -129,6 +132,9 @@ class AppState {
   /// 右栏（诗歌源考）是否展开
   final bool showRight;
 
+  /// 当前配色 id（对应 [theme/app_palette.dart] 的 AppPalette.id；空串 = 默认）
+  final String appTheme;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -139,5 +145,6 @@ class AppState {
     required this.playlistIndex,
     this.showLeft = false,
     this.showRight = false,
+    this.appTheme = '',
   });
 }

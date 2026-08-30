@@ -33,12 +33,14 @@
 | `b39967f`~`06c61f5`（v1.2.x 窗口重构） | **基座画面 + 抽屉式侧栏 + 等比缩放**：基座画面物理像素 **850×890**；侧栏改为**抽屉式向两侧扩展**（左 350 / 右 600，窗口整体加宽，基座永远居中）；侧栏状态持久化（`showLeft/showRight`）；窗口**等比缩放**（`Transform.scale` 渲染层缩放，不再依赖布局约束）；最大化感知 + resize 后重建消除时序竞态 |
 | `bb5a0e6`（tag v1.2.1） | **四轮 UI 回归测试收尾（2026-08-29~30）**：回归清单纯测试视角化；27 条 NG 分批修复——窗口单实例保护/最小尺寸随侧栏同步、歌词字号随窗口铺满 + 整体 +4、搜索回车与焦点保持、弹窗 Toast 就地/字数计数/重名检查/删除落库、播放条防抖/版本高亮、just_audio 残留清理 |
 | `9a9452c`（v1.3.0，2026-08-30） | **自定义标题栏 + 全局播放快捷键 + 用户手册**：移除系统标题栏（`WS_CAPTION`），Flutter 顶栏自绘「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组，标题区空白处可拖拽窗口、双击最大化；全局快捷键（空格/Ctrl+P 播放暂停、Ctrl/Alt+方向键切歌、Ctrl+↑↓ 音量、Ctrl+M 静音、F1 手册、通用媒体键）；用户手册弹窗（软件介绍 / 操作说明 / 快捷键说明）；`AudioService` 新增音量/静音控制 |
+| `<待提交>`（v1.4.0，2026-08-30） | **五套换肤配色 + 标题栏换肤按钮**：`AppPalette` 语义色槽（19 色）设计 5 套方案（晨光蓝=默认/v1.3.1 一致、暖阳金·圣堂、静谧绿·草木、典雅紫·暮云、暗夜墨·深色）；`AppColors` 由 static const 改为「当前调色板门面」，`EchoHymnApp` 用 `ValueListenableBuilder` 监听重建实现即时换肤；标题栏新增「调色盘」按钮（用户手册左侧）弹出配色菜单；配色持久化 `state.json appTheme`，重启保持；`docs/theme_preview.html` 交互式效果图预览 |
 
 **关键文件**：
 
 - 面板：`hymn_app/lib/widgets/panels/{left_panel_base, hymn_list_panel, default_playlists_panel, my_playlists_panel}.dart`
 - 协调者：`hymn_app/lib/screens/home_screen.dart`（含自定义标题栏/窗口按钮组）
 - 全局快捷键：`hymn_app/lib/app.dart`（根 `Focus` 包裹 `MaterialApp` + `kNavigatorKey`）
+- 换肤：`hymn_app/lib/theme/app_palette.dart`（`AppPalette`/5 套预设/`ThemeController`）+ `docs/theme_preview.html`（交互式效果图预览）
 - 用户手册弹窗：`hymn_app/lib/widgets/user_manual_dialog.dart`
 - 其他：`widgets/{hymn_display, playlist_dialog}.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
 - 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
@@ -56,6 +58,7 @@
 - **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**）
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
+- **换肤**：`AppPalette` 语义色槽（19 色）+ 5 套方案（晨光蓝/暖阳金/静谧绿/典雅紫/暗夜墨）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
@@ -136,6 +139,14 @@
 1. **重写 `docs/UI_DESIGN_TEMPLATE.md`**：由早期「填写范本」整理为**最终设计规范**（v1.3.1）——补齐 ① 窗口/页面/弹窗清单（主窗口分块、用户手册、个人歌单弹窗、搜索结果弹窗）② 全局组件规范（按钮/窗口按钮/输入框/列表/弹窗/Toast/滚动条/音量控件/分隔线）③ 交互行为（全局快捷键、窗口与标题栏、侧栏抽屉、搜索定位、播放切歌、音量双向同步、状态持久化）④ 主题样式/间距/圆角/图标 ⑤ 响应式 ⑥ 数据方案；清除早期失真项（400px 侧栏/Web/1280×800/OpenCC/三级分类等）。
 2. **重写 `docs/UI_CONFIRMATION.md`**：整合第 1~5 轮修订为**最终定稿确认单**（v1.3.1），以当前实现为准。
 
+### 2026-08-30 会话补充（v1.4.0 五套换肤配色 + 换肤机制）
+
+1. **配色架构 = 语义色槽**：新建 `lib/theme/app_palette.dart` —— `AppPalette` 定义 19 个**语义色槽**（primary/primaryHover/accent/pageBg/cardBg/sidebarBg/lyricsBg/三级文字/divider/border/success/warning/danger/selectedBg/scrollbarThumb/windowBtnHover），预设 5 套方案：**晨光蓝**（默认，与 v1.3.1 完全一致，零回归）、**暖阳金·圣堂**（圣金黄+橄榄绿）、**静谧绿·草木**（鼠尾草绿+薄荷白）、**典雅紫·暮云**（紫罗兰+青碧）、**暗夜墨·深色**。换肤 = 只换色值，界面引用色槽自动跟随。
+2. **换肤机制 = 静态门面 + 调色板指针**（相比 ThemeExtension 改造量小一个数量级）：`AppColors` 由 static const 改为**读取当前调色板的静态 getter**（全部 170 处引用零改动）；`EchoHymnApp` 外包 `ValueListenableBuilder<AppPalette>` 监听 `ThemeController.instance.notifier`，切色即重建 MaterialApp/ThemeData；被波及的 76 处 `const` 由一次性脚本 `tools/_fix_const.py` 去除（analyze 逐项收敛）。
+3. **入口与持久化**：标题栏新增「调色盘」按钮（用户手册左侧，Tooltip 显示当前配色名）→ `showMenu` 弹出 5 套（主色圆点+名称+当前✓）→ 切换即 `_saveState()` 写入 `state.json` 的 `appTheme`；`main()` 启动时恢复（缺失/非法回退晨光蓝）。
+4. **效果图**：`docs/theme_preview.html` 交互式高保真预览（1800×890 = 基座+双抽屉），5 套一键切换/对比全部/缩放，调色板明细与 Flutter 字段一一对应。
+5. **硬编码收敛**：滚动条滑块 `#C1C1C1` → `palette.scrollbarThumb`；标题栏按钮悬停灰 `#E5E6EB` → `palette.windowBtnHover`；关闭悬停红 `#E81123` 与「主色底白字」`Colors.white` 保留（5 套配色下均正确）。
+
 ---
 
 ## 四、剩余/遗留任务清单
@@ -151,8 +162,9 @@
 9. ✅ **v1.2.x 窗口重构**：基座画面 850×890、抽屉式侧栏、等比缩放、最大化/竞态处理、日志系统
 10. ✅ **v1.2.1 四轮 UI 回归测试（2026-08-29~30）**：27 条 NG 分批修复并复测归档（窗口/歌词/搜索/弹窗/播放条）
 11. ✅ **v1.3.0 自定义标题栏 + 全局快捷键 + 用户手册（2026-08-30）**：移除系统标题栏，Flutter 自绘窗口按钮组（用户手册在最小化左侧）；通用播放快捷键 + 媒体键；用户手册弹窗（软件介绍/操作说明/快捷键说明）
-12. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-13. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
+12. ✅ **v1.4.0 五套换肤配色 + 换肤按钮（2026-08-30）**：语义色槽架构 + 5 套方案（晨光蓝/暖阳金/静谧绿/典雅紫/暗夜墨）+ 标题栏调色盘切换 + `state.json` 持久化 + `docs/theme_preview.html` 效果图；`hymn_app/test/v140_theme_test_cases.md` 22 项待实测
+13. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
+14. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
 
 ---
 

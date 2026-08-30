@@ -83,7 +83,7 @@ class _DefaultPlaylistsPanelState
               Expanded(
                 child: Text(
                   display(hymn.title),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13, color: AppColors.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -193,7 +193,7 @@ class _DefaultPlaylistsPanelState
                       const SizedBox(width: 4),
                       Text(
                         display(cat),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -259,7 +259,7 @@ class _DefaultPlaylistsPanelState
               ),
               Text(
                 '${sub.hymns.length}首',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppColors.textTertiary),
               ),
             ],
@@ -293,7 +293,7 @@ class _DefaultPlaylistsPanelState
               Expanded(
                 child: Text(
                   display(sub.subcategory),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -303,13 +303,13 @@ class _DefaultPlaylistsPanelState
               ),
               Text(
                 '${_selectedHymns.length}首',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppColors.textTertiary),
               ),
             ],
           ),
         ),
-        const Divider(height: 1, color: AppColors.divider),
+        Divider(height: 1, color: AppColors.divider),
         Expanded(
           child: _selectedHymns.isEmpty
               ? const _EmptyHint(text: '暂无诗歌')
@@ -335,10 +335,10 @@ class _EmptyHint extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
+          Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(text,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),

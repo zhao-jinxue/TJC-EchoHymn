@@ -82,7 +82,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
               Expanded(
                 child: Text(
                   display(hymn.title),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13, color: AppColors.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -159,7 +159,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
             child: _newPlaylistButton(),
           ),
         ),
-        const Divider(height: 1, color: AppColors.divider),
+        Divider(height: 1, color: AppColors.divider),
         Expanded(
           child: _playlists.isEmpty
               ? const _EmptyHint(text: '暂无个人歌单')
@@ -199,7 +199,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.queue_music,
+                              Icon(Icons.queue_music,
                                   size: 18, color: AppColors.textSecondary),
                               const SizedBox(width: 8),
                               Expanded(
@@ -219,13 +219,13 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
                               ),
                               Text(
                                 '${pl.count}首',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11,
                                     color: AppColors.textTertiary),
                               ),
                               // 修改按钮：打开复用弹窗（含删除歌单）
                               IconButton(
-                                icon: const Icon(Icons.edit_outlined,
+                                icon: Icon(Icons.edit_outlined,
                                     size: 16, color: AppColors.textTertiary),
                                 tooltip: '修改歌单',
                                 onPressed: () => _openEditDialog(pl),
@@ -289,7 +289,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
               Expanded(
                 child: Text(
                   display(pl.name),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -299,13 +299,13 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
               ),
               Text(
                 '${_selectedHymns.length}首',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppColors.textTertiary),
               ),
             ],
           ),
         ),
-        const Divider(height: 1, color: AppColors.divider),
+        Divider(height: 1, color: AppColors.divider),
         Expanded(
           child: _selectedHymns.isEmpty
               ? const _EmptyHint(text: '暂无诗歌')
@@ -415,10 +415,10 @@ class _EmptyHint extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
+          Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(text,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),

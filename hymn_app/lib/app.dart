@@ -4,31 +4,42 @@ import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
 import 'services/audio_service.dart';
 import 'services/log_service.dart';
+import 'theme/app_palette.dart';
 import 'widgets/user_manual_dialog.dart';
 
 /// 全局 Navigator key（供全局快捷键等非路由内代码弹窗使用）
 final GlobalKey<NavigatorState> kNavigatorKey = GlobalKey<NavigatorState>();
 
-/// 主题色常量（按 UI 确认单规范）
+/// 主题色门面（按 UI 确认单规范）：
+/// 全部从「当前调色板」取值 —— 换肤 = 切换 [ThemeController] 的调色板，
+/// 界面各处引用本类的色槽自动跟随，无需改动业务代码。
 class AppColors {
-  static const Color primary = Color(0xFF2B6AE0);
-  static const Color primaryHover = Color(0xFF1E57C8);
-  static const Color accent = Color(0xFF00A870);
-  static const Color pageBg = Color(0xFFFAFBFC);
-  static const Color cardBg = Color(0xFFFFFFFF);
-  static const Color sidebarBg = Color(0xFFF5F6FA);
-  static const Color textPrimary = Color(0xFF1F2329);
-  static const Color textSecondary = Color(0xFF646A73);
-  static const Color textTertiary = Color(0xFF8F959E);
-  static const Color divider = Color(0xFFE5E6EB);
-  static const Color border = Color(0xFFD0D3D9);
-  static const Color success = Color(0xFF00A870);
-  static const Color warning = Color(0xFFFF9F0A);
-  static const Color danger = Color(0xFFF54A45);
-  static const Color selectedBg = Color(0xFFE8F0FE);
+  static AppPalette get _p => ThemeController.instance.current;
 
-  /// 歌词显示区背景（暖白，与侧栏冷灰 #F5F6FA 形成轻微色差，便于感知区域大小）
-  static const Color lyricsBg = Color(0xFFFDF8EE);
+  static Color get primary => _p.primary;
+  static Color get primaryHover => _p.primaryHover;
+  static Color get accent => _p.accent;
+  static Color get pageBg => _p.pageBg;
+  static Color get cardBg => _p.cardBg;
+  static Color get sidebarBg => _p.sidebarBg;
+  static Color get textPrimary => _p.textPrimary;
+  static Color get textSecondary => _p.textSecondary;
+  static Color get textTertiary => _p.textTertiary;
+  static Color get divider => _p.divider;
+  static Color get border => _p.border;
+  static Color get success => _p.success;
+  static Color get warning => _p.warning;
+  static Color get danger => _p.danger;
+  static Color get selectedBg => _p.selectedBg;
+
+  /// 歌词显示区背景（与侧栏形成轻微色差，便于感知区域大小）
+  static Color get lyricsBg => _p.lyricsBg;
+
+  /// 滚动条滑块颜色
+  static Color get scrollbarThumb => _p.scrollbarThumb;
+
+  /// 标题栏窗口按钮悬停背景
+  static Color get windowBtnHover => _p.windowBtnHover;
 }
 
 /// EchoHymn 全局快捷键（通用方案）：
@@ -166,56 +177,62 @@ class EchoHymnApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     LogService.instance.info(LogTag.ui, '生成应用根组件（EchoHymnApp / Material 主题）');
-    final base = ThemeData.light(useMaterial3: true);
-    final theme = base.copyWith(
-      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-      scaffoldBackgroundColor: AppColors.pageBg,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.cardBg,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0.5,
-        titleTextStyle: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      dividerColor: AppColors.divider,
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
-      ),
-      cardTheme: const CardThemeData(
-        color: AppColors.cardBg,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-        ),
-      ),
-      // 全局滚动条：宽度 13px（默认 8 → +5），滑块 #C1C1C1
-      scrollbarTheme: const ScrollbarThemeData(
-        thickness: WidgetStatePropertyAll(10),
-        thumbColor: WidgetStatePropertyAll(Color(0xFFC1C1C1)),
-      ),
-    );
+    // 监听调色板切换（换肤）：切换时整棵 MaterialApp 重建，所有 AppColors 引用自动跟随
+    return ValueListenableBuilder<AppPalette>(
+      valueListenable: ThemeController.instance.notifier,
+      builder: (context, palette, _) {
+        final base = ThemeData.light(useMaterial3: true);
+        final theme = base.copyWith(
+          colorScheme: ColorScheme.fromSeed(seedColor: palette.primary),
+          scaffoldBackgroundColor: palette.pageBg,
+          appBarTheme: AppBarTheme(
+            backgroundColor: palette.cardBg,
+            foregroundColor: palette.textPrimary,
+            elevation: 0.5,
+            titleTextStyle: TextStyle(
+              color: palette.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          dividerColor: palette.divider,
+          textTheme: base.textTheme.apply(
+            bodyColor: palette.textPrimary,
+            displayColor: palette.textPrimary,
+          ),
+          cardTheme: CardThemeData(
+            color: palette.cardBg,
+            elevation: 0,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+          ),
+          // 全局滚动条：宽度 10px，滑块色随配色
+          scrollbarTheme: ScrollbarThemeData(
+            thickness: const WidgetStatePropertyAll(10),
+            thumbColor: WidgetStatePropertyAll(palette.scrollbarThumb),
+          ),
+        );
 
-    LogService.instance.info(
-      LogTag.ui,
-      'MaterialApp 构建完成',
-      detail: '标题: EchoHymn · 聆听赞美诗\n主页: HomeScreen',
-    );
-    // 全局快捷键：把 MaterialApp 包在 Focus 下，事件从任意焦点（含弹窗）
-    // 冒泡到根节点统一处理（播放控制 + F1 手册）
-    return Focus(
-      autofocus: true,
-      onKeyEvent: _handleGlobalShortcuts,
-      child: MaterialApp(
-        title: 'EchoHymn · 聆听赞美诗',
-        debugShowCheckedModeBanner: false,
-        navigatorKey: kNavigatorKey,
-        theme: theme,
-        home: const HomeScreen(),
-      ),
+        LogService.instance.info(
+          LogTag.ui,
+          'MaterialApp 构建完成（主题: ${palette.name}）',
+          detail: '标题: EchoHymn · 聆听赞美诗\n主页: HomeScreen',
+        );
+        // 全局快捷键：把 MaterialApp 包在 Focus 下，事件从任意焦点（含弹窗）
+        // 冒泡到根节点统一处理（播放控制 + F1 手册）
+        return Focus(
+          autofocus: true,
+          onKeyEvent: _handleGlobalShortcuts,
+          child: MaterialApp(
+            title: 'EchoHymn · 聆听赞美诗',
+            debugShowCheckedModeBanner: false,
+            navigatorKey: kNavigatorKey,
+            theme: theme,
+            home: const HomeScreen(),
+          ),
+        );
+      },
     );
   }
 }

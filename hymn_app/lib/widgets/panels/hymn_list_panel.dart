@@ -85,7 +85,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
               Expanded(
                 child: Text(
                   ChineseConvertService.instance.toSimplified(hymn.title),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13, color: AppColors.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -297,7 +297,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSearchBar(),
-        const Divider(height: 1, color: AppColors.divider),
+        Divider(height: 1, color: AppColors.divider),
         Expanded(
           child:
               _titleResults != null ? _buildTitleResults() : _buildPageList(),
@@ -406,12 +406,12 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
                   Expanded(
                     child: Text(
                       ChineseConvertService.instance.toSimplified(hymn.title),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13, color: AppColors.textPrimary),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(Icons.north_east,
+                  Icon(Icons.north_east,
                       size: 14, color: AppColors.textTertiary),
                 ],
               ),
@@ -447,7 +447,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
             child: Text(
               '第 ${_listPage + 1}/$totalPages 页',
               style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ),
           IconButton(
@@ -477,10 +477,10 @@ class _EmptyHint extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
+          Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(text,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),

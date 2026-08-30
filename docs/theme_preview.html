@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoHymn 换肤效果预览 · 5 套配色方案</title>
+<style>
+  :root { --page-bg:#F0F1F4; --card:#fff; --text:#1F2329; --sub:#646A73; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--page-bg); color:var(--text); font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif; padding:24px; }
+  .header { max-width:1200px; margin:0 auto 20px; }
+  .header h1 { font-size:22px; margin-bottom:6px; }
+  .header p { color:var(--sub); font-size:13px; margin-bottom:14px; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .swatch-btn {
+    display:flex; align-items:center; gap:8px; padding:7px 14px; border-radius:8px;
+    border:2px solid transparent; background:#fff; cursor:pointer; font-size:13px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08); transition:.15s;
+  }
+  .swatch-btn:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.12); }
+  .swatch-btn.active { border-color:#2B6AE0; }
+  .swatch-btn .dot { width:14px; height:14px; border-radius:50%; flex:none; }
+  .scale-group { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--sub); }
+  .scale-group input { width:140px; }
+  .toggle-all { margin-left:auto; padding:7px 14px; border-radius:8px; border:1px solid #D0D3D9; background:#fff; cursor:pointer; font-size:13px; }
+  .stage { max-width:1200px; margin:0 auto; overflow:visible; }
+  .mock-wrap { margin-bottom:36px; }
+  .mock-label {
+    font-size:15px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:10px;
+  }
+  .mock-label .tag { font-size:12px; font-weight:400; color:var(--sub); }
+  .mock-canvas { position:relative; border-radius:10px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.18); transform-origin:top left; }
+  .mockup { width:1800px; height:890px; position:relative; font-size:14px; }
+
+  /* ========== 5 套配色（CSS 变量 = 语义色槽，与 AppPalette 字段一一对应） ========== */
+  .t-morning {
+    --primary:#2B6AE0; --primary-hover:#1E57C8; --accent:#00A870;
+    --page-bg:#FAFBFC; --card-bg:#FFFFFF; --sidebar-bg:#F5F6FA; --lyrics-bg:#FDF8EE;
+    --text-1:#1F2329; --text-2:#646A73; --text-3:#8F959E;
+    --divider:#E5E6EB; --border:#D0D3D9; --selected-bg:#E8F0FE;
+    --success:#00A870; --warning:#FF9F0A; --danger:#F54A45;
+    --scrollbar:#C1C1C1; --win-hover:#E5E6EB; --on-primary:#fff;
+  }
+  .t-gold {
+    --primary:#C68A1B; --primary-hover:#A8730F; --accent:#5B8C5A;
+    --page-bg:#FBF8F1; --card-bg:#FFFFFF; --sidebar-bg:#F7F1E4; --lyrics-bg:#FDF4DE;
+    --text-1:#3A3124; --text-2:#6B6152; --text-3:#97896F;
+    --divider:#E9DFC8; --border:#D6C9AE; --selected-bg:#F5E7C3;
+    --success:#5B8C5A; --warning:#D97A06; --danger:#C0392B;
+    --scrollbar:#CBBF9F; --win-hover:#EFE6CF; --on-primary:#fff;
+  }
+  .t-green {
+    --primary:#2F7D5A; --primary-hover:#25654A; --accent:#5BA37E;
+    --page-bg:#F7FBF8; --card-bg:#FFFFFF; --sidebar-bg:#F0F7F2; --lyrics-bg:#F5FAF6;
+    --text-1:#22322B; --text-2:#5C6E65; --text-3:#8A9A92;
+    --divider:#DEE8E1; --border:#C9D6CE; --selected-bg:#E1F0E7;
+    --success:#3E8F6A; --warning:#D9840A; --danger:#D04A44;
+    --scrollbar:#B9C6BE; --win-hover:#E2EDE6; --on-primary:#fff;
+  }
+  .t-purple {
+    --primary:#6E56CF; --primary-hover:#5B46B3; --accent:#1FA8A0;
+    --page-bg:#FAF8FC; --card-bg:#FFFFFF; --sidebar-bg:#F4F1F9; --lyrics-bg:#FAF7FD;
+    --text-1:#2E2A3C; --text-2:#6A6480; --text-3:#9790AC;
+    --divider:#E4DFEE; --border:#CEC6DE; --selected-bg:#ECE5FA;
+    --success:#17A094; --warning:#E08B0C; --danger:#D34D55;
+    --scrollbar:#C2BACD; --win-hover:#E9E3F2; --on-primary:#fff;
+  }
+  .t-dark {
+    --primary:#4A8DF7; --primary-hover:#3B75D4; --accent:#22C3A6;
+    --page-bg:#171A21; --card-bg:#1F232C; --sidebar-bg:#1A1E26; --lyrics-bg:#21262F;
+    --text-1:#E8EAED; --text-2:#A9B0BC; --text-3:#7D8595;
+    --divider:#2C313C; --border:#3A4150; --selected-bg:#26344A;
+    --success:#2FC38A; --warning:#E8A33D; --danger:#E0564F;
+    --scrollbar:#4A5260; --win-hover:#2C313C; --on-primary:#fff;
+  }
+
+  /* ========== 主窗口内部布局样式 ========== */
+  .mockup { background:var(--page-bg); color:var(--text-1); font-size:14px; }
+  .titlebar { height:30px; background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; padding-left:12px; position:relative; }
+  .titlebar .app-logo { width:22px; height:22px; border-radius:6px; background:var(--primary); display:flex; align-items:center; justify-content:center; }
+  .titlebar .app-logo svg { width:12px; height:12px; }
+  .titlebar .app-name { font-size:13px; font-weight:600; margin-left:8px; }
+  .win-btns { display:flex; height:30px; }
+  .win-btn { width:42px; height:30px; display:flex; align-items:center; justify-content:center; color:var(--text-2); cursor:default; }
+  .win-btn:hover { background:var(--win-hover); color:var(--text-1); }
+  .win-btn.close:hover { background:#E81123; color:#fff; }
+  .divider-h { height:1px; background:var(--divider); }
+  .topbar { height:40px; background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; padding:0 10px; position:relative; }
+  .toggle-group { display:flex; gap:6px; align-items:center; }
+  .toggle-btn { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
+  .toggle-btn.on { background:var(--primary); color:var(--on-primary); }
+  .toggle-btn.off { background:var(--card-bg); border:1px solid var(--border); color:var(--text-2); }
+  .toggle-btn svg { width:16px; height:16px; }
+  .current-song { font-size:13px; color:var(--text-2); position:absolute; left:50%; transform:translateX(-50%); }
+  .current-song b { color:var(--text-1); font-weight:600; }
+
+  .body-row { display:flex; height:788px; }
+  .sidebar { background:var(--sidebar-bg); padding:12px; display:flex; flex-direction:column; }
+  .left-panel { width:350px; flex:none; }
+  .right-panel { width:600px; flex:none; }
+  .content { flex:1; background:var(--page-bg); display:flex; flex-direction:column; }
+  .divider-v { width:1px; background:var(--divider); }
+  .tabs { display:flex; background:var(--card-bg); border-radius:8px; border:1px solid var(--border); overflow:hidden; height:32px; margin-bottom:10px; }
+  .tab { flex:1; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-2); border-right:1px solid var(--divider); cursor:default; }
+  .tab:last-child { border-right:none; }
+  .tab.on { background:var(--selected-bg); color:var(--primary); font-weight:600; }
+  .search { height:30px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); display:flex; align-items:center; padding:0 8px; margin-bottom:8px; color:var(--text-3); font-size:12px; }
+  .search svg { width:14px; height:14px; margin-right:6px; }
+  .panel-head { font-size:13px; color:var(--text-1); font-weight:600; padding:6px 4px; }
+  .hymn-list { flex:1; overflow:hidden; margin-top:2px; }
+  .hymn-item { height:30px; display:flex; align-items:center; padding-left:10px; font-size:13px; color:var(--text-2); position:relative; cursor:default; }
+  .hymn-item:hover { background:var(--win-hover); }
+  .hymn-item.sel { background:var(--selected-bg); color:var(--primary); }
+  .hymn-item.sel::before { content:""; position:absolute; left:0; top:4px; bottom:4px; width:3px; border-radius:2px; background:var(--primary); }
+  .hymn-item .num { width:52px; color:var(--text-3); font-size:12px; }
+  .hymn-item.sel .num { color:var(--primary); }
+
+  .versionbar { height:44px; background:var(--card-bg); border-bottom:1px solid var(--divider); display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
+  .pill-group { display:flex; gap:6px; }
+  .pill { height:26px; padding:0 12px; border-radius:4px; display:flex; align-items:center; font-size:12px; border:1px solid var(--border); color:var(--text-2); cursor:default; }
+  .pill.on { background:var(--primary); border-color:var(--primary); color:var(--on-primary); font-weight:600; }
+
+  .lyrics { flex:1; background:var(--lyrics-bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+  .lyrics .h-title { font-size:26px; font-weight:700; margin-bottom:4px; }
+  .lyrics .h-sub { font-size:13px; color:var(--text-3); margin-bottom:20px; }
+  .lyrics .verse { font-size:19px; line-height:2.1; text-align:center; letter-spacing:.5px; }
+  .lyrics .chorus { font-size:19px; line-height:2.1; text-align:center; margin-top:10px; font-weight:600; }
+
+  .playbar { background:var(--card-bg); border-top:1px solid var(--divider); padding:8px 16px 6px; }
+  .progress { height:4px; border-radius:2px; background:var(--divider); position:relative; margin-bottom:8px; }
+  .progress .fill { position:absolute; left:0; top:0; bottom:0; width:54%; border-radius:2px; background:var(--primary); }
+  .progress .thumb { position:absolute; left:54%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; border-radius:50%; background:var(--primary); border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .play-row { display:flex; align-items:center; justify-content:space-between; height:38px; }
+  .vol-group { display:flex; align-items:center; gap:8px; width:300px; }
+  .vol-group .vicon { color:var(--text-2); }
+  .vol-slider { width:150px; height:4px; border-radius:2px; background:var(--divider); position:relative; }
+  .vol-slider .fill { position:absolute; left:0; top:0; bottom:0; width:50%; border-radius:2px; background:var(--accent); }
+  .vol-slider .thumb { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:11px; height:11px; border-radius:50%; background:var(--accent); }
+  .vol-pct { font-size:12px; color:var(--text-2); width:36px; }
+  .play-ctrls { display:flex; align-items:center; gap:6px; position:absolute; left:50%; transform:translateX(-50%); }
+  .pc-btn { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--text-1); }
+  .pc-btn:hover { background:var(--win-hover); }
+  .pc-btn.play { width:40px; height:40px; background:var(--primary); color:var(--on-primary); box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .voices-btn { width:30px; height:30px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-2); margin-left:auto; }
+
+  .right-head { font-size:14px; font-weight:600; padding:14px 14px 10px; border-bottom:1px solid var(--divider); }
+  .right-body { flex:1; overflow:hidden; padding:12px 14px; }
+  .right-body p { font-size:13px; line-height:1.9; color:var(--text-2); margin-bottom:10px; }
+  .right-body b { color:var(--text-1); }
+
+  .statusbar { height:30px; background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; padding:0 14px; font-size:12px; color:var(--text-2); }
+  .statusbar b { color:var(--text-1); }
+
+  /* 调色板明细表 */
+  .palette-grid { display:flex; flex-wrap:wrap; gap:10px; margin:14px 0 4px; }
+  .chip { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .chip .sw { width:20px; height:20px; border-radius:6px; border:1px solid rgba(0,0,0,.08); flex:none; }
+  .chip .nm { color:var(--sub); font-weight:600; }
+  .chip .v { color:var(--sub); font-family:Consolas,monospace; }
+  .desc { font-size:13px; color:var(--sub); margin-bottom:8px; line-height:1.7; }
+  footer { max-width:1200px; margin:20px auto 0; color:var(--sub); font-size:12px; line-height:1.8; }
+  svg { flex:none; }
+
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎨 EchoHymn 换肤效果预览 · 5 套配色方案</h1>
+    <p>同一套「语义色槽」换值即可换肤 —— 布局与交互完全不变，只替换颜色。以下为 5 套方案的主界面效果图（示例数据，非真实歌词）。</p>
+    <div class="controls" id="controls"></div>
+    <div class="scale-group" style="margin-top:12px;">
+      <span>预览缩放</span>
+      <input type="range" id="scale" min="40" max="100" value="66">
+      <span id="scaleVal">66%</span>
+    </div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <footer>
+    <b>说明</b>：效果图为 HTML 高保真还原（画布 1800×890 = 基座 850 + 左栏 350 + 右栏 600，对应「基座画面 + 双抽屉展开」实况）。<br>
+    · 上排色块可点选单套预览，或点击「对比全部」纵向浏览 5 套；拖动缩放条调整显示大小。<br>
+    · 调色板与 Flutter 端 <code>AppPalette</code> 字段一一对应 —— 选定方案后只需在 <code>lib/theme/app_palette.dart</code> 改色值，其余代码零改动。
+  </footer>
+<script>
+const THEMES = [
+  {id:'t-morning', name:'晨光蓝 · 经典', desc:'当前默认配色（v1.3.1）。清爽晴空蓝 + 冷灰基底，专业、安静、耐看，改动最小。',
+   sw:[['主色 primary','#2B6AE0'],['主色悬停','#1E57C8'],['强调 accent','#00A870'],['页面背景','#FAFBFC'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F5F6FA'],['歌词区','#FDF8EE'],['一级文字','#1F2329'],['二级文字','#646A73'],['三级文字','#8F959E'],['分隔线','#E5E6EB'],['选中背景','#E8F0FE'],['危险','#F54A45']]},
+  {id:'t-gold', name:'暖阳金 · 圣堂', desc:'复古圣殿风：暖奶油纸感 + 圣金黄 + 深橄榄绿点缀，庄重典雅，最贴合赞美诗气质。',
+   sw:[['主色 primary','#C68A1B'],['主色悬停','#A8730F'],['强调 accent','#5B8C5A'],['页面背景','#FBF8F1'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F7F1E4'],['歌词区','#FDF4DE'],['一级文字','#3A3124'],['二级文字','#6B6152'],['三级文字','#97896F'],['分隔线','#E9DFC8'],['选中背景','#F5E7C3'],['危险','#C0392B']]},
+  {id:'t-green', name:'静谧绿 · 草木', desc:'自然安宁的鼠尾草绿 + 薄荷白，视觉放松护眼，适合长时间阅读歌词。',
+   sw:[['主色 primary','#2F7D5A'],['主色悬停','#25654A'],['强调 accent','#5BA37E'],['页面背景','#F7FBF8'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F0F7F2'],['歌词区','#F5FAF6'],['一级文字','#22322B'],['二级文字','#5C6E65'],['三级文字','#8A9A92'],['分隔线','#DEE8E1'],['选中背景','#E1F0E7'],['危险','#D04A44']]},
+  {id:'t-purple', name:'典雅紫 · 暮云', desc:'深邃紫罗兰 + 青碧强调，晚祷般的静谧与尊贵感，沉稳有格调。',
+   sw:[['主色 primary','#6E56CF'],['主色悬停','#5B46B3'],['强调 accent','#1FA8A0'],['页面背景','#FAF8FC'],['卡片/顶栏','#FFFFFF'],['侧栏背景','#F4F1F9'],['歌词区','#FAF7FD'],['一级文字','#2E2A3C'],['二级文字','#6A6480'],['三级文字','#9790AC'],['分隔线','#E4DFEE'],['选中背景','#ECE5FA'],['危险','#D34D55']]},
+  {id:'t-dark', name:'暗夜墨 · 深色', desc:'现代深色模式：深空灰蓝底 + 明亮青蓝强调，夜读护眼、沉稳内敛。',
+   sw:[['主色 primary','#4A8DF7'],['主色悬停','#3B75D4'],['强调 accent','#22C3A6'],['页面背景','#171A21'],['卡片/顶栏','#1F232C'],['侧栏背景','#1A1E26'],['歌词区','#21262F'],['一级文字','#E8EAED'],['二级文字','#A9B0BC'],['三级文字','#7D8595'],['分隔线','#2C313C'],['选中背景','#26344A'],['危险','#E0564F']]},
+];
+const ICONS = {
+  note:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>',
+  help:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>',
+  min:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 11h12v2H6z"/></svg>',
+  max:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
+  'panel-left':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>',
+  'panel-right':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="15" y1="4" x2="15" y2="20"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>',
+  vol:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12z"/></svg>',
+  prev:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>',
+  people:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+};
+const ic = n => ICONS[n] || '';
+const HYMNS = [
+  [246,'主是我力量'],[247,'赞美全能真神'],[248,'主爱说不尽'],[249,'何等尊贵'],[250,'同颂主恩'],
+  [251,'感恩歌'],[252,'赞美诗源'],[253,'圣灵的果子'],[254,'恩友歌'],[255,'为主而活'],
+  [256,'更近我主'],[257,'平安在我心'],[258,'全然献上'],
+];
+
+function mockupHTML(t) {
+  const list = HYMNS.map((h,i)=>
+    `<div class="hymn-item${i===8?' sel':''}"><span class="num">${h[0]}</span>${h[1]}</div>`).join('');
+  return `
+  <div class="mockup ${t.id}">
+    <div class="titlebar">
+      <div style="display:flex;align-items:center;">
+        <div class="app-logo">${ic('note')}</div>
+        <span class="app-name">EchoHymn · 聆听赞美诗</span>
+      </div>
+      <div class="win-btns">
+        <div class="win-btn" title="用户手册">${ic('help')}</div>
+        <div class="win-btn" title="最小化">${ic('min')}</div>
+        <div class="win-btn" title="最大化">${ic('max')}</div>
+        <div class="win-btn close" title="关闭">${ic('close')}</div>
+      </div>
+    </div>
+    <div class="divider-h"></div>
+    <div class="topbar">
+      <div class="toggle-group">
+        <div class="toggle-btn on" title="收起左栏">${ic('panel-left')}</div>
+      </div>
+      <div class="current-song">第 <b>254</b> 首《<b>恩友歌</b>》</div>
+      <div class="toggle-group">
+        <div class="toggle-btn on" title="收起右栏">${ic('panel-right')}</div>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar left-panel">
+        <div class="tabs"><div class="tab on">诗歌列表</div><div class="tab">默认歌单</div><div class="tab">个人歌单</div></div>
+        <div class="search">${ic('search')}搜索编号或标题…</div>
+        <div class="panel-head">全部诗歌 · 第 8 / 14 页</div>
+        <div class="hymn-list">${list}</div>
+      </div>
+      <div class="divider-v"></div>
+      <div class="content">
+        <div class="versionbar">
+          <div class="pill-group"><div class="pill">钢琴版</div><div class="pill on">人声版</div></div>
+          <div class="pill-group"><div class="pill on">歌词</div><div class="pill">简谱</div><div class="pill">五线谱</div></div>
+        </div>
+        <div class="lyrics">
+          <div class="h-title">恩友歌</div>
+          <div class="h-sub">第 254 首 · 人声版</div>
+          <div class="verse">何等恩友慈仁救主，负我罪愆担我忧；<br>何等权利能将万事，来到耶稣座前求！</div>
+          <div class="chorus">多少平安我们坐失，多少痛苦冤枉受，<br>都是因为未将万事，来到耶稣座前求。</div>
+        </div>
+        <div class="playbar">
+          <div class="progress"><div class="fill"></div><div class="thumb"></div></div>
+          <div class="play-row">
+            <div class="vol-group">${ic('vol')}
+              <div class="vol-slider"><div class="fill"></div><div class="thumb"></div></div>
+              <span class="vol-pct">50%</span>
+            </div>
+            <div class="play-ctrls">
+              <div class="pc-btn">${ic('prev')}</div>
+              <div class="pc-btn play">${ic('play')}</div>
+              <div class="pc-btn">${ic('next')}</div>
+            </div>
+            <div class="voices-btn" title="人声版本">${ic('people')}</div>
+          </div>
+        </div>
+      </div>
+      <div class="divider-v"></div>
+      <div class="sidebar right-panel">
+        <div class="right-head">诗歌源考</div>
+        <div class="right-body">
+          <p><b>恩友歌</b>（What a Friend We Have in Jesus）</p>
+          <p>本诗为约瑟·斯克雷文（Joseph Scriven）1855 年所写，悼念其逝去的未婚妻，后经福音音乐家桑基（Sankey）谱曲流传。</p>
+          <p>中文译词见于《颂赞诗歌》等圣诗集，本数据库 474 首诗歌均可在此查看词曲作者与源考信息。</p>
+        </div>
+      </div>
+    </div>
+    <div class="divider-h"></div>
+    <div class="statusbar">
+      <span><b>第 254 首《恩友歌》</b>&nbsp; 约瑟·斯克雷文 词 · 桑基 曲</span>
+      <span>02:13 / 04:05 · 54%</span>
+    </div>
+  </div>`;
+}
+function chipsHTML(t) {
+  return '<div class="palette-grid">' + t.sw.map(([n,v])=>
+    '<div class="chip"><span class="sw" style="background:' + v + '"></span><span class="nm">' + n + '</span><span class="v">' + v + '</span></div>'
+  ).join('') + '</div>';
+}
+
+let cur = 't-morning', allMode = false;
+const stage = document.getElementById('stage');
+
+function render() {
+  const scale = (document.getElementById('scale').value / 100);
+  let html = '';
+  if (allMode) {
+    html = THEMES.map(t => `
+      <div class="mock-wrap">
+        <div class="mock-label">${t.name} <span class="tag">${t.desc}</span></div>
+        <div class="mock-canvas" style="width:${1800 * scale}px;height:${890 * scale}px;">
+          <div style="transform:scale(${scale});">${mockupHTML(t)}</div>
+        </div>
+        ${chipsHTML(t)}
+      </div>`).join('');
+  } else {
+    const t = THEMES.find(x => x.id === cur);
+    html = `
+      <div class="mock-wrap">
+        <div class="mock-label">${t.name} <span class="tag">${t.desc}</span></div>
+        <div class="mock-canvas" style="width:${1800 * scale}px;height:${890 * scale}px;">
+          <div style="transform:scale(${scale});">${mockupHTML(t)}</div>
+        </div>
+        ${chipsHTML(t)}
+      </div>`;
+  }
+  stage.innerHTML = html;
+}
+
+function renderControls() {
+  const c = document.getElementById('controls');
+  c.innerHTML = THEMES.map(t =>
+    '<button class="swatch-btn ' + (t.id === cur ? 'active' : '') + '" data-id="' + t.id + '" title="' + t.desc + '">' +
+    '<span class="dot" style="background:' + t.sw[0][1] + '"></span>' + t.name + '</button>').join('') +
+    '<button class="toggle-all" id="allBtn">' + (allMode ? '查看单套' : '对比全部') + '</button>';
+  document.querySelectorAll('.swatch-btn').forEach(b =>
+    b.onclick = () => { cur = b.dataset.id; allMode = false; renderControls(); render(); });
+  document.getElementById('allBtn').onclick = () => { allMode = !allMode; renderControls(); render(); };
+  document.getElementById('scale').oninput = () => {
+    document.getElementById('scaleVal').textContent = document.getElementById('scale').value + '%';
+    render();
+  };
+  document.getElementById('scaleVal').textContent = document.getElementById('scale').value + '%';
+}
+
+renderControls();
+render();
+</script>
+</body>
+</html>

@@ -95,7 +95,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                       Expanded(
                         child: Text(
                           _isEdit ? '修改歌单' : '个人歌单创建',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
@@ -104,7 +104,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                       ),
                       IconButton(
                         padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.close,
+                        icon: Icon(Icons.close,
                             size: 18, color: AppColors.textSecondary),
                         tooltip: '关闭',
                         onPressed: () => Navigator.pop(context, null),
@@ -112,7 +112,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                     ],
                   ),
                 ),
-                const Divider(height: 1, color: AppColors.divider),
+                Divider(height: 1, color: AppColors.divider),
                 // 歌单名称
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -169,7 +169,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
                     '已添加诗歌（${_addedHymns.length}）',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
@@ -178,7 +178,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                 ),
                 Expanded(
                   child: _addedHymns.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             '暂未添加诗歌',
                             style: TextStyle(
@@ -197,7 +197,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                                 width: 40,
                                 child: Text(
                                   '${entry.value}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.primary,
@@ -210,7 +210,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Icons.remove_circle_outline,
+                                icon: Icon(Icons.remove_circle_outline,
                                     size: 18, color: AppColors.danger),
                                 tooltip: '移除',
                                 onPressed: () =>
@@ -220,7 +220,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                           },
                         ),
                 ),
-                const Divider(height: 1, color: AppColors.divider),
+                Divider(height: 1, color: AppColors.divider),
                 // 底部按钮
                 Padding(
                   padding: const EdgeInsets.all(12),
@@ -233,7 +233,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                           onPressed: _onDelete,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.danger,
-                            side: const BorderSide(color: AppColors.danger),
+                            side: BorderSide(color: AppColors.danger),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
                             ),
@@ -326,7 +326,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除', style: TextStyle(color: AppColors.danger)),
+            child: Text('删除', style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -423,7 +423,7 @@ class HymnPickDialog extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '诗歌展示',
                       style: TextStyle(
@@ -435,7 +435,7 @@ class HymnPickDialog extends StatelessWidget {
                   ),
                   IconButton(
                     padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.close,
+                    icon: Icon(Icons.close,
                         size: 18, color: AppColors.textSecondary),
                     tooltip: '关闭',
                     onPressed: () => Navigator.pop(context),
@@ -443,11 +443,11 @@ class HymnPickDialog extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Divider(height: 1, color: AppColors.divider),
             // 搜索结果列表
             Expanded(
               child: results.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         '未找到诗歌',
                         style: TextStyle(
@@ -465,7 +465,7 @@ class HymnPickDialog extends StatelessWidget {
                             width: 40,
                             child: Text(
                               h.hymnNumber,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
@@ -486,7 +486,7 @@ class HymnPickDialog extends StatelessWidget {
                       },
                     ),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Divider(height: 1, color: AppColors.divider),
             // 底部
             Padding(
               padding: const EdgeInsets.all(12),
