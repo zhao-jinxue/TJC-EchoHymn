@@ -20,13 +20,24 @@ const List<({String action, String shortcut})> kShortcutList = [
 class UserManualDialog extends StatelessWidget {
   const UserManualDialog({super.key});
 
-  /// 弹出用户手册
+  /// 是否已打开（防止 F1 / ？重复点击叠加多个手册弹窗，H11）
+  static bool _isOpen = false;
+
+  /// 弹出用户手册（已打开时忽略，避免叠加）
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => const UserManualDialog(),
-    );
+    if (_isOpen) return Future.value();
+    _isOpen = true;
+    try {
+      return showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => const UserManualDialog(),
+      ).whenComplete(() => _isOpen = false);
+    } catch (_) {
+      // 弹窗打开异常时复位标志，避免卡死无法再次打开
+      _isOpen = false;
+      rethrow;
+    }
   }
 
   @override

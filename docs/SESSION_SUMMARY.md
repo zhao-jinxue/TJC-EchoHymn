@@ -102,6 +102,13 @@
 2. **切歌刷新顶栏中央**：`AudioService.onCurrentChanged` 回调中除 `_saveState()` 外补充 `setState`，使顶栏中央「第 N 首《标题》」（繁体转简体）随切歌联动刷新。
 3. **窗口按钮尺寸**：随标题栏高度改为 42×30；标题栏与顶栏之间加 1px 分隔线。
 
+### 2026-08-30 会话追加（首轮测试结果 + H11 修复 + 状态栏分隔线）
+
+1. **首轮测试结果**：`hymn_app/test/v130_features_test_cases.md` 47 项实测 —— W(19)/S(17)/H(10) 全部 OK，**仅 H11 NG**（用户手册重复打开会叠加多个弹窗）。
+2. **H11 修复**：`UserManualDialog.show` 增加静态 `_isOpen` 防重入标志（`whenComplete` 复位 + 异常兜底），手册已打开时 F1/？重复触发直接忽略，关闭后可再次打开。
+3. **状态栏分隔线**：`home_screen.dart` 在内容区与 `_buildStatusBar` 之间新增 `Divider`，与标题栏/顶栏分隔线一致（#E5E6EB 1px）。
+4. **复测清单**：新建 `hymn_app/test/v130_retest_checklist.md`（12 项：H11a~H11d 修复复测 / D01~D03 状态栏分隔线 / R01~R05 相关回归）。
+
 ---
 
 ## 四、剩余/遗留任务清单

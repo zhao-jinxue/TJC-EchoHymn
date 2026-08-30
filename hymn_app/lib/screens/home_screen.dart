@@ -326,6 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Divider(height: 1, color: AppColors.divider),
           _buildTopBar(),
           Expanded(child: _buildBody()),
+          const Divider(height: 1, color: AppColors.divider),
           _buildStatusBar(),
         ],
       ),
