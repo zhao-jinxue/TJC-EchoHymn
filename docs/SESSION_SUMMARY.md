@@ -124,6 +124,13 @@
    - 实测验证：独立 COM 读取系统音量 **40%** = 应用启动日志「初始化为系统音量 40%」；真实屏幕截图确认 UI 显示 40%、滑块在 40% 处。
    - 语义说明：应用音量相对系统音量（audioplayers setVolume 会话音量），初始化=系统音量后实际响度 = 系统×应用；如需不同策略可再调整。
 
+### 2026-08-30 会话补充（v1.3.1 音量与系统双向同步）
+
+1. **应用 → 系统**：`AudioService.setVolume/toggleMute` 末尾 `_syncToSystem()` 调用 native `setSystemVolume`（`flutter_window.cpp` 新增 `SetSystemVolume`：Core Audio `SetMasterVolumeLevelScalar` + `SetMute`），应用滑条/快捷键/静音变化**写回系统音量**（含系统静音）。
+2. **系统 → 应用**：`loadSystemVolume` 成功后启动**轮询**（Timer 每 1s 调 `getSystemVolume`，仅当差值 >2% 或静音状态不同才同步，避免自身写回回读冲突），系统音量面板/媒体键变化**实时跟随**。
+3. **实测验证**：① 系统→应用：COM 设系统 25% → 应用日志「跟随系统音量 25%」；② 应用→系统：模拟点击应用滑条 → 系统音量从 40% 变为 **2%**（鼠标点击真实交互路径；keybd_event/SendKeys 注入因 Flutter 键盘焦点限制不响应，非应用问题）。
+4. **测试清单**：`v131_volume_test_cases.md` 新增第四段「系统音量双向同步」V21~V26，共 28 项。
+
 ---
 
 ## 四、剩余/遗留任务清单

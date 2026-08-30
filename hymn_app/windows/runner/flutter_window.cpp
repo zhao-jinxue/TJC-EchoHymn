@@ -48,6 +48,36 @@ bool GetSystemVolume(double* volume, bool* muted) {
   return SUCCEEDED(hr);
 }
 
+// 写入系统默认音频输出设备的音量（0.0~1.0）与静音状态。
+// 用于「应用音量与系统音量双向同步」：应用滑条/快捷键调音量时写回系统。
+bool SetSystemVolume(double volume, bool muted) {
+  HRESULT hr = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  const bool need_uninit = hr == S_OK;
+  if (!SUCCEEDED(hr)) return false;
+
+  IMMDeviceEnumerator* enumerator = nullptr;
+  IMMDevice* device = nullptr;
+  IAudioEndpointVolume* endpoint = nullptr;
+  hr = ::CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                          IID_PPV_ARGS(&enumerator));
+  if (SUCCEEDED(hr)) {
+    hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
+  }
+  if (SUCCEEDED(hr)) {
+    hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                          reinterpret_cast<void**>(&endpoint));
+  }
+  if (SUCCEEDED(hr) && endpoint != nullptr) {
+    endpoint->SetMasterVolumeLevelScalar(static_cast<float>(volume), &GUID_NULL);
+    endpoint->SetMute(muted ? TRUE : FALSE, &GUID_NULL);
+  }
+  if (endpoint != nullptr) endpoint->Release();
+  if (device != nullptr) device->Release();
+  if (enumerator != nullptr) enumerator->Release();
+  if (need_uninit) ::CoUninitialize();
+  return SUCCEEDED(hr);
+}
+
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -147,6 +177,24 @@ bool FlutterWindow::OnCreate() {
           map[flutter::EncodableValue("muted")] =
               flutter::EncodableValue(muted);
           result->Success(flutter::EncodableValue(map));
+        } else if (method == "setSystemVolume") {
+          // 应用音量/静音变化 → 写回系统（双向同步）
+          double volume = 1.0;
+          bool muted = false;
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args != nullptr) {
+            auto it_v = args->find(flutter::EncodableValue("volume"));
+            if (it_v != args->end()) {
+              if (auto* v = std::get_if<double>(&it_v->second)) volume = *v;
+            }
+            auto it_m = args->find(flutter::EncodableValue("muted"));
+            if (it_m != args->end()) {
+              if (auto* v = std::get_if<bool>(&it_m->second)) muted = *v;
+            }
+          }
+          SetSystemVolume(volume, muted);
+          result->Success();
         } else {
           result->NotImplemented();
         }

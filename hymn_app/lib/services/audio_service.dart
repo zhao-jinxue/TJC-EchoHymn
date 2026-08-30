@@ -311,6 +311,7 @@ class AudioService {
     await _player.setVolume(_muted ? 0 : _volume);
     LogService.instance
         .info(LogTag.play, '音量设置为 ${(_volume * 100).round()}%');
+    _syncToSystem(); // 应用音量 → 写回系统音量（双向同步）
   }
 
   /// 相对调节音量（快捷键 Ctrl+↑/↓ 使用）
@@ -323,6 +324,7 @@ class AudioService {
     await _player.setVolume(_muted ? 0 : _volume);
     LogService.instance.info(LogTag.play,
         _muted ? '静音开启' : '静音取消（音量 ${(_volume * 100).round()}%）');
+    _syncToSystem(); // 静音状态 → 写回系统（双向同步）
   }
 
   /// 初始化音量为**系统默认输出设备音量**（Windows Core Audio）。
@@ -343,9 +345,54 @@ class AudioService {
       LogService.instance.info(LogTag.play,
           '初始化为系统音量 ${(_volume * 100).round()}%'
           '${_muted ? '（系统静音）' : ''}');
+      // 有系统音量通道 → 启动轮询：系统音量面板变化实时同步到应用
+      _startSystemVolumePoll();
     } catch (_) {
       // 非 Windows 平台无该通道，保持默认 100%
     }
+  }
+
+  /// 系统音量轮询（每 1s）：系统面板/媒体键改音量后，应用实时跟随。
+  Timer? _sysVolPollTimer;
+
+  void _startSystemVolumePoll() {
+    _sysVolPollTimer?.cancel();
+    _sysVolPollTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _pollSystemVolume());
+  }
+
+  Future<void> _pollSystemVolume() async {
+    try {
+      final result = await _windowChannel
+          .invokeMethod<Map<dynamic, dynamic>>('getSystemVolume');
+      if (result == null) return;
+      final v = (result['volume'] as num?)?.toDouble();
+      final m = result['muted'] as bool? ?? false;
+      if (v == null) return;
+      // 仅当系统值与应用显著不同（±2%）或静音状态不同才同步，
+      // 避免与应用自身写回系统产生的回读冲突。
+      if ((v - _volume).abs() > 0.02 || m != _muted) {
+        _volume = v.clamp(0.0, 1.0);
+        volumeNotifier.value = _volume;
+        _muted = m;
+        mutedNotifier.value = _muted;
+        await _player.setVolume(_muted ? 0 : _volume);
+        LogService.instance.info(LogTag.play,
+            '跟随系统音量 ${(_volume * 100).round()}%'
+            '${_muted ? '（静音）' : ''}');
+      }
+    } catch (_) {
+      // 非 Windows 平台无该通道，忽略
+    }
+  }
+
+  /// 应用音量/静音变化 → 写回系统（双向同步；非 Windows 平台忽略失败）
+  void _syncToSystem() {
+    unawaited(_windowChannel
+        .invokeMethod<void>('setSystemVolume', <String, dynamic>{
+      'volume': _volume,
+      'muted': _muted,
+    }).catchError((_) {}));
   }
 
   Future<void> stop() async {
@@ -366,6 +413,7 @@ class AudioService {
     if (_disposed) return;
     _disposed = true;
     if (instance == this) instance = null;
+    _sysVolPollTimer?.cancel();
     volumeNotifier.dispose();
     mutedNotifier.dispose();
     await _player.dispose();
