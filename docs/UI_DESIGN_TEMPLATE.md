@@ -335,4 +335,3 @@
 | 个人歌单 | 单表 `playlist_hymn`（`id/name/hymns(JSON)/created_at/updated_at`），含自动迁移 |
 
 ---
-
