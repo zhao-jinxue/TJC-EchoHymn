@@ -9,6 +9,10 @@ class AppPalette {
   final String id; // 持久化标识（写入 state.json 的 appTheme 字段）
   final String name; // 中文显示名（换肤菜单展示）
 
+  /// 主题明暗：控制 Material colorScheme 的 brightness（暗夜墨用 dark，
+  /// 使 Dialog/输入框/按钮等 Material 组件底色与文字自动匹配，避免「浅底浅字」）。
+  final Brightness brightness;
+
   // 主色系
   final Color primary; // 主色（按钮/激活/进度条/logo）
   final Color primaryHover; // 主色悬停
@@ -48,6 +52,7 @@ class AppPalette {
   const AppPalette({
     required this.id,
     required this.name,
+    this.brightness = Brightness.light,
     required this.primary,
     required this.primaryHover,
     required this.accent,
@@ -199,6 +204,7 @@ const kPaletteElegantPurple = AppPalette(
 const kPaletteMidnightDark = AppPalette(
   id: 'midnightDark',
   name: '暗夜墨 · 深色',
+  brightness: Brightness.dark,
   primary: Color(0xFF4A8DF7),
   primaryHover: Color(0xFF3B75D4),
   accent: Color(0xFF22C3A6),

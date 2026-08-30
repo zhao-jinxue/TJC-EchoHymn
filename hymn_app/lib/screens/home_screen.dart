@@ -204,6 +204,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         playlistIndex: _restoredPlaylistIndex,
       );
       setState(() {});
+      // 启动时随恢复的配色同步窗口外观（暗夜墨顶部浅色边框带修复）
+      _syncWindowAppearance();
       LogService.instance.info(
         LogTag.ui,
         'HomeScreen 初始化完成',
@@ -324,19 +326,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // K10：解除等比缩放限制（不再 Transform.scale 锁定 850:890 长宽比）。
     // 内容直接随窗口长宽铺满——放大时窗口多大内容多大，无顶部/底部空白；
     // 最小尺寸由 native WM_GETMINMAXINFO（SetMinClientSize）保证。
-    return Scaffold(
-      body: Column(
-        children: [
-          // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
-          // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
-          _buildTitleBar(),
-          Divider(height: 1, color: AppColors.divider),
-          _buildTopBar(),
-          Expanded(child: _buildBody()),
-          Divider(height: 1, color: AppColors.divider),
-          _buildStatusBar(),
-        ],
-      ),
+    //
+    // 换肤关键：本 build 外包 ValueListenableBuilder 监听调色板——主题切换时
+    // 整棵 HomeScreen 重建，所有 AppColors 引用即时更新。
+    // （不能依赖 MaterialApp 外层重建：其 home 为 const 实例，Element 复用不重跑 build。）
+    return ValueListenableBuilder<AppPalette>(
+      valueListenable: ThemeController.instance.notifier,
+      builder: (context, _, __) {
+        return Scaffold(
+          body: Column(
+            children: [
+              // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
+              // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
+              _buildTitleBar(),
+              Divider(height: 1, color: AppColors.divider),
+              _buildTopBar(),
+              Expanded(child: _buildBody()),
+              Divider(height: 1, color: AppColors.divider),
+              _buildStatusBar(),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -589,7 +600,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (palette.id == ThemeController.instance.current.id) return;
     LogService.instance.info(LogTag.action, '切换配色: ${palette.name}');
     ThemeController.instance.switchTo(palette);
+    _syncWindowAppearance();
     _saveState();
+  }
+
+  /// 随主题同步窗口外观：DWM 沉浸式深色模式（暗夜墨 → 深色边框）
+  /// + 窗口边框色（Win11 22H2+），修复暗夜墨等深色主题下顶部
+  /// 残留系统浅色边框带（#F1F3F9，系统浅色模式下 DWM 默认浅边框）。
+  Future<void> _syncWindowAppearance() async {
+    try {
+      final c = AppColors.titleBarBg;
+      final isDark = ThemeController.instance.current.brightness ==
+          Brightness.dark;
+      LogService.instance.info(
+        LogTag.action,
+        '同步窗口外观',
+        detail: '主题: ${ThemeController.instance.current.name} / isDark: '
+            '$isDark / 边框色: #'
+            '${c.r.toInt().toRadixString(16).padLeft(2, '0')}'
+            '${c.g.toInt().toRadixString(16).padLeft(2, '0')}'
+            '${c.b.toInt().toRadixString(16).padLeft(2, '0')}',
+      );
+      await _windowChannel.invokeMethod<void>('setWindowAppearance', {
+        'isDark': isDark,
+        'borderColor': (c.r.toInt() << 16) | (c.g.toInt() << 8) | c.b.toInt(),
+      });
+    } catch (e) {
+      LogService.instance.error(LogTag.error, '同步窗口外观失败', detail: '$e');
+    }
   }
 
   /// 最小化窗口（等价系统最小化，播放不中断）

@@ -166,6 +166,26 @@ bool FlutterWindow::OnCreate() {
           ::ReleaseCapture();
           ::SendMessage(this->GetHandle(), WM_NCLBUTTONDOWN, HTCAPTION, 0);
           result->Success();
+        } else if (method == "setWindowAppearance") {
+          // 随应用主题设置窗口外观（DWM 深色模式 + 边框色）：
+          // 修复暗夜墨等深色主题下顶部残留系统浅色边框带（#F1F3F9）。
+          bool is_dark = false;
+          int rgb = 0xFFFFFFFF;
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args != nullptr) {
+            auto it_d = args->find(flutter::EncodableValue("isDark"));
+            if (it_d != args->end()) {
+              if (auto* v = std::get_if<bool>(&it_d->second)) is_dark = *v;
+            }
+            auto it_c = args->find(flutter::EncodableValue("borderColor"));
+            if (it_c != args->end()) {
+              if (auto* v = std::get_if<int>(&it_c->second)) rgb = *v;
+            }
+          }
+          this->SetAppearance(
+              is_dark, RGB((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF));
+          result->Success();
         } else if (method == "getSystemVolume") {
           // 初始化音量 = 系统默认输出设备音量（非固定 100%）
           double volume = 1.0;

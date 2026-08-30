@@ -48,7 +48,7 @@ class _DefaultPlaylistsPanelState
   Widget buildHymnTile(Hymn hymn, int index, List<Hymn> contextList) {
     final isCurrent = currentHymn?.id == hymn.id;
     return Material(
-      color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
+      color: isCurrent ? AppColors.selectedBg : AppColors.sidebarBg,
       child: InkWell(
         onTap: () => playHymn(
           hymn,
@@ -166,7 +166,7 @@ class _DefaultPlaylistsPanelState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Material(
-              color: AppColors.cardBg,
+              color: AppColors.sidebarBg,
               child: InkWell(
                 onTap: () {
                   LogService.instance.info(

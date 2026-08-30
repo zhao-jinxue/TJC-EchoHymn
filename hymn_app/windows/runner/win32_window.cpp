@@ -16,6 +16,13 @@ namespace {
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
+/// Window attribute that sets the color of the window border (Windows 11
+/// 22H2+). Redefined in case the SDK predates it.
+/// See: https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
+#ifndef DWMWA_BORDER_COLOR
+#define DWMWA_BORDER_COLOR 34
+#endif
+
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
 /// Registry key for app theme preference.
@@ -331,6 +338,21 @@ void Win32Window::SetMinClientSize(unsigned int width, unsigned int height) {
   AdjustWindowRectEx(&rc, style, FALSE, ex_style);
   min_client_width_ = rc.right - rc.left;
   min_client_height_ = rc.bottom - rc.top;
+}
+
+void Win32Window::SetAppearance(bool is_dark, COLORREF border_color) {
+  if (!window_handle_) return;
+  // 1) 沉浸式深色模式：深色主题→TRUE（DWM 深色标题/边框），否则 FALSE。
+  //    注意：不能只用系统主题（UpdateTheme），必须跟随应用内配色。
+  BOOL enable_dark = is_dark ? TRUE : FALSE;
+  DwmSetWindowAttribute(window_handle_, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                        &enable_dark, sizeof(enable_dark));
+  // 2) 窗口边框色（Win11 22H2+；旧系统返回错误忽略）
+  DwmSetWindowAttribute(window_handle_, DWMWA_BORDER_COLOR, &border_color,
+                        sizeof(border_color));
+  // 触发边框重绘，立即生效
+  SetWindowPos(window_handle_, nullptr, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 bool Win32Window::OnCreate() {

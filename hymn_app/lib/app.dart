@@ -187,9 +187,16 @@ class EchoHymnApp extends StatelessWidget {
     return ValueListenableBuilder<AppPalette>(
       valueListenable: ThemeController.instance.notifier,
       builder: (context, palette, _) {
-        final base = ThemeData.light(useMaterial3: true);
+        // 按配色明暗选择基础主题：暗夜墨用 dark（Dialog/输入框等 Material
+        // 组件自动深底浅字），其余用 light；再叠加自绘调色板语义色。
+        final base = palette.brightness == Brightness.dark
+            ? ThemeData.dark(useMaterial3: true)
+            : ThemeData.light(useMaterial3: true);
         final theme = base.copyWith(
-          colorScheme: ColorScheme.fromSeed(seedColor: palette.primary),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: palette.primary,
+            brightness: palette.brightness,
+          ),
           scaffoldBackgroundColor: palette.pageBg,
           appBarTheme: AppBarTheme(
             backgroundColor: palette.cardBg,

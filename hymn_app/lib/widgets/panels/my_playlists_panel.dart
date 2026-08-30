@@ -47,7 +47,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
   Widget buildHymnTile(Hymn hymn, int index, List<Hymn> contextList) {
     final isCurrent = currentHymn?.id == hymn.id;
     return Material(
-      color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
+      color: isCurrent ? AppColors.selectedBg : AppColors.sidebarBg,
       child: InkWell(
         onTap: () => playHymn(
           hymn,
@@ -170,7 +170,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
                     final pl = _playlists[i];
                     final selected = _selectedPlaylist?.name == pl.name;
                     return Material(
-                      color: selected ? AppColors.selectedBg : AppColors.cardBg,
+                      color: selected ? AppColors.selectedBg : AppColors.sidebarBg,
                       child: InkWell(
                         onTap: () {
                           LogService.instance.info(

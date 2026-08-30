@@ -55,7 +55,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   Widget buildHymnTile(Hymn hymn, int index, List<Hymn> contextList) {
     final isCurrent = currentHymn?.id == hymn.id;
     return Material(
-      color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
+      color: isCurrent ? AppColors.selectedBg : AppColors.sidebarBg,
       child: InkWell(
         onTap: () => playHymn(hymn, index, contextList),
         child: Container(
@@ -366,7 +366,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
         final hymn = results[index];
         final isCurrent = currentHymn?.id == hymn.id;
         return Material(
-          color: isCurrent ? AppColors.selectedBg : AppColors.cardBg,
+          color: isCurrent ? AppColors.selectedBg : AppColors.sidebarBg,
           child: InkWell(
             onTap: () {
               final all = repo.getAllHymns();
@@ -426,7 +426,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     final all = repo.getAllHymns();
     final totalPages = (all.length / _pageSize).ceil().clamp(1, 1 << 31);
     return Container(
-      color: AppColors.cardBg,
+      color: AppColors.sidebarBg,
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

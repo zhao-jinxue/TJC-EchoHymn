@@ -67,6 +67,11 @@ class Win32Window {
   // 设置窗口最小客户区物理像素尺寸（用于 WM_GETMINMAXINFO 限制）。
   void SetMinClientSize(unsigned int width, unsigned int height);
 
+  // 随应用主题设置窗口外观：DWMWA_USE_IMMERSIVE_DARK_MODE（深色主题→DWM
+  // 深色边框）+ DWMWA_BORDER_COLOR。修复暗夜墨等深色主题下顶部残留
+  // 系统浅色边框带（#F1F3F9，当系统浅色模式时 DWM 默认浅边框）。
+  void SetAppearance(bool is_dark, COLORREF border_color);
+
  protected:
   // Processes and route salient window messages for mouse handling,
   // size change and DPI. Delegates handling of these to member overloads that

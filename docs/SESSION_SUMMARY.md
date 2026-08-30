@@ -36,6 +36,7 @@
 | `debcf20`（v1.4.0，2026-08-30） | **五套换肤配色 + 标题栏换肤按钮**：`AppPalette` 语义色槽（19 色）设计 5 套方案（晨光蓝=默认/v1.3.1 一致、暖阳金·圣堂、静谧绿·草木、典雅紫·暮云、暗夜墨·深色）；`AppColors` 由 static const 改为「当前调色板门面」，`EchoHymnApp` 用 `ValueListenableBuilder` 监听重建实现即时换肤；标题栏新增「调色盘」按钮（用户手册左侧）弹出配色菜单；配色持久化 `state.json appTheme`，重启保持；`docs/theme_preview.html` 交互式效果图预览 |
 | `85e5e42`（v1.4.0 完善，2026-08-30） | **分区极浅底色 + 配色全称**：`AppPalette` 扩展 6 个分区底色槽（titleBarBg/topBarBg/rightPanelBg/versionBarBg/playBarBg/statusBarBg，共 25 色）——白主调下各 UI 分区用**同色相极浅色**区分（晨光蓝：标题栏纯白→顶栏/侧栏/版本栏逐级浅蓝→歌词区暖白；暗夜墨：相近深色层次）；配色名改**全称**（晨光蓝 · 经典 等） |
 | `19c1af0`（v1.4.0 完善②，2026-08-30） | **歌词区回归同色相层次**：晨光蓝歌词区 `#FDF8EE`（暖白特例）→`#F2F6FD`（浅蓝白）；静谧绿→`#EEF8F2`、典雅紫→`#F1EBFA`、暖阳金→`#FCF4E0`；微调相邻分区确保层次可辨 |
+| `<待提交>`（v1.4.0 NG 修复，2026-08-30） | **首轮测试 6 项 NG 修复**：① 暗夜墨顶部白带→native `SetAppearance` 随主题设 DWM 深色模式+边框色；② 换肤整树重建→HomeScreen 外包 ValueListenableBuilder；③/④ 暗夜墨改 `ThemeData.dark()`（弹窗输入框深底浅字）；⑤⑥ 左栏列表行 `cardBg→sidebarBg`（实机=预览）；新增 `v140_theme_retest_checklist.md`（R01~R14） |
 
 **关键文件**：
 

@@ -78,7 +78,8 @@
 | 典雅紫 · 暮云 | `elegantPurple` | `#6E56CF` | 薰衣草层次（顶栏 `#F4F1FB`/左栏 `#EDE7F7`/版本栏 `#E5DFF4`…），歌词区薰衣草调 `#F1EBFA` | 灵修 |
 | 暗夜墨 · 深色 | `midnightDark` | `#4A8DF7` | 相近深色层次（标题栏 `#1E232D`/顶栏 `#242B37`/左栏 `#191D26`/版本栏 `#29303D`…） | 夜间 |
 
-  全部色值见 `hymn_app/lib/theme/app_palette.dart` 与 `docs/theme_preview.html`（效果图预览）；各方案均保持文字/背景对比可读。
+全部色值见 `hymn_app/lib/theme/app_palette.dart` 与 `docs/theme_preview.html`（效果图预览）；各方案均保持文字/背景对比可读。
+
 - 按钮：主蓝底白字 / 次白底灰边；圆角 8（按钮）、12（弹窗）、4（标签）
 - 输入框：高 36、聚焦主题色+外发光、圆角 6
 - 列表项：高 30、悬停 `#F5F6FA`、选中 `#E8F0FE`+左 3px 竖条
