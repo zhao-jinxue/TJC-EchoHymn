@@ -37,7 +37,7 @@
     --primary:#2B6AE0; --primary-hover:#1E57C8; --accent:#00A870;
     --page-bg:#FAFBFC; --card-bg:#FFFFFF;
     --titlebar-bg:#FFFFFF; --topbar-bg:#F5F8FF; --sidebar-bg:#EBF1FA; --right-bg:#F1F4FA;
-    --versionbar-bg:#E4EFFC; --playbar-bg:#FBFCFE; --statusbar-bg:#F2F5FA; --lyrics-bg:#F2F6FD;
+    --versionbar-bg:#E4EFFC; --playbar-bg:#FBFCFE; --statusbar-bg:#F2F5FA; --control-bg:#EDF3FB; --lyrics-bg:#F2F6FD;
     --text-1:#1F2329; --text-2:#646A73; --text-3:#8F959E;
     --divider:#E5E6EB; --border:#D0D3D9; --selected-bg:#E8F0FE;
     --success:#00A870; --warning:#FF9F0A; --danger:#F54A45;
@@ -47,7 +47,7 @@
     --primary:#C68A1B; --primary-hover:#A8730F; --accent:#5B8C5A;
     --page-bg:#FDFBF6; --card-bg:#FFFFFF;
     --titlebar-bg:#FFFFFF; --topbar-bg:#FBF6EA; --sidebar-bg:#F6EFDD; --right-bg:#F8F2E5;
-    --versionbar-bg:#F0E7CE; --playbar-bg:#FCFAF4; --statusbar-bg:#F8F4EA; --lyrics-bg:#FCF4E0;
+    --versionbar-bg:#F0E7CE; --playbar-bg:#FCFAF4; --statusbar-bg:#F8F4EA; --control-bg:#F7EFDC; --lyrics-bg:#FCF4E0;
     --text-1:#3A3124; --text-2:#6B6152; --text-3:#97896F;
     --divider:#E9DFC8; --border:#D6C9AE; --selected-bg:#F5E7C3;
     --success:#5B8C5A; --warning:#D97A06; --danger:#C0392B;
@@ -57,7 +57,7 @@
     --primary:#2F7D5A; --primary-hover:#25654A; --accent:#5BA37E;
     --page-bg:#FBFFFC; --card-bg:#FFFFFF;
     --titlebar-bg:#FFFFFF; --topbar-bg:#F2F8F4; --sidebar-bg:#EBF4EE; --right-bg:#EFF7F2;
-    --versionbar-bg:#E3F0E7; --playbar-bg:#F7FBF8; --statusbar-bg:#F1F7F3; --lyrics-bg:#EEF8F2;
+    --versionbar-bg:#E3F0E7; --playbar-bg:#F7FBF8; --statusbar-bg:#F1F7F3; --control-bg:#EAF4EE; --lyrics-bg:#EEF8F2;
     --text-1:#22322B; --text-2:#5C6E65; --text-3:#8A9A92;
     --divider:#DEE8E1; --border:#C9D6CE; --selected-bg:#E1F0E7;
     --success:#3E8F6A; --warning:#D9840A; --danger:#D04A44;
@@ -67,7 +67,7 @@
     --primary:#6E56CF; --primary-hover:#5B46B3; --accent:#1FA8A0;
     --page-bg:#FBFAFD; --card-bg:#FFFFFF;
     --titlebar-bg:#FFFFFF; --topbar-bg:#F4F1FB; --sidebar-bg:#EDE7F7; --right-bg:#F1EDF8;
-    --versionbar-bg:#E5DFF4; --playbar-bg:#FAF8FD; --statusbar-bg:#F2EFF9; --lyrics-bg:#F1EBFA;
+    --versionbar-bg:#E5DFF4; --playbar-bg:#FAF8FD; --statusbar-bg:#F2EFF9; --control-bg:#ECE6F8; --lyrics-bg:#F1EBFA;
     --text-1:#2E2A3C; --text-2:#6A6480; --text-3:#9790AC;
     --divider:#E4DFEE; --border:#CEC6DE; --selected-bg:#ECE5FA;
     --success:#17A094; --warning:#E08B0C; --danger:#D34D55;
@@ -77,7 +77,7 @@
     --primary:#4A8DF7; --primary-hover:#3B75D4; --accent:#22C3A6;
     --page-bg:#171A21; --card-bg:#1F232C;
     --titlebar-bg:#1E232D; --topbar-bg:#242B37; --sidebar-bg:#191D26; --right-bg:#1C212B;
-    --versionbar-bg:#29303D; --playbar-bg:#1E232C; --statusbar-bg:#252B36; --lyrics-bg:#20252F;
+    --versionbar-bg:#29303D; --playbar-bg:#1E232C; --statusbar-bg:#252B36; --control-bg:#262C38; --lyrics-bg:#20252F;
     --text-1:#E8EAED; --text-2:#A9B0BC; --text-3:#7D8595;
     --divider:#2C313C; --border:#3A4150; --selected-bg:#26344A;
     --success:#2FC38A; --warning:#E8A33D; --danger:#E0564F;
@@ -99,7 +99,7 @@
   .toggle-group { display:flex; gap:6px; align-items:center; }
   .toggle-btn { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
   .toggle-btn.on { background:var(--primary); color:var(--on-primary); }
-  .toggle-btn.off { background:var(--card-bg); border:1px solid var(--border); color:var(--text-2); }
+  .toggle-btn.off { background:var(--control-bg); border:1px solid var(--border); color:var(--text-2); }
   .toggle-btn svg { width:16px; height:16px; }
   .current-song { font-size:13px; color:var(--text-2); position:absolute; left:50%; transform:translateX(-50%); }
   .current-song b { color:var(--text-1); font-weight:600; }
@@ -127,7 +127,7 @@
 
   .versionbar { height:44px; background:var(--versionbar-bg); border-bottom:1px solid var(--divider); display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
   .pill-group { display:flex; gap:6px; }
-  .pill { height:26px; padding:0 12px; border-radius:4px; display:flex; align-items:center; font-size:12px; border:1px solid var(--border); color:var(--text-2); cursor:default; }
+  .pill { height:26px; padding:0 12px; border-radius:4px; display:flex; align-items:center; font-size:12px; border:1px solid var(--border); background:var(--control-bg); color:var(--text-2); cursor:default; }
   .pill.on { background:var(--primary); border-color:var(--primary); color:var(--on-primary); font-weight:600; }
 
   .lyrics { flex:1; background:var(--lyrics-bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
@@ -193,15 +193,15 @@
 <script>
 const THEMES = [
   {id:'t-morning', name:'晨光蓝 · 经典', desc:'白色主调 + 极浅蓝层次分区：标题栏纯白、顶栏/侧栏/版本栏/歌词区逐级浅蓝，无暖色残留，按钮用主色。',
-   sw:[['主色 primary','#2B6AE0'],['主色悬停','#1E57C8'],['强调 accent','#00A870'],['标题栏','#FFFFFF'],['顶栏','#F5F8FF'],['左栏','#EBF1FA'],['右栏','#F1F4FA'],['版本栏','#E4EFFC'],['播放条','#FBFCFE'],['状态栏','#F2F5FA'],['歌词区','#F2F6FD'],['一级文字','#1F2329'],['二级文字','#646A73'],['分隔线','#E5E6EB'],['选中背景','#E8F0FE'],['危险','#F54A45']]},
+   sw:[['主色 primary','#2B6AE0'],['主色悬停','#1E57C8'],['强调 accent','#00A870'],['标题栏','#FFFFFF'],['顶栏','#F5F8FF'],['左栏','#EBF1FA'],['右栏','#F1F4FA'],['版本栏','#E4EFFC'],['播放条','#FBFCFE'],['状态栏','#F2F5FA'],['未选中控件','#EDF3FB'],['歌词区','#F2F6FD'],['一级文字','#1F2329'],['二级文字','#646A73'],['分隔线','#E5E6EB'],['选中背景','#E8F0FE'],['危险','#F54A45']]},
   {id:'t-gold', name:'暖阳金 · 圣堂', desc:'复古圣殿风：暖奶油纸感 + 圣金黄 + 深橄榄绿点缀，歌词区为暖黄纸感（暖色系同色相）。',
-   sw:[['主色 primary','#C68A1B'],['主色悬停','#A8730F'],['强调 accent','#5B8C5A'],['标题栏','#FFFFFF'],['顶栏','#FBF6EA'],['左栏','#F6EFDD'],['右栏','#F8F2E5'],['版本栏','#F0E7CE'],['播放条','#FCFAF4'],['状态栏','#F8F4EA'],['歌词区','#FCF4E0'],['一级文字','#3A3124'],['二级文字','#6B6152'],['分隔线','#E9DFC8'],['选中背景','#F5E7C3'],['危险','#C0392B']]},
+   sw:[['主色 primary','#C68A1B'],['主色悬停','#A8730F'],['强调 accent','#5B8C5A'],['标题栏','#FFFFFF'],['顶栏','#FBF6EA'],['左栏','#F6EFDD'],['右栏','#F8F2E5'],['版本栏','#F0E7CE'],['播放条','#FCFAF4'],['状态栏','#F8F4EA'],['未选中控件','#F7EFDC'],['歌词区','#FCF4E0'],['一级文字','#3A3124'],['二级文字','#6B6152'],['分隔线','#E9DFC8'],['选中背景','#F5E7C3'],['危险','#C0392B']]},
   {id:'t-green', name:'静谧绿 · 草木', desc:'自然安宁的鼠尾草绿 + 薄荷白，各分区以极浅绿层次区分，歌词区同为薄荷调，长时间阅读护眼。',
-   sw:[['主色 primary','#2F7D5A'],['主色悬停','#25654A'],['强调 accent','#5BA37E'],['标题栏','#FFFFFF'],['顶栏','#F2F8F4'],['左栏','#EBF4EE'],['右栏','#EFF7F2'],['版本栏','#E3F0E7'],['播放条','#F7FBF8'],['状态栏','#F1F7F3'],['歌词区','#EEF8F2'],['一级文字','#22322B'],['二级文字','#5C6E65'],['分隔线','#DEE8E1'],['选中背景','#E1F0E7'],['危险','#D04A44']]},
+   sw:[['主色 primary','#2F7D5A'],['主色悬停','#25654A'],['强调 accent','#5BA37E'],['标题栏','#FFFFFF'],['顶栏','#F2F8F4'],['左栏','#EBF4EE'],['右栏','#EFF7F2'],['版本栏','#E3F0E7'],['播放条','#F7FBF8'],['状态栏','#F1F7F3'],['未选中控件','#EAF4EE'],['歌词区','#EEF8F2'],['一级文字','#22322B'],['二级文字','#5C6E65'],['分隔线','#DEE8E1'],['选中背景','#E1F0E7'],['危险','#D04A44']]},
   {id:'t-purple', name:'典雅紫 · 暮云', desc:'深邃紫罗兰 + 青碧强调，各分区以极浅薰衣草层次区分，歌词区同为薰衣草调，晚祷般的静谧与尊贵。',
-   sw:[['主色 primary','#6E56CF'],['主色悬停','#5B46B3'],['强调 accent','#1FA8A0'],['标题栏','#FFFFFF'],['顶栏','#F4F1FB'],['左栏','#EDE7F7'],['右栏','#F1EDF8'],['版本栏','#E5DFF4'],['播放条','#FAF8FD'],['状态栏','#F2EFF9'],['歌词区','#F1EBFA'],['一级文字','#2E2A3C'],['二级文字','#6A6480'],['分隔线','#E4DFEE'],['选中背景','#ECE5FA'],['危险','#D34D55']]},
+   sw:[['主色 primary','#6E56CF'],['主色悬停','#5B46B3'],['强调 accent','#1FA8A0'],['标题栏','#FFFFFF'],['顶栏','#F4F1FB'],['左栏','#EDE7F7'],['右栏','#F1EDF8'],['版本栏','#E5DFF4'],['播放条','#FAF8FD'],['状态栏','#F2EFF9'],['未选中控件','#ECE6F8'],['歌词区','#F1EBFA'],['一级文字','#2E2A3C'],['二级文字','#6A6480'],['分隔线','#E4DFEE'],['选中背景','#ECE5FA'],['危险','#D34D55']]},
   {id:'t-dark', name:'暗夜墨 · 深色', desc:'现代深色模式：深空灰蓝底 + 明亮青蓝强调，各分区以相近深色层次区分，夜读护眼。',
-   sw:[['主色 primary','#4A8DF7'],['主色悬停','#3B75D4'],['强调 accent','#22C3A6'],['标题栏','#1E232D'],['顶栏','#242B37'],['左栏','#191D26'],['右栏','#1C212B'],['版本栏','#29303D'],['播放条','#1E232C'],['状态栏','#252B36'],['歌词区','#20252F'],['一级文字','#E8EAED'],['二级文字','#A9B0BC'],['分隔线','#2C313C'],['选中背景','#26344A'],['危险','#E0564F']]},
+   sw:[['主色 primary','#4A8DF7'],['主色悬停','#3B75D4'],['强调 accent','#22C3A6'],['标题栏','#1E232D'],['顶栏','#242B37'],['左栏','#191D26'],['右栏','#1C212B'],['版本栏','#29303D'],['播放条','#1E232C'],['状态栏','#252B36'],['未选中控件','#262C38'],['歌词区','#20252F'],['一级文字','#E8EAED'],['二级文字','#A9B0BC'],['分隔线','#2C313C'],['选中背景','#26344A'],['危险','#E0564F']]},
 ];
 const ICONS = {
   note:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>',

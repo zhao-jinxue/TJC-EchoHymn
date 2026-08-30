@@ -28,6 +28,7 @@ class AppPalette {
   final Color versionBarBg; // 版本栏背景
   final Color playBarBg; // 播放条背景
   final Color statusBarBg; // 状态栏背景
+  final Color controlBg; // 未选中/未激活控件底色（顶栏切换/版本/模式按钮）
   final Color lyricsBg; // 歌词显示区背景
 
   // 文字系
@@ -65,6 +66,7 @@ class AppPalette {
     required this.versionBarBg,
     required this.playBarBg,
     required this.statusBarBg,
+    required this.controlBg,
     required this.lyricsBg,
     required this.textPrimary,
     required this.textSecondary,
@@ -96,6 +98,7 @@ const kPaletteMorning = AppPalette(
   versionBarBg: Color(0xFFE4EFFC),
   playBarBg: Color(0xFFFBFCFE),
   statusBarBg: Color(0xFFF2F5FA),
+  controlBg: Color(0xFFEDF3FB),
   lyricsBg: Color(0xFFF2F6FD),
   textPrimary: Color(0xFF1F2329),
   textSecondary: Color(0xFF646A73),
@@ -126,6 +129,7 @@ const kPaletteWarmGold = AppPalette(
   versionBarBg: Color(0xFFF0E7CE),
   playBarBg: Color(0xFFFCFAF4),
   statusBarBg: Color(0xFFF8F4EA),
+  controlBg: Color(0xFFF7EFDC),
   lyricsBg: Color(0xFFFCF4E0),
   textPrimary: Color(0xFF3A3124),
   textSecondary: Color(0xFF6B6152),
@@ -156,6 +160,7 @@ const kPaletteCalmGreen = AppPalette(
   versionBarBg: Color(0xFFE3F0E7),
   playBarBg: Color(0xFFF7FBF8),
   statusBarBg: Color(0xFFF1F7F3),
+  controlBg: Color(0xFFEAF4EE),
   lyricsBg: Color(0xFFEEF8F2),
   textPrimary: Color(0xFF22322B),
   textSecondary: Color(0xFF5C6E65),
@@ -186,6 +191,7 @@ const kPaletteElegantPurple = AppPalette(
   versionBarBg: Color(0xFFE5DFF4),
   playBarBg: Color(0xFFFAF8FD),
   statusBarBg: Color(0xFFF2EFF9),
+  controlBg: Color(0xFFECE6F8),
   lyricsBg: Color(0xFFF1EBFA),
   textPrimary: Color(0xFF2E2A3C),
   textSecondary: Color(0xFF6A6480),
@@ -217,6 +223,7 @@ const kPaletteMidnightDark = AppPalette(
   versionBarBg: Color(0xFF29303D),
   playBarBg: Color(0xFF1E232C),
   statusBarBg: Color(0xFF252B36),
+  controlBg: Color(0xFF262C38),
   lyricsBg: Color(0xFF20252F),
   textPrimary: Color(0xFFE8EAED),
   textSecondary: Color(0xFFA9B0BC),

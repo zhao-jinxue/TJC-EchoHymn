@@ -118,7 +118,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
     VoidCallback? onTap,
   }) {
     return Material(
-      color: active ? AppColors.primary : AppColors.sidebarBg,
+      color: active ? AppColors.primary : AppColors.controlBg,
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
@@ -175,7 +175,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   Widget _modeBtn(String label, DisplayMode mode, IconData icon) {
     final selected = _mode == mode;
     return Material(
-      color: selected ? AppColors.selectedBg : AppColors.cardBg,
+      color: selected ? AppColors.selectedBg : AppColors.controlBg,
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),

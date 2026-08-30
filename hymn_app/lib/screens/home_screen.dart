@@ -524,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Tooltip(
         message: tooltip,
         child: Material(
-          color: active ? AppColors.primary : AppColors.cardBg,
+          color: active ? AppColors.primary : AppColors.controlBg,
           borderRadius: BorderRadius.circular(6),
           child: InkWell(
             borderRadius: BorderRadius.circular(6),

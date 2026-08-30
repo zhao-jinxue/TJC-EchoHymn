@@ -37,6 +37,7 @@
 | `85e5e42`（v1.4.0 完善，2026-08-30） | **分区极浅底色 + 配色全称**：`AppPalette` 扩展 6 个分区底色槽（titleBarBg/topBarBg/rightPanelBg/versionBarBg/playBarBg/statusBarBg，共 25 色）——白主调下各 UI 分区用**同色相极浅色**区分（晨光蓝：标题栏纯白→顶栏/侧栏/版本栏逐级浅蓝→歌词区暖白；暗夜墨：相近深色层次）；配色名改**全称**（晨光蓝 · 经典 等） |
 | `19c1af0`（v1.4.0 完善②，2026-08-30） | **歌词区回归同色相层次**：晨光蓝歌词区 `#FDF8EE`（暖白特例）→`#F2F6FD`（浅蓝白）；静谧绿→`#EEF8F2`、典雅紫→`#F1EBFA`、暖阳金→`#FCF4E0`；微调相邻分区确保层次可辨 |
 | `bd02c90`（v1.4.0 NG 修复，2026-08-30） | **首轮测试 6 项 NG 修复**：① 暗夜墨顶部白带→native `SetAppearance` 随主题设 DWM 深色模式+边框色；② 换肤整树重建→HomeScreen 外包 ValueListenableBuilder；③/④ 暗夜墨改 `ThemeData.dark()`（弹窗输入框深底浅字）；⑤⑥ 左栏列表行 `cardBg→sidebarBg`（实机=预览）；新增 `v140_theme_retest_checklist.md`（R01~R14） |
+| `<待提交>`（v1.4.0 完善③，2026-08-30） | **未选中控件底色 `controlBg`（二轮复测 R03）**：新增语义色槽（26 色），顶栏切换/版本/模式按钮未选中背景由纯白/侧栏色改为**同色相浅色**（晨光蓝 `#EDF3FB` 等 5 套），严格匹配主题；新增 `v140_theme_retest2_checklist.md`（R15~R23） |
 
 **关键文件**：
 
@@ -61,7 +62,7 @@
 - **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**）
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
-- **换肤**：`AppPalette` 语义色槽（**25 色，含 8 个分区底色**：标题栏/顶栏/左栏/右栏/版本栏/播放条/状态栏/歌词区）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
+- **换肤**：`AppPalette` 语义色槽（**26 色，含 8 个分区底色 + controlBg 未选中控件底色**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
@@ -162,6 +163,13 @@
 
 1. **遗留问题**：晨光蓝歌词区 `#FDF8EE`（暖白）当初为「区分歌词区范围」引入，与极浅蓝层次不协调，成为配色体系特例。
 2. **梳理**：歌词区改为各方案**同色相层次**中的一档——晨光蓝 `#F2F6FD`（浅蓝白，无暖色）、暖阳金 `#FCF4E0`（暖黄纸感，暖色系同色相）、静谧绿 `#EEF8F2`（薄荷调）、典雅紫 `#F1EBFA`（薰衣草调）、暗夜墨 `#20252F`（深色层次，本就符合）；并微调相邻分区（左栏/版本栏/状态栏等）确保相邻区域色差可感知。
+
+### 2026-08-30 会话追加（v1.4.0 完善③：未选中控件底色 controlBg）
+
+1. **问题**：二轮复测 R03——顶栏左右切换按钮、版本按钮、「歌词/简谱/五线谱」未选中按钮「颜色没有严格匹配主题」（旧实现用 cardBg 纯白 / sidebarBg 侧栏色，暖阳金下冷白突兀、暗夜墨下白色刺眼）。
+2. **方案**：`AppPalette` 新增 **`controlBg`（未选中/未激活控件底色）** 语义槽（25→26 色），5 套各配同色相浅色（晨光蓝 `#EDF3FB` / 暖阳金 `#F7EFDC` / 静谧绿 `#EAF4EE` / 典雅紫 `#ECE6F8` / 暗夜墨 `#262C38`，均介于所在栏背景与版本栏背景之间，可辨带主题色相）。
+3. **应用**：`_toggleButton`（顶栏切换）、`_versionBtn`（版本按钮）、`_modeBtn`（模式按钮）三处未选中背景统一改 `controlBg`；选中态保持 primary / selectedBg 不变。
+4. **验证**：analyze 0 issues；构建成功；千问视觉确认各按钮为淡蓝底（带主题色相、比栏背景略深），非纯白。
 
 ---
 
