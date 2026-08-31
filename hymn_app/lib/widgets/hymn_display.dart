@@ -9,6 +9,7 @@ import '../services/audio_service.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
+import '../theme/app_fonts.dart';
 
 /// 歌词显示模式
 enum DisplayMode { lyrics, numbered, staff }
@@ -301,11 +302,17 @@ class _HymnDisplayState extends State<HymnDisplay> {
           // 不再用固定 baseBody=18 参与最小值运算——否则窗口放大后
           // 字号被 18 卡住、无法随窗口增大铺满歌词区。
           // 优化（2026-08-28）：整体字号 +4，改善最小尺寸界面的可读性。
+          // v1.5.0 字号等级：铺满算法保持为「基准」，结果再乘字号系数——
+          // 全局 Transform.scale 会把画布缩小 1/s 再放大 s，铺满算法若不做
+          // 补偿会自我抵消（歌词不随字号变化）；乘系数后视觉字号 ≈ 基准×系数。
+          // 大字号下歌词会超出显示区 → 由外层 SingleChildScrollView 滚动兜底。
+          final ls = AppFonts.lyricsScale;
           final bodySize =
               ([maxByH, maxByW].reduce((a, b) => a < b ? a : b) + 4.0)
-                  .clamp(12.0, 100.0);
-          final titleSize = (bodySize * 1.4).clamp(20.0, 34.0);
-          final labelSize = (bodySize * 0.7).clamp(12.0, 16.0);
+                      .clamp(12.0, 100.0) *
+                  ls;
+          final titleSize = (bodySize * 1.4).clamp(20.0 * ls, 34.0 * ls);
+          final labelSize = (bodySize * 0.7).clamp(12.0 * ls, 16.0 * ls);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -371,8 +378,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
     final abs = AppPaths.resolveAsset(path);
     if (abs.isEmpty || !(abs.contains('http') || _fileExists(abs))) {
       return Center(
-        child: Text(isEmpty,
-            style: TextStyle(color: AppColors.textTertiary)),
+        child: Text(isEmpty, style: TextStyle(color: AppColors.textTertiary)),
       );
     }
     return Center(
@@ -423,8 +429,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              icon:
-                  Icon(Icons.skip_previous, color: AppColors.textPrimary),
+              icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
               tooltip: '上一首',
               onPressed: () => widget.audio.playPrev(),
             ),

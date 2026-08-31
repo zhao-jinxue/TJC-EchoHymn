@@ -40,6 +40,7 @@
 | `bc308dd`（v1.4.0 完善③，2026-08-30） | **未选中控件底色 `controlBg`（二轮复测 R03）**：新增语义色槽（26 色），顶栏切换/版本/模式按钮未选中背景由纯白/侧栏色改为**同色相浅色**（晨光蓝 `#EDF3FB` 等 5 套），严格匹配主题；新增 `v140_theme_retest2_checklist.md`（R15~R23） |
 | `d9067a7`（v1.4.0 完善④，2026-08-30） | **未选中控件描边 `controlBorder`（三轮前复测 R15/R16）**：新增语义色槽（27 色），三处未选中按钮加 1px 明显描边（晨光蓝 `#98A1B2` 等 5 套），选中态无边框；PrintWindow 扫描确认矩形描边轮廓；新增 `v140_theme_retest3_checklist.md`（R24~R32） |
 | `v1.4.0`（**tag**，2026-08-30） | **换肤功能验收完成**：三轮复测全部通过（R24a~R25c + R26~R32 全 OK）——5 套配色 / 调色盘即时切换 / `state.json` 持久化 / 深色模式 / 未选中控件描边全部交付；`docs/theme_preview.html` 效果图预览与实机一致 |
+| `(v1.5.0，2026-08-31)` | **四级字号切换 + 全局等比缩放**：新增 `lib/theme/app_fonts.dart`（`FontSizeLevel` 枚举 ×1.0/×1.2/×1.4/×1.6 + `FontScaleController` ValueNotifier + `AppFonts` 门面）；`MaterialApp.builder` 内 `Transform.scale`（复用 v1.2.x 已验证模式）把整棵 Navigator（含弹窗/菜单/Toast）等比例缩放；标题栏调色盘左侧新增「A」字号按钮（4 级菜单 + ✓）；**歌词区单独处理**（铺满自适应算法 × 系数）；侧栏宽度随系数缩放（350×s/600×s）并同步 native 窗口扩展；`state.json fontSizeLevel` 持久化 + 重启恢复；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放 |
 
 **关键文件**：
 
@@ -47,6 +48,7 @@
 - 协调者：`hymn_app/lib/screens/home_screen.dart`（含自定义标题栏/窗口按钮组）
 - 全局快捷键：`hymn_app/lib/app.dart`（根 `Focus` 包裹 `MaterialApp` + `kNavigatorKey`）
 - 换肤：`hymn_app/lib/theme/app_palette.dart`（`AppPalette`/5 套预设/`ThemeController`）+ `docs/theme_preview.html`（交互式效果图预览）
+- 字号：`hymn_app/lib/theme/app_fonts.dart`（`FontSizeLevel`/`FontScaleController`/`AppFonts`）+ `MaterialApp.builder` 全局 `Transform.scale`（app.dart）
 - 用户手册弹窗：`hymn_app/lib/widgets/user_manual_dialog.dart`
 - 其他：`widgets/{hymn_display, playlist_dialog}.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
 - 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
@@ -61,10 +63,11 @@
 - **数据**：SQLite `tjc_hymn.db`（474 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
 - **简繁转换**：**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`，由 `tools/gen_convert_map.py` 从数据库全量字符生成：繁→简 1052 / 简→繁 1025）；**弃用 OpenCC FFI**（本机 opencc.dll 与 UI 线程不兼容，导致白屏/崩溃）
 - **音频播放**：`audioplayers` 6.8.1 → Windows Media Foundation；`DeviceFileSource(abs)` 直读中文路径
-- **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**）
+- **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**/**配色 appTheme**/**字号 fontSizeLevel**）
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
 - **换肤**：`AppPalette` 语义色槽（**27 色，含 8 个分区底色 + controlBg/controlBorder 未选中控件底色与描边**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
+- **字号（v1.5.0）**：`FontScaleController`（ValueNotifier）+ `AppFonts` 门面 + `MaterialApp.builder` 内 `Transform.scale` 全局等比缩放（含弹窗/菜单/Toast）；**4 级**：默认 ×1.0 / 中号 ×1.2 / 大号 ×1.4 / 最大 ×1.6（系数集中一处可调）；**歌词区单独处理**（铺满自适应算法 × 系数，大字号滚动阅读）；侧栏宽度随系数缩放并同步 native 窗口扩展（基座 850 居中）；`state.json fontSizeLevel` 持久化；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
@@ -196,8 +199,9 @@
 10. ✅ **v1.2.1 四轮 UI 回归测试（2026-08-29~30）**：27 条 NG 分批修复并复测归档（窗口/歌词/搜索/弹窗/播放条）
 11. ✅ **v1.3.0 自定义标题栏 + 全局快捷键 + 用户手册（2026-08-30）**：移除系统标题栏，Flutter 自绘窗口按钮组（用户手册在最小化左侧）；通用播放快捷键 + 媒体键；用户手册弹窗（软件介绍/操作说明/快捷键说明）
 12. ✅ **v1.4.0 五套换肤配色 + 换肤按钮（2026-08-30，tag v1.4.0 验收完成）**：语义色槽架构（27 色：8 分区底色 + 未选中控件底色/描边）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ 标题栏调色盘即时切换 + `state.json` 持久化 + 深色模式 + `docs/theme_preview.html` 效果图；三轮测试（v140 首轮 26 项 + 复测 1/2/3）全部通过
-13. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-14. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
+13. ✅ **v1.5.0 四级字号切换（2026-08-31）**：`FontScaleController` + `AppFonts` + `MaterialApp.builder` 全局 `Transform.scale`（含弹窗/菜单/Toast）；标题栏「A」字号按钮（调色盘左侧）+ 4 级菜单；歌词区铺满算法 × 系数；侧栏宽度随系数缩放 + native 窗口扩展；`state.json fontSizeLevel` 持久化；换肤菜单 ancestor 修正；测试清单 `hymn_app/test/v150_fontsize_test_cases.md` 已生成——**待用户实机验收 + 确定"最大"档系数**
+14. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
+15. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
 
 ---
 

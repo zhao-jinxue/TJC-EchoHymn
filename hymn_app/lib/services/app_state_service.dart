@@ -36,6 +36,7 @@ class AppStateService {
     bool showLeft = false,
     bool showRight = false,
     String appTheme = '',
+    String fontSizeLevel = '',
   }) {
     final data = <String, Object>{
       'leftTab': leftTab,
@@ -48,6 +49,7 @@ class AppStateService {
       'showLeft': showLeft,
       'showRight': showRight,
       'appTheme': appTheme,
+      'fontSizeLevel': fontSizeLevel,
     };
     // 排队执行，串行写入，且异常不影响后续写入
     _writeChain = _writeChain.then((_) => _doWrite(data)).catchError((_) {});
@@ -98,6 +100,7 @@ class AppStateService {
         showLeft: (json['showLeft'] as bool?) ?? false,
         showRight: (json['showRight'] as bool?) ?? false,
         appTheme: (json['appTheme'] as String?) ?? '',
+        fontSizeLevel: (json['fontSizeLevel'] as String?) ?? '',
       );
     } catch (_) {
       return _defaultState;
@@ -135,6 +138,9 @@ class AppState {
   /// 当前配色 id（对应 [theme/app_palette.dart] 的 AppPalette.id；空串 = 默认）
   final String appTheme;
 
+  /// 当前字号等级 id（对应 [theme/app_fonts.dart] 的 FontSizeLevel.id；空串 = 默认）
+  final String fontSizeLevel;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -146,5 +152,6 @@ class AppState {
     this.showLeft = false,
     this.showRight = false,
     this.appTheme = '',
+    this.fontSizeLevel = '',
   });
 }

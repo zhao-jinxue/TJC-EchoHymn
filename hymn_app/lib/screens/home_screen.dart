@@ -11,6 +11,7 @@ import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
+import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../widgets/hymn_display.dart';
 import '../widgets/panels/default_playlists_panel.dart';
@@ -62,6 +63,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // 标题栏「换肤」按钮的锚点（弹出配色菜单定位用）
   final GlobalKey _themeButtonKey = GlobalKey();
+
+  // 标题栏「字号」按钮的锚点（弹出字号菜单定位用）
+  final GlobalKey _fontButtonKey = GlobalKey();
 
   // ---- 左栏视图状态 ----
   LeftTab _leftTab = LeftTab.hymnList;
@@ -284,6 +288,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       showLeft: _showLeft,
       showRight: _showRight,
       appTheme: ThemeController.instance.current.id,
+      fontSizeLevel: FontScaleController.instance.current.id,
     );
   }
 
@@ -307,11 +312,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _syncWindowSize() async {
     if (kIsWeb) return; // Web 无原生窗口
     try {
+      // 侧栏宽度随字号等级等比缩放（v1.5.0）：全局 Transform.scale 会把侧栏
+      // 视觉宽度放大为 面板宽×系数，native 需同步扩展等宽窗口，否则侧栏溢出窗口。
+      final s = AppFonts.scale;
       await _windowChannel.invokeMethod<void>('setClientSize', {
         'width': kBaseWindowWidth,
         'height': kBaseWindowHeight,
-        'leftPanelWidth': _showLeft ? kLeftPanelWidth : 0,
-        'rightPanelWidth': _showRight ? kRightPanelWidth : 0,
+        'leftPanelWidth': _showLeft ? (kLeftPanelWidth * s).round() : 0,
+        'rightPanelWidth': _showRight ? (kRightPanelWidth * s).round() : 0,
       });
       // native 窗口 resize 完成后强制重建：
       // LayoutBuilder 拿到最新 constraints，scale = 新窗口/新画布，等比正确。
@@ -327,25 +335,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // 内容直接随窗口长宽铺满——放大时窗口多大内容多大，无顶部/底部空白；
     // 最小尺寸由 native WM_GETMINMAXINFO（SetMinClientSize）保证。
     //
-    // 换肤关键：本 build 外包 ValueListenableBuilder 监听调色板——主题切换时
-    // 整棵 HomeScreen 重建，所有 AppColors 引用即时更新。
-    // （不能依赖 MaterialApp 外层重建：其 home 为 const 实例，Element 复用不重跑 build。）
-    return ValueListenableBuilder<AppPalette>(
-      valueListenable: ThemeController.instance.notifier,
+    // 字号等级（v1.5.0）：全局等比缩放由 app.dart 的 MaterialApp.builder Transform
+    // 统一完成（含弹窗/菜单/Toast）；本层 VLB 只负责让读取 AppFonts/字号状态的
+    // UI（歌词 bodySize、字号按钮 Tooltip、菜单勾选、窗口尺寸同步）随等级重建。
+    return ValueListenableBuilder<FontSizeLevel>(
+      valueListenable: FontScaleController.instance.notifier,
       builder: (context, _, __) {
-        return Scaffold(
-          body: Column(
-            children: [
-              // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
-              // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
-              _buildTitleBar(),
-              Divider(height: 1, color: AppColors.divider),
-              _buildTopBar(),
-              Expanded(child: _buildBody()),
-              Divider(height: 1, color: AppColors.divider),
-              _buildStatusBar(),
-            ],
-          ),
+        // 换肤关键：本 build 外包 ValueListenableBuilder 监听调色板——主题切换时
+        // 整棵 HomeScreen 重建，所有 AppColors 引用即时更新。
+        // （不能依赖 MaterialApp 外层重建：其 home 为 const 实例，Element 复用不重跑 build。）
+        return ValueListenableBuilder<AppPalette>(
+          valueListenable: ThemeController.instance.notifier,
+          builder: (context, _, __) {
+            return Scaffold(
+              body: Column(
+                children: [
+                  // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
+                  // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
+                  _buildTitleBar(),
+                  Divider(height: 1, color: AppColors.divider),
+                  _buildTopBar(),
+                  Expanded(child: _buildBody()),
+                  Divider(height: 1, color: AppColors.divider),
+                  _buildStatusBar(),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -414,6 +430,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   tooltip: '切换配色（${ThemeController.instance.current.name}）',
                   onTap: _showThemeMenu,
                 ),
+                // 字号按钮（A+）：切换字号等级（全局等比缩放）
+                _WindowButton(
+                  key: _fontButtonKey,
+                  icon: Icons.format_size,
+                  tooltip:
+                      '切换字号（${FontScaleController.instance.current.label}）',
+                  onTap: _showFontSizeMenu,
+                ),
                 _WindowButton(
                   icon: Icons.help_outline,
                   tooltip: '用户手册（F1）',
@@ -425,9 +449,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onTap: _minimizeWindow,
                 ),
                 _WindowButton(
-                  icon: _windowMaximized
-                      ? Icons.filter_none
-                      : Icons.crop_square,
+                  icon:
+                      _windowMaximized ? Icons.filter_none : Icons.crop_square,
                   tooltip: _windowMaximized ? '还原' : '最大化',
                   onTap: _toggleMaximize,
                 ),
@@ -568,10 +591,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final current = ThemeController.instance.current;
     final chosen = await showMenu<String>(
       context: context,
+      // v1.5.0 全局缩放兼容：全局 Transform.scale 会把 localToGlobal 结果放大
+      // （app 根坐标），而菜单定位在 overlay 本地坐标系内——必须用 ancestor 取
+      // overlay 本地坐标，否则大字号下菜单会错位/超出屏幕。
       position: RelativeRect.fromRect(
         Rect.fromPoints(
-          btnBox.localToGlobal(Offset.zero),
-          btnBox.localToGlobal(btnBox.size.bottomRight(Offset.zero)),
+          btnBox.localToGlobal(Offset.zero, ancestor: overlay),
+          btnBox.localToGlobal(btnBox.size.bottomRight(Offset.zero),
+              ancestor: overlay),
         ),
         Offset.zero & overlay.size,
       ),
@@ -593,8 +620,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               Text(t.name, style: const TextStyle(fontSize: 13)),
               const Spacer(),
               if (t.id == current.id)
-                Icon(Icons.check,
-                    size: 16, color: AppColors.textSecondary),
+                Icon(Icons.check, size: 16, color: AppColors.textSecondary),
             ],
           ),
         );
@@ -612,14 +638,72 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _saveState();
   }
 
+  /// 打开字号菜单：在字号按钮下方弹出 4 级字号列表（默认/中号/大号/最大）
+  Future<void> _showFontSizeMenu() async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final btnBox =
+        _fontButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (overlay == null || btnBox == null) return;
+    final current = FontScaleController.instance.current;
+    final chosen = await showMenu<FontSizeLevel>(
+      context: context,
+      // 与 _showThemeMenu 相同的 ancestor 修正（全局缩放兼容）
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          btnBox.localToGlobal(Offset.zero, ancestor: overlay),
+          btnBox.localToGlobal(btnBox.size.bottomRight(Offset.zero),
+              ancestor: overlay),
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: FontSizeLevel.values.map((l) {
+        return PopupMenuItem<FontSizeLevel>(
+          value: l,
+          height: 36,
+          child: Row(
+            children: [
+              Icon(
+                l == FontSizeLevel.normal
+                    ? Icons.format_size
+                    : Icons.text_fields,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 10),
+              Text(l.label, style: const TextStyle(fontSize: 13)),
+              const Spacer(),
+              if (l == current)
+                Icon(Icons.check, size: 16, color: AppColors.textSecondary),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+    if (chosen != null && mounted) _switchFontSize(chosen);
+  }
+
+  /// 切换字号等级：全局等比缩放 + 同步窗口尺寸（侧栏宽度随系数）+ 持久化
+  void _switchFontSize(FontSizeLevel level) {
+    if (level == FontScaleController.instance.current) return;
+    FontScaleController.instance.switchTo(level);
+    LogService.instance.info(
+      LogTag.action,
+      '切换字号: ${level.label}（×${level.scale}）',
+    );
+    // 侧栏已展开时窗口扩展宽度需随字号系数重新同步
+    if (_showLeft || _showRight) _syncWindowSize();
+    _saveState();
+  }
+
   /// 随主题同步窗口外观：DWM 沉浸式深色模式（暗夜墨 → 深色边框）
   /// + 窗口边框色（Win11 22H2+），修复暗夜墨等深色主题下顶部
   /// 残留系统浅色边框带（#F1F3F9，系统浅色模式下 DWM 默认浅边框）。
   Future<void> _syncWindowAppearance() async {
     try {
       final c = AppColors.titleBarBg;
-      final isDark = ThemeController.instance.current.brightness ==
-          Brightness.dark;
+      final isDark =
+          ThemeController.instance.current.brightness == Brightness.dark;
       LogService.instance.info(
         LogTag.action,
         '同步窗口外观',
@@ -907,8 +991,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Expanded(
               child: Text(
                 ChineseConvertService.instance.toSimplified(hymn.statusMeta),
-                style: TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 overflow: TextOverflow.ellipsis,
               ),
             )
@@ -925,7 +1008,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             builder: (context, posSnap) {
               final pos = posSnap.data ?? Duration.zero;
               return StreamBuilder<Duration>(
-                stream: _audio?.durationStream ?? const Stream<Duration>.empty(),
+                stream:
+                    _audio?.durationStream ?? const Stream<Duration>.empty(),
                 builder: (context, durSnap) {
                   final dur = durSnap.data ?? Duration.zero;
                   final pct = dur.inMilliseconds > 0
@@ -1020,8 +1104,7 @@ class _EmptyHint extends StatelessWidget {
           Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(text,
-              style: TextStyle(
-                  fontSize: 14, color: AppColors.textSecondary)),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
         ],
       ),
     );

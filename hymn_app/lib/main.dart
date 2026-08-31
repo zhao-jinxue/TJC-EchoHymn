@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'services/app_state_service.dart';
 import 'services/log_service.dart';
+import 'theme/app_fonts.dart';
 import 'theme/app_palette.dart';
 
 Future<void> main() async {
@@ -19,8 +20,11 @@ Future<void> main() async {
   try {
     final state = await AppStateService().load();
     ThemeController.instance.switchTo(themeById(state.appTheme));
+    // 恢复上次字号等级（state.json 的 fontSizeLevel；缺失/非法回退默认）
+    FontScaleController.instance
+        .switchTo(fontSizeLevelById(state.fontSizeLevel));
   } catch (e) {
-    LogService.instance.error(LogTag.error, '恢复配色失败，使用默认', detail: '$e');
+    LogService.instance.error(LogTag.error, '恢复配色/字号失败，使用默认', detail: '$e');
   }
 
   // 全局异常捕获（Flutter 框架层）

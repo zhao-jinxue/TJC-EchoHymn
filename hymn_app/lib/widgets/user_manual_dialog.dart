@@ -132,6 +132,7 @@ class UserManualDialog extends StatelessWidget {
   Widget _buildGuideList(BuildContext context) {
     const items = <String>[
       '标题栏最右侧（关闭按钮左侧）新增「调色盘」按钮：一键切换 5 套界面配色（晨光蓝 · 经典 / 暖阳金 · 圣堂 / 静谧绿 · 草木 / 典雅紫 · 暮云 / 暗夜墨 · 深色），各分区以极浅同色相底色区分，选择自动记忆，重启保持。',
+      '标题栏「调色盘」左侧新增「A」字号按钮：切换 4 级字号（默认 / 中号 / 大号 / 最大），全局控件等比例缩放、即时生效，选择自动记忆，重启保持。歌词区采用「铺满自适应」字号，放大后歌词超出显示区时可滚动阅读。',
       '顶栏：左侧「诗歌列表 / 歌单」箭头按钮展开或收起左栏；右侧「源考」箭头按钮展开或收起右栏。标题栏空白处按住可拖动窗口，双击可最大化 / 还原。',
       '左侧栏三个栏目：「诗歌列表」按编号分页浏览全部诗歌；「默认歌单」按分类目录浏览；「个人歌单」管理自己创建的歌单（可新建 / 编辑 / 删除）。',
       '搜索定位：输入编号即时定位并翻页高亮；输入标题显示匹配列表；在搜索框按回车可播放定位到的诗歌。',
@@ -151,8 +152,8 @@ class UserManualDialog extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 5, right: 8),
-                  child:
-                      Icon(Icons.circle, size: 6, color: AppColors.textTertiary),
+                  child: Icon(Icons.circle,
+                      size: 6, color: AppColors.textTertiary),
                 ),
                 Expanded(
                   child: Text(
