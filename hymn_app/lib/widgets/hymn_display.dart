@@ -420,67 +420,81 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   Widget _buildControls(Hymn? hymn) {
     final voices = hymn == null ? <String>[] : voiceVersions(hymn);
-    // F03：控制按钮组固定居中；人声版本列表按钮（>1 时）固定在右侧，
-    // 出现/消失不导致按钮组整体位移。
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+    // F27 修复（v1.5.0 大字号下音量滑条与播放按钮重叠）：
+    // 画布宽度 = 窗口宽 ÷ 字号系数，大字号下画布变窄，固定宽度控件
+    // （音量图标48+滑条150+百分比38≈236）会与居中的播放按钮组（约144）
+    // 重叠。用 LayoutBuilder 计算左侧可用宽度（= 半宽 - 按钮组半宽 - 间距），
+    // 限制音量控件不超过它；空间充足时（默认字号）不生效，零回归。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final leftMax =
+            (constraints.maxWidth / 2 - 80).clamp(120.0, double.infinity);
+        return Stack(
+          alignment: Alignment.center,
           children: [
-            IconButton(
-              icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
-              tooltip: '上一首',
-              onPressed: () => widget.audio.playPrev(),
-            ),
-            StreamBuilder<PlayerStatus>(
-              stream: widget.audio.statusStream,
-              builder: (context, snap) {
-                final status = snap.data ?? PlayerStatus.idle;
-                final playing = status == PlayerStatus.playing;
-                return IconButton(
-                  iconSize: 42,
-                  icon: Icon(
-                    playing
-                        ? Icons.pause_circle_filled
-                        : Icons.play_circle_filled,
-                    color: AppColors.primary,
-                  ),
-                  tooltip: playing ? '暂停' : '播放',
-                  onPressed: () {
-                    LogService.instance.info(
-                      LogTag.action,
-                      playing ? '点击播放条：暂停' : '点击播放条：播放',
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
+                  tooltip: '上一首',
+                  onPressed: () => widget.audio.playPrev(),
+                ),
+                StreamBuilder<PlayerStatus>(
+                  stream: widget.audio.statusStream,
+                  builder: (context, snap) {
+                    final status = snap.data ?? PlayerStatus.idle;
+                    final playing = status == PlayerStatus.playing;
+                    return IconButton(
+                      iconSize: 42,
+                      icon: Icon(
+                        playing
+                            ? Icons.pause_circle_filled
+                            : Icons.play_circle_filled,
+                        color: AppColors.primary,
+                      ),
+                      tooltip: playing ? '暂停' : '播放',
+                      onPressed: () {
+                        LogService.instance.info(
+                          LogTag.action,
+                          playing ? '点击播放条：暂停' : '点击播放条：播放',
+                        );
+                        widget.audio.togglePlayPause();
+                      },
                     );
-                    widget.audio.togglePlayPause();
                   },
-                );
-              },
+                ),
+                IconButton(
+                  icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
+                  tooltip: '下一首',
+                  onPressed: () => widget.audio.playNext(),
+                ),
+              ],
             ),
-            IconButton(
-              icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
-              tooltip: '下一首',
-              onPressed: () => widget.audio.playNext(),
+            // 人声版本列表（>1 时显示，悬停提示 10 秒，固定右侧不挤压居中按钮组）
+            if (voices.length > 1)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Center(child: _buildVoiceListButton(hymn!, voices)),
+              ),
+            // 音量调节（通用方案）：图标=静音切换 / 滑条=调节 / 百分比=当前音量
+            // 与全局快捷键（Ctrl+↑↓/Ctrl+M）共用 AudioService 同一数据源，实时联动
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: leftMax),
+                  child: _buildVolumeControl(),
+                ),
+              ),
             ),
           ],
-        ),
-        // 人声版本列表（>1 时显示，悬停提示 10 秒，固定右侧不挤压居中按钮组）
-        if (voices.length > 1)
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: Center(child: _buildVoiceListButton(hymn!, voices)),
-          ),
-        // 音量调节（通用方案）：图标=静音切换 / 滑条=调节 / 百分比=当前音量
-        // 与全局快捷键（Ctrl+↑↓/Ctrl+M）共用 AudioService 同一数据源，实时联动
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          child: Center(child: _buildVolumeControl()),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -496,36 +510,44 @@ class _HymnDisplayState extends State<HymnDisplay> {
           valueListenable: widget.audio.mutedNotifier,
           builder: (context, muted, _) {
             final effective = muted ? 0.0 : volume;
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    muted ? Icons.volume_off : Icons.volume_up,
-                    color: AppColors.textPrimary,
-                  ),
-                  tooltip: muted ? '取消静音（Ctrl+M）' : '静音（Ctrl+M）',
-                  onPressed: () => widget.audio.toggleMute(),
-                ),
-                SizedBox(
-                  width: 150,
-                  child: Slider(
-                    value: effective,
-                    onChanged: (v) => widget.audio.setVolume(v),
-                  ),
-                ),
-                SizedBox(
-                  width: 38,
-                  child: Text(
-                    '${(effective * 100).round()}%',
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
+            // F27 修复：滑条宽度自适应——空间充足保持 150，不足时收缩
+            // （由 _buildControls 的 ConstrainedBox 传入 maxWidth）
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final sliderW =
+                    (constraints.maxWidth - 48 - 38 - 4).clamp(40.0, 150.0);
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        muted ? Icons.volume_off : Icons.volume_up,
+                        color: AppColors.textPrimary,
+                      ),
+                      tooltip: muted ? '取消静音（Ctrl+M）' : '静音（Ctrl+M）',
+                      onPressed: () => widget.audio.toggleMute(),
                     ),
-                  ),
-                ),
-              ],
+                    SizedBox(
+                      width: sliderW,
+                      child: Slider(
+                        value: effective,
+                        onChanged: (v) => widget.audio.setVolume(v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 38,
+                      child: Text(
+                        '${(effective * 100).round()}%',
+                        textAlign: TextAlign.left,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );

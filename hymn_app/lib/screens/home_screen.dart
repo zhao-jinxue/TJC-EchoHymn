@@ -619,7 +619,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(t.name, style: const TextStyle(fontSize: 13)),
+              // 皮肤名称统一字重（v1.5.0 修复"加粗设置不均匀"）：
+              // 小号文本经全局等比缩放放大后笔画易发虚、粗细不均，
+              // 显式统一 w500 让名称整体字重一致。
+              Text(
+                t.name,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
               const Spacer(),
               if (t.id == current.id)
                 Icon(Icons.check, size: 16, color: AppColors.textSecondary),

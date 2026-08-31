@@ -203,6 +203,26 @@ Win32Window::MessageHandler(HWND hwnd,
       auto mmi = reinterpret_cast<MINMAXINFO*>(lparam);
       if (min_client_width_ > 0) mmi->ptMinTrackSize.x = min_client_width_;
       if (min_client_height_ > 0) mmi->ptMinTrackSize.y = min_client_height_;
+      // 修复（v1.5.0 F28）：最大化时限制在【工作区】内——否则无系统标题栏的
+      // 窗口最大化会盖住 Windows 任务栏（"底部系统状态栏消失"）。
+      // 取窗口所在显示器的工作区（多显示器正确），再按外框换算保证客户区=工作区。
+      RECT work{0, 0, 0, 0};
+      HMONITOR mon = MonitorFromWindow(window_handle_, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO mi{};
+      mi.cbSize = sizeof(mi);
+      if (GetMonitorInfo(mon, &mi) != 0) {
+        work = mi.rcWork;
+      } else {
+        SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
+      }
+      const LONG style = GetWindowLong(window_handle_, GWL_STYLE);
+      const LONG ex_style = GetWindowLong(window_handle_, GWL_EXSTYLE);
+      RECT rc = {0, 0, work.right - work.left, work.bottom - work.top};
+      AdjustWindowRectEx(&rc, style, FALSE, ex_style);
+      mmi->ptMaxPosition.x = work.left;
+      mmi->ptMaxPosition.y = work.top;
+      mmi->ptMaxSize.x = rc.right - rc.left;
+      mmi->ptMaxSize.y = rc.bottom - rc.top;
       return 0;
     }
 
