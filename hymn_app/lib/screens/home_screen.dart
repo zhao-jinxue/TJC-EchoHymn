@@ -312,14 +312,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _syncWindowSize() async {
     if (kIsWeb) return; // Web 无原生窗口
     try {
-      // 侧栏宽度随字号等级等比缩放（v1.5.0）：全局 Transform.scale 会把侧栏
-      // 视觉宽度放大为 面板宽×系数，native 需同步扩展等宽窗口，否则侧栏溢出窗口。
+      // 侧栏宽度处理（v1.5.0）：
+      // - 左栏宽度随字号等比缩放（350×系数，列表需更大空间）；
+      // - 右栏宽度**固定 600 不缩放**（用户 2026-08-31：有滚动条无需加宽），
+      //   native 扩展等宽窗口，Flutter 侧画布内反向缩放保持一致。
       final s = AppFonts.scale;
       await _windowChannel.invokeMethod<void>('setClientSize', {
         'width': kBaseWindowWidth,
         'height': kBaseWindowHeight,
         'leftPanelWidth': _showLeft ? (kLeftPanelWidth * s).round() : 0,
-        'rightPanelWidth': _showRight ? (kRightPanelWidth * s).round() : 0,
+        'rightPanelWidth': _showRight ? kRightPanelWidth : 0,
       });
       // native 窗口 resize 完成后强制重建：
       // LayoutBuilder 拿到最新 constraints，scale = 新窗口/新画布，等比正确。
@@ -932,9 +934,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 右侧栏（源考） ----------
   Widget _buildRightPanel() {
     final hymn = _audio?.currentHymn;
-    // 物理 600px ÷ devicePixelRatio = 逻辑宽度（保证各 DPI 下物理宽度恒为 600）
-    final rightWidth =
-        kRightPanelWidth / MediaQuery.devicePixelRatioOf(context);
+    // 右栏宽度**不随字号缩放**（用户 2026-08-31：右栏有滚动条，无需加宽）。
+    // 全局 Transform.scale 会把整树视觉放大为 画布宽×系数，这里用
+    // 反向系数抵消：画布宽 = 600 / 系数 / dpr → 视觉物理宽恒为 600。
+    final rightWidth = kRightPanelWidth /
+        AppFonts.scale /
+        MediaQuery.devicePixelRatioOf(context);
     return SizedBox(
       width: rightWidth,
       child: Container(

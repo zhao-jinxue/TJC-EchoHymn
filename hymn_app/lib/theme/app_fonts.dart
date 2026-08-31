@@ -4,14 +4,13 @@ import '../services/log_service.dart';
 
 /// 字号等级（写入 state.json 的 fontSizeLevel 字段）
 ///
-/// 初版倍率约定：默认 1.0 / 中号 1.2 / 大号 1.4 / 最大 1.6。
-/// 倍率集中在 [scale]，改一处即全局生效；
-/// 「最大」档的具体字号强度待初版实测后再定（用户 2026-08-31 指示）。
+/// 系数（2026-08-31 用户调整）：默认 1.0 / 中号 1.3 / 大号 1.6 / 最大 1.9。
+/// 系数集中在 [scale]，改一处即全局生效。
 enum FontSizeLevel {
   normal('normal', '默认', 1.0),
-  medium('medium', '中号', 1.2),
-  large('large', '大号', 1.4),
-  xlarge('xlarge', '最大', 1.6);
+  medium('medium', '中号', 1.3),
+  large('large', '大号', 1.6),
+  xlarge('xlarge', '最大', 1.9);
 
   const FontSizeLevel(this.id, this.label, this.scale);
 

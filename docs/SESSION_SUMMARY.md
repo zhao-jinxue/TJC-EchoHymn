@@ -40,7 +40,7 @@
 | `bc308dd`（v1.4.0 完善③，2026-08-30） | **未选中控件底色 `controlBg`（二轮复测 R03）**：新增语义色槽（26 色），顶栏切换/版本/模式按钮未选中背景由纯白/侧栏色改为**同色相浅色**（晨光蓝 `#EDF3FB` 等 5 套），严格匹配主题；新增 `v140_theme_retest2_checklist.md`（R15~R23） |
 | `d9067a7`（v1.4.0 完善④，2026-08-30） | **未选中控件描边 `controlBorder`（三轮前复测 R15/R16）**：新增语义色槽（27 色），三处未选中按钮加 1px 明显描边（晨光蓝 `#98A1B2` 等 5 套），选中态无边框；PrintWindow 扫描确认矩形描边轮廓；新增 `v140_theme_retest3_checklist.md`（R24~R32） |
 | `v1.4.0`（**tag**，2026-08-30） | **换肤功能验收完成**：三轮复测全部通过（R24a~R25c + R26~R32 全 OK）——5 套配色 / 调色盘即时切换 / `state.json` 持久化 / 深色模式 / 未选中控件描边全部交付；`docs/theme_preview.html` 效果图预览与实机一致 |
-| `(v1.5.0，2026-08-31)` | **四级字号切换 + 全局等比缩放**：新增 `lib/theme/app_fonts.dart`（`FontSizeLevel` 枚举 ×1.0/×1.2/×1.4/×1.6 + `FontScaleController` ValueNotifier + `AppFonts` 门面）；`MaterialApp.builder` 内 `Transform.scale`（复用 v1.2.x 已验证模式）把整棵 Navigator（含弹窗/菜单/Toast）等比例缩放；标题栏调色盘左侧新增「A」字号按钮（4 级菜单 + ✓）；**歌词区单独处理**（铺满自适应算法 × 系数）；侧栏宽度随系数缩放（350×s/600×s）并同步 native 窗口扩展；`state.json fontSizeLevel` 持久化 + 重启恢复；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放 |
+| `(v1.5.0，2026-08-31)` | **四级字号切换 + 全局等比缩放**：新增 `lib/theme/app_fonts.dart`（`FontSizeLevel` 枚举 ×1.0/×1.3/×1.6/×1.9 + `FontScaleController` ValueNotifier + `AppFonts` 门面）；`MaterialApp.builder` 内 `Transform.scale`（复用 v1.2.x 已验证模式）把整棵 Navigator（含弹窗/菜单/Toast）等比例缩放；标题栏调色盘左侧新增「A」字号按钮（4 级菜单 + ✓）；**歌词区单独处理**（铺满自适应算法 × 系数）；**左栏宽度随系数缩放**（350×s）并同步 native 窗口扩展，**右栏宽度固定 600 不缩放**（有滚动条）；`state.json fontSizeLevel` 持久化 + 重启恢复；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放；单元测试 `font_size_level_test.dart` |
 
 **关键文件**：
 
@@ -67,7 +67,7 @@
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
 - **换肤**：`AppPalette` 语义色槽（**27 色，含 8 个分区底色 + controlBg/controlBorder 未选中控件底色与描边**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
-- **字号（v1.5.0）**：`FontScaleController`（ValueNotifier）+ `AppFonts` 门面 + `MaterialApp.builder` 内 `Transform.scale` 全局等比缩放（含弹窗/菜单/Toast）；**4 级**：默认 ×1.0 / 中号 ×1.2 / 大号 ×1.4 / 最大 ×1.6（系数集中一处可调）；**歌词区单独处理**（铺满自适应算法 × 系数，大字号滚动阅读）；侧栏宽度随系数缩放并同步 native 窗口扩展（基座 850 居中）；`state.json fontSizeLevel` 持久化；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放
+- **字号（v1.5.0）**：`FontScaleController`（ValueNotifier）+ `AppFonts` 门面 + `MaterialApp.builder` 内 `Transform.scale` 全局等比缩放（含弹窗/菜单/Toast）；**4 级**：默认 ×1.0 / 中号 ×1.3 / 大号 ×1.6 / 最大 ×1.9（系数集中一处可调）；**歌词区单独处理**（铺满自适应算法 × 系数，大字号滚动阅读）；**左栏宽度随系数缩放**（350×s）并同步 native 窗口扩展，**右栏宽度固定 600 不缩放**（有滚动条，画布内反向缩放抵消）；`state.json fontSizeLevel` 持久化；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
