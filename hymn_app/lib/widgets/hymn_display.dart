@@ -420,83 +420,62 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   Widget _buildControls(Hymn? hymn) {
     final voices = hymn == null ? <String>[] : voiceVersions(hymn);
-    // F27 修复（v1.5.0 大字号下音量滑条与播放按钮重叠）：
-    // 画布宽度 = 窗口宽 ÷ 字号系数，大字号下画布变窄，固定宽度控件
-    // （音量图标48+滑条150+百分比38≈236）会与居中的播放按钮组（约144）
-    // 重叠。用 LayoutBuilder 计算左侧可用宽度（= 半宽 - 按钮组半宽 - 间距），
-    // 限制音量控件不超过它；空间充足时（默认字号）不生效，零回归。
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 音量控件可用宽 = 半宽 - 居中按钮组半宽(144/2=72)。
-        // 按钮组图标内缩，视觉上仍与音量控件有明显间隔；-72 为几何零重叠。
-        final leftMax =
-            (constraints.maxWidth / 2 - 72).clamp(120.0, double.infinity);
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
-                  tooltip: '上一首',
-                  onPressed: () => widget.audio.playPrev(),
-                ),
-                StreamBuilder<PlayerStatus>(
-                  stream: widget.audio.statusStream,
-                  builder: (context, snap) {
-                    final status = snap.data ?? PlayerStatus.idle;
-                    final playing = status == PlayerStatus.playing;
-                    return IconButton(
-                      iconSize: 42,
-                      icon: Icon(
-                        playing
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
-                        color: AppColors.primary,
-                      ),
-                      tooltip: playing ? '暂停' : '播放',
-                      onPressed: () {
-                        LogService.instance.info(
-                          LogTag.action,
-                          playing ? '点击播放条：暂停' : '点击播放条：播放',
-                        );
-                        widget.audio.togglePlayPause();
-                      },
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
-                  tooltip: '下一首',
-                  onPressed: () => widget.audio.playNext(),
-                ),
-              ],
-            ),
-            // 人声版本列表（>1 时显示，悬停提示 10 秒，固定右侧不挤压居中按钮组）
-            if (voices.length > 1)
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Center(child: _buildVoiceListButton(hymn!, voices)),
+    // v1.5.0 方案 B（音量百分比与上一首重叠的结构性根治）：
+    // 单一 Row 镜像结构——左 Expanded(音量控件) / 中按钮组(固定) /
+    // 右 Expanded(人声版本👥或空配重)。Flex 引擎把剩余宽度**等分**给
+    // 左右 Expanded，天然保证：① 按钮组绝对居中（👥 显隐不影响）；
+    // ② 音量控件与按钮组由布局互相隔离，几何上永不重叠。
+    // 废除旧 Stack + leftMax(半宽-72) 手工几何预算（其假设按钮组宽
+    // 144，实际播放键 iconSize42 使组宽 ~154，且无显式间距 → 重叠）。
+    return Row(
+      children: [
+        // 左配重：音量控件（滑轨宽度由内部 LayoutBuilder 自适应本区分配）
+        Expanded(child: _buildVolumeControl()),
+        IconButton(
+          icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
+          tooltip: '上一首',
+          onPressed: () => widget.audio.playPrev(),
+        ),
+        StreamBuilder<PlayerStatus>(
+          stream: widget.audio.statusStream,
+          builder: (context, snap) {
+            final status = snap.data ?? PlayerStatus.idle;
+            final playing = status == PlayerStatus.playing;
+            return IconButton(
+              iconSize: 42,
+              icon: Icon(
+                playing
+                    ? Icons.pause_circle_filled
+                    : Icons.play_circle_filled,
+                color: AppColors.primary,
               ),
-            // 音量调节（通用方案）：图标=静音切换 / 滑条=调节 / 百分比=当前音量
-            // 与全局快捷键（Ctrl+↑↓/Ctrl+M）共用 AudioService 同一数据源，实时联动
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: leftMax),
-                  child: _buildVolumeControl(),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+              tooltip: playing ? '暂停' : '播放',
+              onPressed: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  playing ? '点击播放条：暂停' : '点击播放条：播放',
+                );
+                widget.audio.togglePlayPause();
+              },
+            );
+          },
+        ),
+        IconButton(
+          icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
+          tooltip: '下一首',
+          onPressed: () => widget.audio.playNext(),
+        ),
+        // 右配重：人声版本按钮（>1 时显示，悬停提示 10 秒；
+        // 不显示时保持空 Expanded 占位，维持按钮组居中的对称性）
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: voices.length > 1
+                ? _buildVoiceListButton(hymn!, voices)
+                : const SizedBox.shrink(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -505,11 +484,13 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 数据源为 `AudioService.volumeNotifier/mutedNotifier`（ValueNotifier）：
   /// 拖动滑条 / 点击静音 / 快捷键调节，都会更新同一来源并互相刷新。
   ///
-  /// v1.5.0 方案 A（用户选定）：**滑轨占满可用宽度、永不小于默认 150px**——
+  /// v1.5.0 方案 B（结构性根治，叠加于方案 A 的反向缩放策略之上）：
+  /// 容器由 Stack+leftMax 手工预算改为 _buildControls 左 Expanded 实分配宽，
+  /// 与按钮组由 Flex 布局天然隔离，百分比永不与上一首重叠——
   /// - 图标/百分比反向缩放（画布宽 = 48/系数、38/系数），**视觉恒为 48px/38px**，
   ///   不随字号挤占滑轨空间；
-  /// - 滑轨宽度 = 剩余可用画布，视觉下限 150px、上限 150×系数（默认档保持 150 零回归），
-  ///   大字号下更宽更好拖；
+  /// - 滑轨宽度 = 剩余可用画布，上限 150 画布（默认档保持 150 零回归），
+  ///   中/大档更宽更好拖；下限 40/系数 防极限窄场景 overflow；
   /// - 滑块/轨道经 SliderTheme 反向缩放（/系数），**视觉恒为 20px/4px**，
   ///   避免「轨道变短、滑块变大」的比例失调。
   Widget _buildVolumeControl() {
@@ -525,10 +506,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 final s = AppFonts.scale;
                 final iconW = 48 / s; // 视觉恒 48
                 final pctW = 38 / s; // 视觉恒 38
-                // 滑轨可用画布宽 = 容器限宽 - 图标 - 百分比；
-                // 视觉下限 150（画布 150/s）、上限 150 画布（默认档保持 150 视觉）
+                // 滑轨可用画布宽 = 左 Expanded 实分配宽 - 图标 - 百分比；
+                // 上限 150 画布（默认档保持 150 视觉零回归）。
+                // 方案 B 下限调整：旧下限 150/s（视觉恒≥150）在最大档
+                // 基座窗口下会超出 Expanded 分配宽导致 Row overflow
+                // （该场景滑轨物理上至多 ~147 视觉），改为 40/s 防溢出
+                // 兜底；默认/中/大档不受影响（预算核算均 ≥150 视觉）。
                 final avail = constraints.maxWidth - iconW - pctW;
-                final sliderW = avail.clamp(150 / s, 150).toDouble();
+                final sliderW = avail.clamp(40 / s, 150).toDouble();
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
