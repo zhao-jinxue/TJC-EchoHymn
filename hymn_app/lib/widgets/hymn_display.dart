@@ -427,8 +427,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // 限制音量控件不超过它；空间充足时（默认字号）不生效，零回归。
     return LayoutBuilder(
       builder: (context, constraints) {
+        // 音量控件可用宽 = 半宽 - 居中按钮组半宽(144/2=72)。
+        // 按钮组图标内缩，视觉上仍与音量控件有明显间隔；-72 为几何零重叠。
         final leftMax =
-            (constraints.maxWidth / 2 - 80).clamp(120.0, double.infinity);
+            (constraints.maxWidth / 2 - 72).clamp(120.0, double.infinity);
         return Stack(
           alignment: Alignment.center,
           children: [
@@ -502,6 +504,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
   ///
   /// 数据源为 `AudioService.volumeNotifier/mutedNotifier`（ValueNotifier）：
   /// 拖动滑条 / 点击静音 / 快捷键调节，都会更新同一来源并互相刷新。
+  ///
+  /// v1.5.0 方案 A（用户选定）：**滑轨占满可用宽度、永不小于默认 150px**——
+  /// - 图标/百分比反向缩放（画布宽 = 48/系数、38/系数），**视觉恒为 48px/38px**，
+  ///   不随字号挤占滑轨空间；
+  /// - 滑轨宽度 = 剩余可用画布，视觉下限 150px、上限 150×系数（默认档保持 150 零回归），
+  ///   大字号下更宽更好拖；
+  /// - 滑块/轨道经 SliderTheme 反向缩放（/系数），**视觉恒为 20px/4px**，
+  ///   避免「轨道变短、滑块变大」的比例失调。
   Widget _buildVolumeControl() {
     return ValueListenableBuilder<double>(
       valueListenable: widget.audio.volumeNotifier,
@@ -510,38 +520,64 @@ class _HymnDisplayState extends State<HymnDisplay> {
           valueListenable: widget.audio.mutedNotifier,
           builder: (context, muted, _) {
             final effective = muted ? 0.0 : volume;
-            // F27 修复：滑条宽度自适应——空间充足保持 150，不足时收缩
-            // （由 _buildControls 的 ConstrainedBox 传入 maxWidth）
             return LayoutBuilder(
               builder: (context, constraints) {
-                final sliderW =
-                    (constraints.maxWidth - 48 - 38 - 4).clamp(40.0, 150.0);
+                final s = AppFonts.scale;
+                final iconW = 48 / s; // 视觉恒 48
+                final pctW = 38 / s; // 视觉恒 38
+                // 滑轨可用画布宽 = 容器限宽 - 图标 - 百分比；
+                // 视觉下限 150（画布 150/s）、上限 150 画布（默认档保持 150 视觉）
+                final avail = constraints.maxWidth - iconW - pctW;
+                final sliderW = avail.clamp(150 / s, 150).toDouble();
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: Icon(
-                        muted ? Icons.volume_off : Icons.volume_up,
-                        color: AppColors.textPrimary,
+                    SizedBox(
+                      width: iconW,
+                      height: 48,
+                      child: Center(
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          iconSize: 24 / s, // 视觉恒 24
+                          icon: Icon(
+                            muted ? Icons.volume_off : Icons.volume_up,
+                            color: AppColors.textPrimary,
+                          ),
+                          tooltip: muted ? '取消静音（Ctrl+M）' : '静音（Ctrl+M）',
+                          onPressed: () => widget.audio.toggleMute(),
+                        ),
                       ),
-                      tooltip: muted ? '取消静音（Ctrl+M）' : '静音（Ctrl+M）',
-                      onPressed: () => widget.audio.toggleMute(),
+                    ),
+                    SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: AppColors.primary,
+                        thumbColor: AppColors.primary,
+                        // 滑块/轨道反向缩放 → 视觉恒 20px/4px，不随字号变形
+                        trackHeight: 4 / s,
+                        thumbShape:
+                            RoundSliderThumbShape(enabledThumbRadius: 10 / s),
+                        overlayShape:
+                            RoundSliderOverlayShape(overlayRadius: 20 / s),
+                      ),
+                      child: SizedBox(
+                        width: sliderW,
+                        child: Slider(
+                          value: effective,
+                          onChanged: (v) => widget.audio.setVolume(v),
+                        ),
+                      ),
                     ),
                     SizedBox(
-                      width: sliderW,
-                      child: Slider(
-                        value: effective,
-                        onChanged: (v) => widget.audio.setVolume(v),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 38,
-                      child: Text(
-                        '${(effective * 100).round()}%',
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                      width: pctW,
+                      child: Center(
+                        child: Text(
+                          '${(effective * 100).round()}%',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: 12 / s, // 视觉恒 12
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
