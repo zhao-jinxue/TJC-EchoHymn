@@ -30,3 +30,15 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/hymns.json
+  # 内置中文字体（Noto Sans SC 子集，OFL 许可）：
+  # ① w500 有真实 Medium 字面，根治换肤菜单逐字字重不均；
+  # ② 全应用字体自足，迁移到无雅黑环境（如 OpenHarmony/其他 Windows）不异常。
+  fonts:
+    - family: EchoSans
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansSC-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansSC-Bold.ttf
+          weight: 700

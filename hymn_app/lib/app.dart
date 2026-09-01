@@ -217,7 +217,12 @@ class EchoHymnApp extends StatelessWidget {
                 ),
               ),
               dividerColor: palette.divider,
+              // 内置字体 EchoSans（Noto Sans SC 子集，真 400/500/700 字面）：
+              // apply 写入整个 textTheme，Material 组件与未显式指定 family 的
+              // 手工 TextStyle（DefaultTextStyle 继承）全覆盖——w500 命中实体
+              // Medium，根治中间字重合成/系统字体逐字混排不均，且不依赖目标机器
               textTheme: base.textTheme.apply(
+                fontFamily: 'EchoSans',
                 bodyColor: palette.textPrimary,
                 displayColor: palette.textPrimary,
               ),
