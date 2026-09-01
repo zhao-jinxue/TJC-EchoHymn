@@ -166,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // 恢复左右侧栏展开/收起状态
         _showLeft = state.showLeft;
         _showRight = state.showRight;
+        // 恢复"启动时显示用户手册"偏好（手册弹窗底部勾选框控制）
+        ManualPrefs.instance.restoreFrom(state.manualOnStart);
       });
       // 恢复侧栏状态后同步窗口宽度
       _syncWindowSize();
@@ -216,6 +218,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         detail: '诗歌总数: ${_allHymns.length}',
       );
       LogService.instance.info(LogTag.ui, 'HomeScreen 首帧构建完成');
+      // 启动自动弹出用户手册（偏好为"启动时显示"时；手册底部勾选框可关闭/恢复）
+      if (ManualPrefs.instance.showOnStart) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            LogService.instance.info(LogTag.ui, '启动自动弹出用户手册');
+            UserManualDialog.show(context);
+          }
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       LogService.instance.error(LogTag.error, 'HomeScreen 初始化失败', detail: '$e');
@@ -289,6 +300,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       showRight: _showRight,
       appTheme: ThemeController.instance.current.id,
       fontSizeLevel: FontScaleController.instance.current.id,
+      manualOnStart: ManualPrefs.instance.showOnStart,
     );
   }
 

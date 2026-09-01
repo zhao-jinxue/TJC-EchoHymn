@@ -10,6 +10,9 @@ import 'dart:io';
 class AppStateService {
   static const _fileName = 'state.json';
 
+  /// 全局共享实例（跨模块单键更新时共用同一串行写队列）
+  static final AppStateService shared = AppStateService();
+
   /// 写队列：所有写入排队串行执行，避免并发写同一 tmp 文件导致文件损坏
   Future<void> _writeChain = Future.value();
 
@@ -37,6 +40,7 @@ class AppStateService {
     bool showRight = false,
     String appTheme = '',
     String fontSizeLevel = '',
+    bool manualOnStart = true,
   }) {
     final data = <String, Object>{
       'leftTab': leftTab,
@@ -50,9 +54,36 @@ class AppStateService {
       'showRight': showRight,
       'appTheme': appTheme,
       'fontSizeLevel': fontSizeLevel,
+      'manualOnStart': manualOnStart,
     };
     // 排队执行，串行写入，且异常不影响后续写入
     _writeChain = _writeChain.then((_) => _doWrite(data)).catchError((_) {});
+    return _writeChain;
+  }
+
+  /// 仅更新 manualOnStart 单键：读文件 → 改该键 → 原子写回。
+  /// 挂接同一串行写队列，不影响其他字段（用户手册弹窗独立持久化用）。
+  Future<void> updateManualOnStart(bool value) {
+    _writeChain = _writeChain.then((_) async {
+      final file = File(_statePath);
+      Map<String, Object> data = {};
+      if (await file.exists()) {
+        try {
+          final json = jsonDecode(await file.readAsString());
+          if (json is Map<String, dynamic>) data = Map<String, Object>.from(json);
+        } catch (_) {}
+      }
+      data['manualOnStart'] = value;
+      const encoder = JsonEncoder.withIndent('  ');
+      final tmp = File('$_statePath.tmp');
+      await tmp.writeAsString(encoder.convert(data), flush: true);
+      try {
+        await tmp.rename(file.path);
+      } catch (_) {
+        if (await file.exists()) await file.delete();
+        await tmp.rename(file.path);
+      }
+    }).catchError((_) {});
     return _writeChain;
   }
 
@@ -101,6 +132,7 @@ class AppStateService {
         showRight: (json['showRight'] as bool?) ?? false,
         appTheme: (json['appTheme'] as String?) ?? '',
         fontSizeLevel: (json['fontSizeLevel'] as String?) ?? '',
+        manualOnStart: (json['manualOnStart'] as bool?) ?? true,
       );
     } catch (_) {
       return _defaultState;
@@ -141,6 +173,9 @@ class AppState {
   /// 当前字号等级 id（对应 [theme/app_fonts.dart] 的 FontSizeLevel.id；空串 = 默认）
   final String fontSizeLevel;
 
+  /// 启动时是否自动弹出用户手册（默认 true；手册底部勾选框控制）
+  final bool manualOnStart;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -153,5 +188,6 @@ class AppState {
     this.showRight = false,
     this.appTheme = '',
     this.fontSizeLevel = '',
+    this.manualOnStart = true,
   });
 }
