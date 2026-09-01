@@ -444,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   tooltip: '切换配色（${ThemeController.instance.current.name}）',
                   onTap: _showThemeMenu,
                 ),
-                // 字号按钮（A+）：切换字号等级（全局等比缩放）
+                // 字号按钮（大小写双T图标 format_size）：切换字号等级（全局等比缩放）
                 _WindowButton(
                   key: _fontButtonKey,
                   icon: Icons.format_size,
