@@ -295,8 +295,22 @@ class AudioService {
   }
 
   /// 音量 / 静音状态（快捷键控制用）
+  ///
+  /// **音量模型（2026-09-01 修复双重衰减）**：`_volume` 即**系统音量**，是唯一响度旋钮——
+  /// 播放器增益恒 1.0（静音时 0），不再叠加 `_player.setVolume(_volume)`。
+  /// 修复前系统音量与应用增益各乘一次（实际输出 = v²，如 50% 变 25%，
+  /// 听感比系统默认播放器轻约 12dB）；修复后与应用外播放同一音量语义。
   double get volume => _volume;
   bool get muted => _muted;
+
+  /// 系统音量通道是否可用（Windows=true；loadSystemVolume 成功探测后置真）
+  bool _systemVolumeAvailable = false;
+
+  /// 播放器增益：
+  /// - 有系统音量通道：增益恒 1.0（静音 0），响度只由系统音量决定，防 v² 双重衰减；
+  /// - 无通道平台（Android/鸿蒙预留）：退化为应用增益模式，滑条直接调 player。
+  double get _gain =>
+      _muted ? 0 : (_systemVolumeAvailable ? 1.0 : _volume);
 
   /// 绝对设置音量（0.0~1.0）；设置非零音量时自动取消静音
   Future<void> setVolume(double volume) async {
@@ -308,10 +322,11 @@ class AudioService {
     }
     _volume = v;
     volumeNotifier.value = v; // 通知播放条音量控件刷新（滑条/百分比/图标）
-    await _player.setVolume(_muted ? 0 : _volume);
+    // 播放器增益恒 1.0：响度只由系统音量决定（避免 v² 双重衰减）
+    await _player.setVolume(_gain);
     LogService.instance
         .info(LogTag.play, '音量设置为 ${(_volume * 100).round()}%');
-    _syncToSystem(); // 应用音量 → 写回系统音量（双向同步）
+    _syncToSystem(); // 音量 → 写回系统音量（系统音量为唯一响度旋钮）
   }
 
   /// 相对调节音量（快捷键 Ctrl+↑/↓ 使用）
@@ -321,7 +336,8 @@ class AudioService {
   Future<void> toggleMute() async {
     _muted = !_muted;
     mutedNotifier.value = _muted; // 通知播放条音量控件刷新（图标/百分比）
-    await _player.setVolume(_muted ? 0 : _volume);
+    // 静音只切增益（0/1.0），音量数值不动（响度旋钮仍是系统音量）
+    await _player.setVolume(_gain);
     LogService.instance.info(LogTag.play,
         _muted ? '静音开启' : '静音取消（音量 ${(_volume * 100).round()}%）');
     _syncToSystem(); // 静音状态 → 写回系统（双向同步）
@@ -341,7 +357,9 @@ class AudioService {
       volumeNotifier.value = _volume; // 通知播放条音量控件刷新
       _muted = m;
       mutedNotifier.value = _muted;
-      await _player.setVolume(_muted ? 0 : _volume);
+      // 系统音量已是当前响度，增益无需衰减（修复前此处 setVolume(v) 与系统音量叠乘）
+      _systemVolumeAvailable = true; // 自此刻起滑条=系统音量镜像，增益恒 1.0
+      await _player.setVolume(_gain);
       LogService.instance.info(LogTag.play,
           '初始化为系统音量 ${(_volume * 100).round()}%'
           '${_muted ? '（系统静音）' : ''}');
@@ -376,7 +394,8 @@ class AudioService {
         volumeNotifier.value = _volume;
         _muted = m;
         mutedNotifier.value = _muted;
-        await _player.setVolume(_muted ? 0 : _volume);
+        // 系统音量变化只回显滑条 + 同步静音，增益不再叠加（防 v² 衰减）
+        await _player.setVolume(_gain);
         LogService.instance.info(LogTag.play,
             '跟随系统音量 ${(_volume * 100).round()}%'
             '${_muted ? '（静音）' : ''}');
