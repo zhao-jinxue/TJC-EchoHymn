@@ -101,6 +101,38 @@ void main() {
       expect(hits.first.displayVerse, contains('满足'));
       expect(hits.first.displayVerse, isNot(contains('滿足')));
     });
+
+    test('S27：关键字在节的靠后行，从关键字所在行开窗显示（… 前缀）', () {
+      final corpus = [
+        _hymn(id: 9, number: '9', title: '长诗', verses: [
+          '第一行起头\n第二行中段\n第三行出现十字架的爱\n第四行结尾',
+        ]),
+      ];
+      final hits = HymnSearchService.search(corpus, '十字架');
+      expect(hits.length, 1);
+      // 从关键字所在行起截取，保证单元格 3 行内一定看得到加粗关键字
+      expect(hits.first.displayVerse, '…第三行出现十字架的爱\n第四行结尾');
+      expect(hits.first.displayVerse, isNot(contains('第一行')));
+    });
+
+    test('S27：关键字在第一行则原样显示（无截断前缀）', () {
+      final corpus = [
+        _hymn(id: 8, number: '8', title: '短诗', verses: ['十字架的爱\n第二行']),
+      ];
+      final hits = HymnSearchService.search(corpus, '十字架');
+      expect(hits.first.displayVerse, '十字架的爱\n第二行');
+    });
+
+    test('S27：仅歌名命中不做开窗（歌词列显示第一节开头）', () {
+      final corpus = [
+        _hymn(id: 7, number: '7', title: '十字架之美', verses: ['第一行起\n第二行']),
+      ];
+      final hits = HymnSearchService.search(corpus, '十字架');
+      expect(hits.first.titleMatched, isTrue);
+      expect(hits.first.verseMatched, isFalse);
+      expect(hits.first.displayVerse, startsWith('第一行起'));
+      expect(hits.first.displayVerse, isNot(startsWith('…')));
+    });
   });
 
   group('排序与组合', () {

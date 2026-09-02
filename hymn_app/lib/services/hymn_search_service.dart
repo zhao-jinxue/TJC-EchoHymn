@@ -67,20 +67,38 @@ class HymnSearchService {
       }
       final verseMatched = matchedVerse >= 0;
       if (!titleMatched && !verseMatched) continue;
-      // 歌词列显示内容：命中节优先，否则默认第一节
+      // 歌词列显示内容：命中节优先（从关键字所在行开窗，保证加粗关键字可见），
+      // 仅歌名命中则显示第一节开头
       final rawVerse = verseMatched
           ? h.verses[matchedVerse]
           : (h.verses.isNotEmpty ? h.verses.first : '');
+      var display =
+          rawVerse.trim().isEmpty ? '' : _toSimplifiedMultiline(rawVerse);
+      if (verseMatched && display.isNotEmpty) {
+        display = _windowAroundKeyword(display, kwS);
+      }
       final hit = HymnSearchHit(
         hymn: h,
         titleMatched: titleMatched,
         verseMatched: verseMatched,
-        displayVerse:
-            rawVerse.trim().isEmpty ? '' : _toSimplifiedMultiline(rawVerse),
+        displayVerse: display,
       );
       (titleMatched ? titleHits : verseHits).add(hit);
     }
     return [...titleHits, ...verseHits];
+  }
+
+  /// 歌词命中节可能整节超一屏（单元格只 3 行），关键字在靠后行时被省略号截断、
+  /// 用户看不到加粗处（S27 NG）。窗口化：从**关键字所在行**起截取显示，
+  /// 前面有截断时以「…」提示；关键字在第一行则原样。
+  static String _windowAroundKeyword(String simplified, String kwS) {
+    if (kwS.isEmpty) return simplified;
+    var i = simplified.indexOf(kwS);
+    if (i < 0) return simplified; // 繁体分支命中而简体形未命中：保持原文
+    if (i == 0) return simplified;
+    final lineStart = simplified.lastIndexOf('\n', i - 1) + 1;
+    if (lineStart == 0) return simplified;
+    return '…${simplified.substring(lineStart)}';
   }
 
   /// 多行歌词逐行转简（转换映射为按字符处理，整段直接转即可）

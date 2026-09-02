@@ -184,10 +184,13 @@ abstract class LeftPanelState<P extends LeftPanel> extends State<P> {
   /// 切歌联动滚动：将 [index] 行滚动到可视区域，且避开顶部固定栏
   /// （搜索框/标题行等，高度 [headerHeight]），不遮挡高亮行。
   /// 行已在可视区域内时不动，避免无谓跳动。
+  /// [force] = true 时跳过可见性判断，强制把该行对齐到固定栏下沿
+  /// （× 清除等需要"必须回到定位处"的场景，S04）。
   void scrollCurrentIntoView(
     ScrollController ctrl,
     int index, {
     double headerHeight = defaultHeaderHeight,
+    bool force = false,
   }) {
     if (!ctrl.hasClients) return;
     final rowTop = index * itemHeight;
@@ -197,7 +200,7 @@ abstract class LeftPanelState<P extends LeftPanel> extends State<P> {
     // 可视区域 = [offset + headerHeight, offset + viewport)
     final visibleTop = offset + headerHeight;
     final visibleBottom = offset + viewport;
-    if (rowTop < visibleTop || rowBottom > visibleBottom) {
+    if (force || rowTop < visibleTop || rowBottom > visibleBottom) {
       final target = (rowTop - headerHeight)
           .clamp(0.0, ctrl.position.maxScrollExtent)
           .toDouble();

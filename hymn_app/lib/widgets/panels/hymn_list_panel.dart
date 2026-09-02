@@ -12,11 +12,13 @@ import 'left_panel_base.dart';
 /// 诗歌列表面板：按编号分页展示全部诗歌 + 搜索定位 + 分页
 ///
 /// 搜索框语义 = **定位跳转**（而非过滤列表），列表始终保持完整 474 首分页：
-/// - 输入编号 → 回车翻页 + 滚动 + 高亮定位（**不自动播放**；二次回车播放）
+/// - 输入编号 → 第一次回车翻页 + 滚动 + 高亮定位（**不自动播放**），
+///   第二次回车播放并**自动清空搜索框**（S02，为下一次搜索做准备）
 /// - 输入中文 → 歌名+歌词统一模糊搜索：命中 → 统一搜索结果弹窗（歌名关键字
-///   红色加粗 / 歌词关键字主题色加粗，显示第一个命中节）；弹窗单击行选中、
-///   双击行 = 关闭弹窗并定位播放；弹窗外二次回车 = 播放第一个命中
-/// - 无命中 → 左栏「未找到匹配的诗歌」+ Toast；清除（×）→ 保持当前定位
+///   红色加粗 / 歌词关键字主题色加粗，显示第一个命中节且从关键字所在行开窗）；
+///   弹窗单击行选中、**双击行 = 关闭弹窗 + 定位 + 播放 + 清框**；
+///   再次回车 = 重新弹窗（S11/S24：回车不直接播放，不双击 = 不选择）
+/// - 无命中 → 左栏「未找到匹配的诗歌」+ Toast；清除（×）→ 强制滚回当前定位行
 /// - 定位后点播放条播放，或点下一首/上一首 = 从定位处开始切换
 class HymnListPanel extends LeftPanel {
   const HymnListPanel({
@@ -105,22 +107,21 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   // ================= 定位 =================
 
   /// 在完整列表中定位 [hymn] 所在页并滚动到可视区域（避开搜索框）。
-  void _locateAndScroll(Hymn hymn) {
+  /// S04：滚动统一排到帧后——空态/换页时 ListView 重建后 `_scroll` 才重新挂载，
+  /// 同步 jumpTo 会因 hasClients 为旧值而失效。
+  void _locateAndScroll(Hymn hymn, {bool force = false}) {
     final all = repo.getAllHymns();
     final idx = all.indexWhere((h) => h.id == hymn.id);
     if (idx < 0) return;
     final page = idx ~/ _pageSize;
     if (page != _listPage) {
       setState(() => _listPage = page);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        scrollCurrentIntoView(_scroll, idx - page * _pageSize,
-            headerHeight: 56);
-      });
-    } else {
-      scrollCurrentIntoView(_scroll, idx - _listPage * _pageSize,
-          headerHeight: 56);
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      scrollCurrentIntoView(_scroll, idx - page * _pageSize,
+          headerHeight: 56, force: force);
+    });
   }
 
   /// 定位 + 加载高亮（**不播放**）：回到完整列表视图、翻页滚动高亮该行，
@@ -170,10 +171,13 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     final kw = v.trim();
     if (kw.isEmpty) {
       // 输入清空（back 删空 / × 清除）：回到分页列表，保持当前定位
+      // （S04：空态→列表重建会丢滚动位置，force 滚回定位行）
       setState(() {
         _searchEmpty = false;
         _activeSearchKw = null;
       });
+      final cur = currentHymn;
+      if (cur != null) _locateAndScroll(cur, force: true);
     } else if (_activeSearchKw != null && kw != _activeSearchKw) {
       // 已搜索后修改输入：重置已搜索状态，需重新回车
       _activeSearchKw = null;
@@ -183,47 +187,47 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   void _onSearchSubmitted(String v) {
     final kw = v.trim();
     if (kw.isEmpty) return;
-    // 第一次回车：结束输入并开始搜索（编号定位 / 中文弹窗 / 无命中空态）
-    if (_activeSearchKw == null) {
+    // 中文关键字：每次回车都重新执行搜索（S11/S24——弹窗是唯一播放入口，
+    // 双击选中才播放；回车从不直接播放某首，未选中 = 用户放弃本次结果）
+    if (int.tryParse(kw) == null) {
+      _performSearch(kw);
+      return;
+    }
+    // 编号关键字：两次回车状态机——第一次定位，第二次播放（与之前一致）
+    if (_activeSearchKw != kw) {
       _activeSearchKw = kw;
       _performSearch(kw);
       return;
     }
-    // 第二次回车：编号 = 播放定位歌曲；中文 = 播放命中第一首
-    if (int.tryParse(kw) != null) {
-      final target = _findByNumber(kw) ?? _findByTitle(kw);
-      if (target == null) {
-        _showSearchToast('未找到相关诗歌：$kw');
-        return;
-      }
-      final all = repo.getAllHymns();
-      final idx = all.indexWhere((h) => h.id == target.id);
-      LogService.instance.info(
-        LogTag.action,
-        '搜索回车播放: $kw',
-        detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
-      );
-      _locateTo(target);
-      playHymn(target, idx, all);
-      return;
-    }
-    final hits = HymnSearchService.search(repo.getAllHymns(), kw);
-    if (hits.isEmpty) {
+    final target = _findByNumber(kw) ?? _findByTitle(kw);
+    if (target == null) {
       _showSearchToast('未找到相关诗歌：$kw');
+      _activeSearchKw = null;
       return;
     }
+    final all = repo.getAllHymns();
+    final idx = all.indexWhere((h) => h.id == target.id);
     LogService.instance.info(
       LogTag.action,
-      '搜索回车播放（歌名+歌词）: $kw',
-      detail: '命中 ${hits.length} 首，播放第一首：'
-          '第 ${hits.first.hymn.hymnNumber} 首《${hits.first.hymn.title}》',
+      '搜索回车播放: $kw',
+      detail: '定位到第 ${target.hymnNumber} 首《${target.title}》',
     );
-    _openHit(hits.first.hymn);
+    _locateTo(target);
+    playHymn(target, idx, all);
+    // S02：播放后清空搜索框，为下一次搜索做准备（防止再回车从头重播）
+    _clearSearchAfterPlay();
   }
 
-  /// 执行搜索（第一次回车）：
-  /// - 编号 → 定位高亮（不播放，二次回车播放；与之前一致）
-  /// - 中文 → 歌名+歌词统一模糊搜索：命中 → 结果弹窗；无命中 → 空态 + Toast
+  /// 播放动作完成后清空搜索框并复位搜索状态（S02；定位/高亮保持不动）
+  void _clearSearchAfterPlay() {
+    _searchCtrl.clear();
+    _activeSearchKw = null;
+  }
+
+  /// 执行搜索（每次回车都执行）：
+  /// - 编号 → 定位高亮（不播放，第二次回车才播放；与之前一致）
+  /// - 中文 → 歌名+歌词统一模糊搜索：命中 → 结果弹窗（唯一播放入口）；
+  ///   无命中 → 空态 + Toast
   void _performSearch(String kw) {
     if (int.tryParse(kw) != null) {
       final target = _findByNumber(kw) ?? _findByTitle(kw);
@@ -267,7 +271,12 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
   /// （弹窗展示期间不抢焦点——弹窗持有焦点，关闭后再回焦搜索框）
   void _keepSearchFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocus.requestFocus();
+      if (!mounted) return;
+      _searchFocus.requestFocus();
+      // S09：桌面端焦点移入 TextField 默认全选文本导致光标不可见——
+      // 折叠光标到文本末尾，保持可继续编辑
+      _searchCtrl.selection =
+          TextSelection.collapsed(offset: _searchCtrl.text.length);
     });
   }
 
@@ -283,7 +292,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     }
   }
 
-  /// 打开搜索命中的诗歌：回到完整列表，翻页定位 + 播放
+  /// 打开搜索命中的诗歌：回到完整列表，翻页定位 + 播放；播后清框（S02 同理）
   void _openHit(Hymn hymn) {
     final all = repo.getAllHymns();
     final idx = all.indexWhere((h) => h.id == hymn.id);
@@ -295,6 +304,7 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
     );
     _locateTo(hymn);
     playHymn(hymn, idx, all);
+    _clearSearchAfterPlay();
   }
 
   void _showSearchToast(String msg) {
@@ -387,10 +397,12 @@ class _HymnListPanelState extends LeftPanelState<HymnListPanel> {
                   tooltip: '清除搜索（保持当前定位）',
                   onPressed: () {
                     _searchCtrl.clear();
+                    _activeSearchKw = null;
                     setState(() => _searchEmpty = false);
                     // C08：清空后保持定位——滚回当前歌曲所在位置，不回最上方
+                    // S04：force 强制对齐（列表刚重建/行高近似误判时也要回到定位行）
                     final cur = currentHymn;
-                    if (cur != null) _locateAndScroll(cur);
+                    if (cur != null) _locateAndScroll(cur, force: true);
                   },
                 ),
           isDense: true,
