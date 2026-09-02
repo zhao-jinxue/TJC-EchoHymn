@@ -45,6 +45,7 @@
 | `(v1.5.x 手册优化，2026-09-01)` | **用户手册重构 + 启动弹出**：① 内容无版本概念（删除「新增」等版本化句式），操作说明按界面区域**全覆盖重写**，首条自述「本手册的打开与关闭」；② **每次启动自动弹出**手册，弹窗底部固定区新增「启动时显示本手册」勾选框（取消→启动不弹，勾回→恢复），`ManualPrefs` 单例 + state.json `manualOnStart` 单键持久化（共用串行写队列）；测试清单 `test/v150/v150_manual_test_cases.md`（M01~M15）——**已实机验收全 OK（2026-09-01）** |
 | `(v1.5.x 音量模型修复，2026-09-01)` | **双重音量衰减根治**（用户实机发现"应用 50% 听感仅 30"）：根因 = 系统音量与播放器增益叠乘（`loadSystemVolume`/`setVolume`/轮询均 `_player.setVolume(v)` 且 `_syncToSystem()` 写同值 → 实际输出 v²，50%→25%，比系统播放器轻 ~12dB）。方案 A：**系统音量=唯一响度旋钮**，播放器增益恒 1.0（静音 0），滑条=系统音量镜像，听感与系统默认播放器一致；无系统通道平台（Android/鸿蒙预留）经 `_systemVolumeAvailable` 自动退化为应用增益模式；`audio_service.dart` 四处 + `_gain` getter；测试清单 `test/v150/v150_volume_test_cases.md`（Q01~Q08）——**已实机验收全 OK（含 Q01 与系统播放器 A/B 响度对齐，2026-09-01）** |
 | `v1.5.0`（**tag**，2026-09-01） | 🎉 **v1.5.0 全面验收完成**（v1.4.0 以来全部改动）：四级字号切换+全局等比缩放（R37~R42 全 OK）、播放条镜像 Row 音量重叠根治、内置字体 EchoSans（真 400/500/700 不依赖系统）、用户手册无版本化重构+启动弹出+「启动时显示本手册」开关（M01~M15 全 OK）、音量双重衰减根治（系统音量唯一主旋钮，Q01~Q08 全 OK）；含 17 个提交（feat/fix 9 个 + docs/test/chore 8 个）+ 文档三件套同步 |
+| `(v1.5.1，2026-09-02)` | **歌名+歌词统一模糊搜索弹窗**：搜索框不变，中文关键字回车同时搜歌名+歌词（新增 `HymnSearchService`，繁简双向匹配、内存全扫），命中进三列弹窗（编号/诗歌名称/歌词，640×560）——歌名关键字**红色加粗**+歌词列默认第一节、歌词关键字**主题色加粗**+显示第一命中节、双命中同行并存；排序歌名在前歌词在后组内按编号；**单击选中、双击=左栏定位+播放**；无命中左栏空态+Toast；左栏标题匹配列表被弹窗取代（`_titleResults` → `_searchEmpty`）；编号搜索行为不变；用户手册搜索条目同步；单元测试 12 用例 + 测试清单 `test/v151/`（S01~S41，含换肤/字号适配） |
 
 **关键文件**：
 
@@ -54,6 +55,7 @@
 - 换肤：`hymn_app/lib/theme/app_palette.dart`（`AppPalette`/5 套预设/`ThemeController`）+ `docs/theme_preview.html`（交互式效果图预览）
 - 字号：`hymn_app/lib/theme/app_fonts.dart`（`FontSizeLevel`/`FontScaleController`/`AppFonts`）+ `MaterialApp.builder` 全局 `Transform.scale`（app.dart）
 - 用户手册弹窗：`hymn_app/lib/widgets/user_manual_dialog.dart`
+- 搜索：`hymn_app/lib/services/hymn_search_service.dart`（歌名+歌词统一模糊搜索计算）+ `hymn_app/lib/widgets/hymn_search_dialog.dart`（三列结果弹窗）
 - 其他：`widgets/{hymn_display, playlist_dialog}.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
 - 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
 
@@ -206,6 +208,7 @@
 13. ✅ **v1.5.0 四级字号切换（2026-08-31 功能 + 2026-09-01 方案 B×2）**：`FontScaleController` + `AppFonts` + `MaterialApp.builder` 全局 `Transform.scale`（含弹窗/菜单/Toast）；标题栏字号按钮（大小写双 T，调色盘右侧）+ 4 级菜单；**系数已定稿 1.3/1.6/1.9**；歌词区铺满算法 × 系数；左栏宽 × 系数 + 右栏固定 600；`state.json fontSizeLevel` 持久化。**方案 B×2（09-01）**：播放条镜像 Row（音量百分比与上一首重叠结构性根治，👥 纳入右配重）+ 内置字体 EchoSans（Noto Sans SC 子集真 400/500/700，根治最大档换肤名称逐字字重不均，字体不依赖系统）——**复测清单 R37~R42 已全量实机通过（全 OK），v1.5.0 验收完成**
 13a. ✅ **用户手册优化（2026-09-01，已验收）**：内容重构（无版本概念 + 完整操作说明 + 自述打开方式）+ 启动自动弹出 + 底部「启动时显示本手册」勾选框（`ManualPrefs` + state.json `manualOnStart`）——**M01~M15 实机全 OK**
 13b. ✅ **音量双重衰减修复·方案 A（2026-09-01，已验收）**：系统音量=唯一响度旋钮（滑条为其镜像），播放器增益恒 100%（静音 0），根治输出 v² 叠乘导致的比系统播放器轻 ~12dB——**Q01~Q08 实机全 OK**（Q01 响度 A/B 与系统播放器对齐）
+13c. 🔧 **歌名+歌词统一模糊搜索弹窗（v1.5.1，2026-09-02 交付待测）**：中文回车同时搜歌名+歌词进三列弹窗（歌名关键字红粗/歌词关键字主题蓝粗/双命中同行），单击选中双击定位播放；编号搜索不变；单测 12 用例全过 + analyze 0 issues；**待实机测试 `test/v151/v151_search_test_cases.md`（S01~S41）**
 14. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
 15. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
 
