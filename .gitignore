@@ -59,3 +59,9 @@ data/Hymn_Downloads/step7_progress.json
 
 # 发布产物（每次 commit 自动重新生成）
 release/
+
+# 安装包工程产物（大文件与可再生物，源码脚本正常入库）
+installer/payload.7z
+installer/staging/
+installer/output/
+installer/app_icon.ico
