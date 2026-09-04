@@ -2,8 +2,8 @@
 """组装安装载荷暂存区：release 程序文件 + 按 DB 引用清单过滤的素材
 
 用法: python prepare_staging.py <release目录> <staging输出目录>
-- release 根下 data\ 之外的程序文件全量收录（排除 logs\、state.json 运行产物）
-- data\ 内只收录 payload_manifest.txt（小写相对路径）列出的文件，保留原始大小写
+- release 根下 data 之外的程序文件全量收录（排除 logs、state.json 运行产物）
+- data 内只收录 payload_manifest.txt（小写相对路径）列出的文件，保留原始大小写
 """
 import os
 import shutil
