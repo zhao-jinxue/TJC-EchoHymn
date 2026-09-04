@@ -35,24 +35,20 @@ $RelPath = Join-Path $Root "release\$ReleaseDir"
 if (-not (Test-Path $RelPath)) { throw "release 目录不存在: $RelPath" }
 Write-Host "载荷来源: $RelPath"
 
-# 3) 简体中文语言文件（Inno 官方发行包不含，缺失时从 jsDelivr 拉取）
+# 3) 简体中文语言文件（仓库内已固化官方 6.5.0+ 简体中文 isl，维护者 Zhenghan Yang/Kira；
+#    正常构建不会走到下载分支。旧离线生成器 make_chinese_isl.py 因产生半翻译混合体已删除）
 if (-not (Test-Path $IslFile)) {
     Write-Host "下载 ChineseSimplified.isl ..."
-    $urls = @(
-        "https://cdn.jsdelivr.net/gh/kira921109/inno-setup-language-ch@master/ChineseSimplified.isl",
-        "https://gh-proxy.com/https://raw.githubusercontent.com/jrsoftware/issrc/refs/heads/main/Files/Languages/ChineseSimplified.isl"
-    )
+    $rawUrl = "https://raw.githubusercontent.com/jrsoftware/issrc/refs/heads/main/Files/Languages/ChineseSimplified.isl"
+    $urls = @("https://gh-proxy.com/$rawUrl", $rawUrl)
     $ok = $false
     foreach ($u in $urls) {
-        try { curl.exe -sSL --connect-timeout 15 -o $IslFile $u; if ((Test-Path $IslFile) -and ((Get-Item $IslFile).Length -gt 40KB)) { $ok = $true; break } } catch {}
+        try { curl.exe -sSL --connect-timeout 15 -o $IslFile $u; if ((Test-Path $IslFile) -and ((Get-Item $IslFile).Length -gt 20KB)) { $ok = $true; break } } catch {}
     }
-    if (-not $ok) {
-        # 网络不可达时回退：从 Inno 自带 Default.isl 离线生成中文语言文件
-        Write-Host "下载失败，使用离线生成器 make_chinese_isl.py ..."
-        python (Join-Path $InstDir "make_chinese_isl.py") "C:\Program Files (x86)\Inno Setup 6\Default.isl" $IslFile | Out-Null
-        if ((Test-Path $IslFile) -and ((Get-Item $IslFile).Length -gt 40KB)) { $ok = $true }
-    }
-    if (-not $ok) { throw "中文语言文件生成失败，可手动放置 $IslFile 后重试" }
+    if (-not $ok) { throw "中文语言文件获取失败——请手动放置 $IslFile（官方源: https://jrsoftware.org/files/istrans/）后重试" }
+    # 官方源无 BOM，ISCC 要求非 ASCII 语言文件带 UTF-8 BOM
+    $islBytes = [System.IO.File]::ReadAllBytes($IslFile)
+    if ($islBytes[0] -ne 0xEF) { [System.IO.File]::WriteAllBytes($IslFile, ([byte[]](0xEF,0xBB,0xBF) + $islBytes)) }
 }
 
 # 3.5) 安装程序图标（取应用 exe 同源图标）

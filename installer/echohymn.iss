@@ -25,6 +25,7 @@ AppVersion={#AppVersion}
 AppVerName=EchoHymn · 聆听赞美诗 {#AppVersion}
 AppPublisher=EchoHymn
 DefaultDirName={code:GetDefaultRoot}\EchoHymn
+DefaultGroupName=EchoHymn · 聆听赞美诗
 DisableWelcomePage=yes
 DisableProgramGroupPage=yes
 UninstallDisplayName=EchoHymn · 聆听赞美诗
@@ -42,7 +43,7 @@ CloseApplications=yes
 ArchiveExtraction=enhanced
 
 [CustomMessages]
-EHPayloadGB=约 {#PayloadGBStr} GB
+EHPayloadGB={#PayloadGBStr} GB
 
 #if HasIsl
 [Languages]
@@ -73,9 +74,11 @@ const
 
 var
   EnvPage, OathPage: TWizardPage;
-  EnvMemo, OathMemo, OathInput: TNewMemo;
-  OathErr: TNewStaticText;
+  EnvMemo, OathInput: TNewMemo;
+  OathMemo, OathErr: TNewStaticText;
   KeepUserData, EnvOK: Boolean;
+  OathBuf: string;
+  OathKeyOK, OathRevert: Boolean;
 
 function GetDefaultRoot(Param: string): string;
 var F, T: Int64;
@@ -101,8 +104,53 @@ end;
 
 procedure ClipGuard(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if (ssCtrl in Shift) and ((Key = 65) or (Key = 67) or (Key = 86) or (Key = 88) or (Key = 45)) then Key := 0;
+  if (ssCtrl in Shift) and ((Key = 65) or (Key = 67) or (Key = 86) or (Key = 88) or (Key = 90) or (Key = 45)) then Key := 0;
   if (ssShift in Shift) and (Key = 45) then Key := 0;
+end;
+
+{ ── 誓言输入守卫：Pascal Script 无法屏蔽编辑框原生右键菜单（无 OnContextPopup/TPopupMenu），
+   改为"非键盘引发的内容变化一律回滚"——右键粘贴/菜单删除/撤消/拖放均被还原为
+   用户逐字键入的内容，效果等同拦截；IME 中文输入走键事件通道不受影响 ── }
+
+procedure OathInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  ClipGuard(Sender, Key, Shift);
+  OathKeyOK := (Key <> 0);
+end;
+
+procedure OathInputKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  OathKeyOK := False;
+end;
+
+procedure OathInputKeyPress(Sender: TObject; var Key: Char);
+begin
+  OathKeyOK := True;
+end;
+
+procedure OathInputChange(Sender: TObject);
+begin
+  if OathRevert then Exit;
+  if OathKeyOK then
+  begin
+    OathBuf := OathInput.Text;
+    if OathErr.Visible then
+    begin
+      OathErr.Caption := '✘ 宣誓词输入有误，安装尚未开始——请逐字对照上方文本（含全部标点）重新输入。';
+      OathErr.Visible := False;
+    end;
+  end
+  else
+  begin
+    OathRevert := True;
+    try
+      OathInput.Text := OathBuf;
+    finally
+      OathRevert := False;
+    end;
+    OathErr.Caption := '✘ 检测到非键盘输入（粘贴 / 右键菜单操作 / 拖放），已被拦截——誓言须逐字手输。';
+    OathErr.Visible := True;
+  end;
 end;
 
 function NormalizeOath(const S: string): string;
@@ -199,19 +247,19 @@ begin
   with EnvMemo do
   begin
     Parent := EnvPage.Surface;
-    Left := 0; Top := ScaleY(8); Width := EnvPage.Surface.ClientWidth; Height := ScaleY(260);
+    Left := 0; Top := ScaleY(8); Width := EnvPage.Surface.ClientWidth; Height := ScaleY(150);
     ReadOnly := True; TabStop := False; WordWrap := True;
   end;
   T := TNewStaticText.Create(EnvPage.Surface);
   with T do
   begin
     Parent := EnvPage.Surface;
-    Left := 0; Top := ScaleY(278); Caption := '修复环境问题后，可点击下方按钮重新检测。';
+    Left := 0; Top := ScaleY(166); Caption := '修复环境问题后，可点击下方按钮重新检测。';
   end;
   with TNewButton.Create(EnvPage.Surface) do
   begin
     Parent := EnvPage.Surface;
-    Left := 0; Top := ScaleY(300); Width := ScaleX(120); Height := ScaleY(28);
+    Left := 0; Top := ScaleY(190); Width := ScaleX(120); Height := ScaleY(28);
     Caption := '重新检测';
     OnClick := @EnvShow;
   end;
@@ -220,35 +268,39 @@ begin
 
   { ── 第 3 页：誓言宣誓（第 2 页为内置目录选择页 wpSelectDir） ── }
   OathPage := CreateCustomPage(wpSelectDir, '第三步 · 誓言宣誓', '此程序为宗教敬拜用途。请照下方宣誓词逐字输入（不支持复制粘贴），校验通过才会开始安装：');
-  OathMemo := TNewMemo.Create(OathPage.Surface);
+  { 宣誓词展示框改用静态文本：编辑控件自带右键"复制"菜单，静态文本无菜单可弹，杜绝复制源头 }
+  OathMemo := TNewStaticText.Create(OathPage.Surface);
   with OathMemo do
   begin
     Parent := OathPage.Surface;
-    Left := 0; Top := ScaleY(10); Width := OathPage.Surface.ClientWidth; Height := ScaleY(64);
-    ReadOnly := True; TabStop := False; WordWrap := True;
+    Left := 0; Top := ScaleY(10); Width := OathPage.Surface.ClientWidth; Height := ScaleY(48);
+    AutoSize := False; WordWrap := True;
     Font.Style := [fsBold];
-    Text := OATH_TEXT;
-    OnKeyDown := @ClipGuard;
+    Caption := OATH_TEXT;
   end;
   T := TNewStaticText.Create(OathPage.Surface);
   with T do
   begin
     Parent := OathPage.Surface;
-    Left := 0; Top := ScaleY(84); Caption := '请在下方输入框逐字输入宣誓词（标点在上方文本中为全角中文标点）：';
+    Left := 0; Top := ScaleY(64); Caption := '请在下方输入框逐字输入宣誓词（标点在上方文本中为全角中文标点）：';
   end;
   OathInput := TNewMemo.Create(OathPage.Surface);
   with OathInput do
   begin
     Parent := OathPage.Surface;
-    Left := 0; Top := ScaleY(104); Width := OathPage.Surface.ClientWidth; Height := ScaleY(80);
+    Left := 0; Top := ScaleY(84); Width := OathPage.Surface.ClientWidth; Height := ScaleY(96);
     WordWrap := True; WantReturns := False;
-    OnKeyDown := @ClipGuard;
+    OnKeyDown := @OathInputKeyDown;
+    OnKeyUp := @OathInputKeyUp;
+    OnKeyPress := @OathInputKeyPress;
+    OnChange := @OathInputChange;
   end;
+  OathBuf := '';
   OathErr := TNewStaticText.Create(OathPage.Surface);
   with OathErr do
   begin
     Parent := OathPage.Surface;
-    Left := 0; Top := ScaleY(196); Width := OathPage.Surface.ClientWidth; WordWrap := True;
+    Left := 0; Top := ScaleY(188); Width := OathPage.Surface.ClientWidth; WordWrap := True;
     Font.Color := clRed; Visible := False;
     Caption := '✘ 宣誓词输入有误，安装尚未开始——请逐字对照上方文本（含全部标点）重新输入。';
   end;

@@ -7,9 +7,11 @@
 
 ## 一、用户安装流程（三步向导）
 
+> **首次双击提示**：双击安装包后到 UAC 授权弹窗之间约有 **5~15 秒无界面空档**，属 Windows Defender 与 SmartScreen 对 3GB 未签名大文件的安全扫描，**不是安装程序卡死**，请勿连续双击（会排队多个安装进程）。购买代码签名证书后（见发布规则第 9 条）此延迟可降至 1~3 秒。
+
 1. **系统兼容性检查（首屏）**：自动检测 64 位系统、Windows 10+、Media Foundation（音频播放命脉，Win N/KN 版需先装"媒体功能包"）、磁盘空间（系统盘 ≥5GB / 安装盘 ≥8GB）、VC++ 运行库（随包内置无需安装）。全部 ✔ 才能继续；修复环境后可点「重新检测」。
 2. **选择安装位置**：默认 `D:\Program Files\EchoHymn`；**无 D 盘或 D 盘剩余空间不足时自动回退 `C:\Program Files\EchoHymn`**，也可手动更改。
-3. **誓言宣誓**：屏幕展示宣誓词（**只读展示，禁止复制/粘贴**），需照抄逐字输入。校验为"忽略空白 + 半角标点自动归一为全角"后的全文比对；输入有误会红字提示并停留在本页，**不会开始安装**。
+3. **誓言宣誓**：屏幕展示宣誓词（**只读展示，禁止复制/粘贴**），需照抄逐字输入。校验为"忽略空白 + 半角标点自动归一为全角"后的全文比对；输入有误会红字提示并停留在本页，**不会开始安装**。防旁路：展示框为静态文本（无右键菜单可复制）；输入框对**一切非键盘引发的内容变化**（右键粘贴、菜单删除/撤消、鼠标拖放）即时回滚并红字告警，仅逐字键入（含中文输入法）被接受。
 
 安装尾步：程序自动获得安装目录的 Users 修改权限（保障 `state.json` 与 `logs/` 可写）、创建开始菜单/桌面快捷方式，可选择立即启动。
 
@@ -51,7 +53,7 @@ EchoHymn_Setup_v1.5.1.exe /VERYSILENT /NORESTART /TASKS="desktopicon"
 pwsh -NoProfile -ExecutionPolicy Bypass -File E:\EchoHymn\tools\build_installer.ps1
 ```
 
-流程（全自动）：读 `hymn_app/pubspec.yaml` 版本号 → 取最新 `release/echohymn_win_*` 为载荷源 → 按 `installer/payload_manifest.txt`（数据库实际引用清单；`Hymn_Downloads` 内只收引用文件，数据库与 Flutter 运行时资产全收）组装 staging → 生成 AES-256 加密 7z 载荷（加密头）→ ISCC 编译 → 输出 `installer/output/EchoHymn_Setup_v<版本>.exe` + `.sha256` 校验文件。中文语言文件优先用 `installer/ChineseSimplified.isl`（缺失时先尝试下载，失败自动回退 `installer/make_chinese_isl.py` 从 Inno 自带 Default.isl 离线生成）。
+流程（全自动）：读 `hymn_app/pubspec.yaml` 版本号 → 取最新 `release/echohymn_win_*` 为载荷源 → 按 `installer/payload_manifest.txt`（数据库实际引用清单；`Hymn_Downloads` 内只收引用文件，数据库与 Flutter 运行时资产全收）组装 staging → 生成 AES-256 加密 7z 载荷（加密头）→ ISCC 编译 → 输出 `installer/output/EchoHymn_Setup_v<版本>.exe` + `.sha256` 校验文件。中文语言文件为**仓库固化的官方简体中文翻译**（`installer/ChineseSimplified.isl`，Inno 6.5.0+ 配套，维护者 Zhenghan Yang/Kira，源: jrsoftware.org/files/istrans/；2026-09-05 起替代原离线生成器方案——后者只译 57 键导致向导内置页中英混杂与占位符错误，已删除）。
 
 ### 素材清单再生成
 
