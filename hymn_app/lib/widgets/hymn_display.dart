@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard;
 
 import '../app.dart';
 import '../models/hymn.dart';
@@ -381,15 +384,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
         child: Text(isEmpty, style: TextStyle(color: AppColors.textTertiary)),
       );
     }
-    return Center(
-      child: InteractiveViewer(
-        child: abs.startsWith('http')
-            ? Image.network(abs,
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
-            : Image.file(File(abs),
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
-      ),
-    );
+    return _ScoreImageView(path: abs);
   }
 
   bool _fileExists(String path) {
@@ -648,4 +643,171 @@ class _HymnDisplayState extends State<HymnDisplay> {
       ),
     );
   }
+}
+
+/// 谱面图片查看器（简谱/五线谱）——宽度驱动缩放。
+///
+/// 替代旧 `InteractiveViewer`（默认 maxScale=2.5，纵向长图放大后宽度仍到不了
+/// 歌词区边缘，两侧空白无法利用）。新语义：
+/// - **最小宽度** = 初始 contain 显示宽度（不放大不缩小，即原默认视图）；
+/// - **最大宽度** = 歌词区当前显示宽度（`LayoutBuilder` 实时取值，窗口拉伸/
+///   最大化/字号等级变化自动跟随）；
+/// - 滚轮语义（两条固定规则，消除缩放与滚动的双响应冲突）：
+///   · **Ctrl+滚轮 = 缩放**：宽度在 [初始宽, 歌词区宽] 间连续变化，高度按
+///     图片宽高比同步变大；
+///   · 普通滚轮 = 上下滚动（内容不足一屏时无滚动空间，自然不动）；
+///   · 缩放时经 `PointerSignalResolver` 认领事件，阻止 Scrollable 同时滚动；
+///   · 认领 Listener 必须置于滚动内容**内部**（命中测试路径深者先注册
+///     resolver，外层 Listener 会输给 Scrollable 内部监听器）；
+/// - 横向图（初始宽度已=歌词区宽）缩放区间退化为 [1,1]，只剩纵向滚动，
+///   与"放大宽度不超过歌词区"约束一致；
+/// - 换歌/换谱面（path 变化）时缩放自动复位为初始。
+class _ScoreImageView extends StatefulWidget {
+  final String path;
+
+  const _ScoreImageView({required this.path});
+
+  @override
+  State<_ScoreImageView> createState() => _ScoreImageViewState();
+}
+
+class _ScoreImageViewState extends State<_ScoreImageView> {
+  /// 滚轮缩放速度：每像素滚动量对应的指数缩放因子
+  static const double _wheelZoomSpeed = 0.0015;
+
+  Size? _natural; // 图片自然像素尺寸（解码完成后有效）
+  double _zoom = 1.0; // 1=初始宽度；上限=歌词区宽/初始宽（build 内钳制）
+  final ScrollController _scroll = ScrollController();
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  bool get _isNetwork => widget.path.startsWith('http');
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  void _resolve() {
+    late final ImageProvider provider;
+    if (_isNetwork) {
+      provider = NetworkImage(widget.path);
+    } else {
+      provider = FileImage(File(widget.path));
+    }
+    _stream = provider.resolve(ImageConfiguration.empty);
+    _listener = ImageStreamListener(
+      (info, _) {
+        if (!mounted) return;
+        setState(() => _natural = Size(info.image.width.toDouble(),
+            info.image.height.toDouble()));
+      },
+      onError: (e, s) {
+        LogService.instance.error(LogTag.ui, '谱面图片解码失败',
+            detail: '${widget.path}\n$e');
+      },
+    );
+    _stream!.addListener(_listener!);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScoreImageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) {
+      _detachStream();
+      _natural = null;
+      _zoom = 1.0;
+      _resolve();
+    }
+  }
+
+  void _detachStream() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _detachStream();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final vpW = constraints.maxWidth;
+      final vpH = constraints.maxHeight;
+      final natural = _natural;
+
+      // 初始显示宽度 baseW：图片 contain 进歌词区且不放大的结果。
+      // 纵向长图 → 受高度限制，baseW < vpW（两侧留白，可滚轮放大填充）；
+      // 横向宽图 → 受宽度限制，baseW = vpW（缩放区间退化为 1）。
+      double baseW = vpW;
+      if (natural != null && natural.width > 0 && natural.height > 0) {
+        final fit = math.min(vpW / natural.width, vpH / natural.height);
+        baseW = natural.width * math.min(fit, 1.0);
+      }
+      // 放大上限：图片宽度恰好铺满歌词区当前显示宽度
+      final maxZoom = baseW > 0 ? vpW / baseW : 1.0;
+      final zoom = _zoom.clamp(1.0, maxZoom);
+      final dispW = baseW * zoom;
+      final dispH = natural != null && natural.width > 0
+          ? dispW * natural.height / natural.width
+          : vpH;
+      final canScrollV = dispH > vpH + 1;
+
+      Widget child = SingleChildScrollView(
+        controller: _scroll,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          // 不足一屏时等高居中；超出时按放大后真实高度供滚动条向下查看
+          height: canScrollV ? dispH : vpH,
+          // 滚轮监听必须放在滚动内容内部：Scrollable 经
+          // PointerSignalResolver「先注册者赢」处理滚轮，而命中路径
+          // 深者优先——放外层会被 Scrollable 抢走，Ctrl+滚轮缩放时会同时滚动
+          child: Listener(
+            onPointerSignal: (e) => _onWheel(e, maxZoom),
+            child: Center(child: _buildImage(dispW, dispH)),
+          ),
+        ),
+      );
+      if (canScrollV) {
+        child = Scrollbar(
+          controller: _scroll,
+          thumbVisibility: true,
+          child: child,
+        );
+      }
+      return child;
+    });
+  }
+
+  /// 滚轮语义：普通滚轮 = 上下滚动（交给 Scrollable）；
+  /// Ctrl+滚轮 = 缩放（并向 resolver 认领事件，阻止滚动视图同时滚动）
+  void _onWheel(PointerSignalEvent e, double maxZoom) {
+    if (e is! PointerScrollEvent || _natural == null) return;
+    if (!HardwareKeyboard.instance.isControlPressed) return; // 普通滚轮 = 滚动
+    // 先于 Scrollable 注册（本 Listener 命中路径更深），
+    // 空回调仅用于占住 resolver，使 Scrollable 的注册被忽略
+    GestureBinding.instance.pointerSignalResolver
+        .register(e, (PointerSignalEvent _) {});
+    final factor = math.exp(-e.scrollDelta.dy * _wheelZoomSpeed);
+    setState(() => _zoom = (_zoom * factor).clamp(1.0, maxZoom));
+  }
+
+  Widget _buildImage(double w, double h) {
+    return _isNetwork
+        ? Image.network(widget.path,
+            width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError)
+        : Image.file(File(widget.path),
+            width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError);
+  }
+
+  Widget _imageError(BuildContext context, Object error, StackTrace? stack) =>
+      const Icon(Icons.broken_image);
 }
