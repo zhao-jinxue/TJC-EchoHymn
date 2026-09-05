@@ -249,18 +249,20 @@ class SqliteRepository {
     return Playlist.fromDbRow(_rowToMap(rows.first));
   }
 
-  /// 创建歌单，返回新 id
-  int createPlaylist(String name) {
+  /// 创建歌单（名称+成员**单次 INSERT 原子落库**，杜绝"先建空表再补成员"
+  /// 双写中断留下半创建歌单的中间态），返回新 id
+  int createPlaylist(String name, [List<MapEntry<String, int>> hymns = const []]) {
     final now = DateTime.now().toIso8601String();
+    final json = Playlist.hymnsToJson(hymns);
     _db.execute(
       'INSERT INTO playlist_hymn (name, hymns, created_at, updated_at) VALUES (?, ?, ?, ?)',
-      [name, '[]', now, now],
+      [name, json, now, now],
     );
     final id = _db.lastInsertRowId;
     LogService.instance.info(
       LogTag.playlist,
       '创建个人歌单',
-      detail: '歌单ID: $id\n歌单名称: $name\n创建时间: $now',
+      detail: '歌单ID: $id\n歌单名称: $name\n诗歌数量: ${hymns.length}\n成员明细: $json\n创建时间: $now',
     );
     return id;
   }

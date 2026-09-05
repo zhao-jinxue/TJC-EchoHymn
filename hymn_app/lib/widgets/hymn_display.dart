@@ -379,7 +379,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   Widget _buildScore(String path, {required String isEmpty}) {
     final abs = AppPaths.resolveAsset(path);
-    if (abs.isEmpty || !(abs.contains('http') || _fileExists(abs))) {
+    // 网络来源判定与 _ScoreImageView 统一用 startsWith('http')——
+    // contains 会让中段含 "http" 的本地路径跳过存在性检查，显示破图
+    // 而非「暂无谱面」空态
+    if (abs.isEmpty || !(abs.startsWith('http') || _fileExists(abs))) {
       return Center(
         child: Text(isEmpty, style: TextStyle(color: AppColors.textTertiary)),
       );
@@ -718,6 +721,11 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
       _detachStream();
       _natural = null;
       _zoom = 1.0;
+      // 换谱面除复位缩放外，滚动位置也回顶部——否则停在谱尾切歌时，
+      // 旧 offset 被钳位到新内容的随机位置（排帧：等新图布局完成后生效）
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
+      });
       _resolve();
     }
   }

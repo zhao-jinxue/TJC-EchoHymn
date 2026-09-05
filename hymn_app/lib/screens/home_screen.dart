@@ -50,7 +50,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   SqliteRepository? _repo;
   AudioService? _audio;
   bool _initError = false;
-  final AppStateService _stateService = AppStateService();
+  /// 与 ManualPrefs/手册勾选框单键更新**共用同一串行写队列**（shared 单例）——
+  /// 各自实例会有独立 _writeChain，两条链并发写同一 state.json.tmp 时
+  /// rename 冲突的 catch 分支可能误删主文件导致状态丢失
+  final AppStateService _stateService = AppStateService.shared;
 
   // ---- 布局状态 ----
   // 默认收起两侧栏 = 基座画面（最简播放画面，窗口 850 宽）；
@@ -104,6 +107,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    // 注销窗口事件回调：防止已销毁 State 被 handler 闭包滞留（泄漏），
+    // 且应用退出流程中 native 不再向死对象推送最大化状态
+    _windowChannel.setMethodCallHandler(null);
     WidgetsBinding.instance.removeObserver(this);
     _saveState(); // 关闭时保存
     _repo?.dispose();

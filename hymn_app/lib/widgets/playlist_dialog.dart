@@ -363,9 +363,8 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
       return;
     }
     if (existing == null) {
-      // 新建
-      final id = repo.createPlaylist(_playlistName);
-      repo.updatePlaylist(id, _playlistName, _addedHymns);
+      // 新建：名称+成员单次 INSERT 原子落库（无二次 update 的半创建中间态）
+      final id = repo.createPlaylist(_playlistName, _addedHymns);
       LogService.instance.info(
         LogTag.playlist,
         '新建歌单成功',
