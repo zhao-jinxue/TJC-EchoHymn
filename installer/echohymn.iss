@@ -10,10 +10,19 @@
   #define Comp "lzma2/max"
 #endif
 #ifndef PayloadBytes
-  #define PayloadBytes 3221225472
+  #define PayloadBytes 68157440
 #endif
-#ifndef PayloadGBStr
-  #define PayloadGBStr "3.0"
+#ifndef PayloadMBStr
+  #define PayloadMBStr "65"
+#endif
+#ifndef DataBytes
+  #define DataBytes 3215023906
+#endif
+#ifndef DataGBStr
+  #define DataGBStr "3.0"
+#endif
+#ifndef DataFileName
+  #define DataFileName "EchoHymn_Data.7z"
 #endif
 #define AppGuid "B7F3E0D2-8C4A-4E5F-9A61-2D3C4B5A6970"
 #define HasIsl FileExists(AddBackslash(SourcePath) + "ChineseSimplified.isl")
@@ -43,7 +52,8 @@ CloseApplications=yes
 ArchiveExtraction=enhanced
 
 [CustomMessages]
-EHPayloadGB={#PayloadGBStr} GB
+EHPayloadMB={#PayloadMBStr} MB
+EHDataGB=约 {#DataGBStr} GB
 
 #if HasIsl
 [Languages]
@@ -184,7 +194,7 @@ begin
 end;
 
 procedure EnvShow(Sender: TObject);
-var L, S: string; Maj: Cardinal; F, T: Int64; Critical: Boolean;
+var L, S, D: string; Maj: Cardinal; F, T: Int64; Critical: Boolean;
 begin
   Critical := False;
   L := '';
@@ -210,15 +220,25 @@ begin
     L := L + '✘  缺少 Media Foundation（N/KN 版请到 设置-应用-可选功能 安装媒体功能包）' + #13#10;
     Critical := True;
   end;
-  { 磁盘需求（编译期由构建脚本注入真实字节数）：
-    系统盘 = 安装包暂存(载荷) + 5GB 缓冲；目标盘 = 载荷暂存 + 释放文件 + 5GB 缓冲 }
-  if GetSpaceOnDisk64(AddBackslash(ExpandConstant('{sd}')), F, T) and (F >= {#PayloadBytes} + 5368709120) and
-     GetSpaceOnDisk64(ExtractFileDrive(GetDefaultRoot('')), F, T) and (F >= {#PayloadBytes} * 2 + 5368709120) then
-    L := L + '✔  磁盘空间充足（系统盘剩 ' + EnvFreeGBText(AddBackslash(ExpandConstant('{sd}'))) + ' GB，'
-        + '安装盘剩 ' + EnvFreeGBText(ExtractFileDrive(GetDefaultRoot(''))) + ' GB，约需 ' + CustomMessage('EHPayloadGB') + '×2）' + #13#10
+  { 诗歌素材为外置加密数据文件，必须与本安装包放在同一目录 }
+  D := AddBackslash(ExpandConstant('{src}')) + '{#DataFileName}';
+  if FileExists(D) then
+    L := L + '✔  诗歌素材数据文件已就绪（与安装包同目录，' + CustomMessage('EHDataGB') + '）' + #13#10
   else
   begin
-    L := L + '✘  磁盘空间不足（约需 ' + CustomMessage('EHPayloadGB') + '，且系统盘/安装盘各需 5GB 缓冲）' + #13#10;
+    L := L + '✘  未找到诗歌素材数据文件「{#DataFileName}」——请向分发者索取，并将其与本安装包放入同一目录后点「重新检测」' + #13#10;
+    Critical := True;
+  end;
+  { 磁盘需求（编译期由构建脚本注入真实字节数）：
+    系统盘 = 2GB 缓冲（主载荷仅数十 MB，素材不经临时目录）；
+    目标盘 = 素材释放 + 主程序释放 + 5GB 缓冲 }
+  if GetSpaceOnDisk64(AddBackslash(ExpandConstant('{sd}')), F, T) and (F >= 2147483648) and
+     GetSpaceOnDisk64(ExtractFileDrive(GetDefaultRoot('')), F, T) and (F >= {#DataBytes} + {#PayloadBytes} + 5368709120) then
+    L := L + '✔  磁盘空间充足（系统盘剩 ' + EnvFreeGBText(AddBackslash(ExpandConstant('{sd}'))) + ' GB，'
+        + '安装盘剩 ' + EnvFreeGBText(ExtractFileDrive(GetDefaultRoot(''))) + ' GB，约需 ' + CustomMessage('EHDataGB') + ' 素材 + ' + CustomMessage('EHPayloadMB') + ' 程序 + 5GB 缓冲）' + #13#10
+  else
+  begin
+    L := L + '✘  磁盘空间不足（安装盘约需 ' + CustomMessage('EHDataGB') + ' 素材 + 5GB 缓冲，系统盘需 2GB 缓冲）' + #13#10;
     Critical := True;
   end;
   L := L + '✔  VC++ 运行库随包内置，系统无需另装' + #13#10;
@@ -324,17 +344,20 @@ begin
   end;
 end;
 
+var
+  ExtractPhase: string;
+
 function EHProgress(const ArchiveName, FileName: String; const Progress, ProgressMax: Int64): Boolean;
 begin
   if ProgressMax > 0 then
-    WizardForm.StatusLabel.Caption := '正在解密并释放程序文件… ' +
+    WizardForm.StatusLabel.Caption := ExtractPhase + '… ' +
       IntToStr((Progress * 100) div ProgressMax) + '%（' + FileName + '）';
   Result := True;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  DbPath, BakPath: string;
+  DbPath, BakPath, DataArc: string;
 begin
   if CurStep = ssInstall then
   begin
@@ -345,11 +368,32 @@ begin
   end
   else if CurStep = ssPostInstall then
   begin
-    WizardForm.StatusLabel.Caption := '正在解密并释放程序文件，请稍候…';
+    { 第一段：释放内嵌主程序载荷（数十 MB，来自临时目录） }
+    ExtractPhase := '正在解密并释放程序文件';
+    WizardForm.StatusLabel.Caption := ExtractPhase + '，请稍候…';
     try
       ExtractArchive(ExpandConstant('{tmp}\payload.7z'), ExpandConstant('{app}'), DecodeKey(), True, @EHProgress);
     except
       MsgBox('程序文件解包失败，安装中止。请确认磁盘空间充足后重试；若仍失败，请核对安装包 SHA256 是否完整。', mbCriticalError, MB_OK);
+      WizardForm.Close;
+      Exit;
+    end;
+    { 第二段：从安装包同级目录直接解密释放外置诗歌素材（约 3 GB，不经临时目录；
+        归档内路径为 data/Hymn_Downloads/...，FullPaths 解包天然落到安装目录的 data 子目录下） }
+    DataArc := AddBackslash(ExpandConstant('{src}')) + '{#DataFileName}';
+    if not FileExists(DataArc) then
+    begin
+      MsgBox('诗歌素材数据文件「{#DataFileName}」不在安装包同级目录，无法完成安装。' + #13#10 +
+        '请将其与安装包放入同一目录后重新运行安装程序（程序文件已释放，素材补齐后重装即可）。', mbCriticalError, MB_OK);
+      WizardForm.Close;
+      Exit;
+    end;
+    ExtractPhase := '正在解密并释放诗歌素材（约 {#DataGBStr} GB，视磁盘速度需数分钟）';
+    WizardForm.StatusLabel.Caption := ExtractPhase + '…';
+    try
+      ExtractArchive(DataArc, ExpandConstant('{app}'), DecodeKey(), True, @EHProgress);
+    except
+      MsgBox('诗歌素材解包失败，安装中止。请确认磁盘空间充足、数据文件完整（可核对 .sha256）后重试。', mbCriticalError, MB_OK);
       WizardForm.Close;
       Exit;
     end;

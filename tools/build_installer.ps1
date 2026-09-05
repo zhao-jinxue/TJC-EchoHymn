@@ -16,6 +16,7 @@ $Root    = "E:\EchoHymn"
 $InstDir = Join-Path $Root "installer"
 $OutDir  = Join-Path $InstDir "output"
 $Stage   = Join-Path $InstDir "staging"
+$StageData = Join-Path $InstDir "staging_data"
 $Payload = Join-Path $InstDir "payload.7z"
 $IslFile = Join-Path $InstDir "ChineseSimplified.isl"
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
@@ -56,19 +57,26 @@ $AppIco = Join-Path $Root "hymn_app\windows\runner\resources\app_icon.ico"
 if (-not (Test-Path $AppIco)) { throw "应用图标不存在: $AppIco" }
 Copy-Item $AppIco (Join-Path $InstDir "app_icon.ico") -Force
 
-# 4) staging 组装（程序文件 + DB 引用清单内素材；-SkipStaging 复用现有暂存区）
+# 数据文件名带版本号，与安装包同级分发（安装向导按此名在 {src} 目录检测）
+$DataName = "EchoHymn_Data_v$AppVersion.7z"
+$DataArc  = Join-Path $InstDir $DataName
+
+# 4) staging 组装（主程序区 + 素材区双拆分；-SkipStaging 复用现有暂存区）
 if (-not $SkipStaging) {
-    python (Join-Path $InstDir "prepare_staging.py") $RelPath $Stage
+    python (Join-Path $InstDir "prepare_staging.py") $RelPath $Stage $StageData
     if ($LASTEXITCODE -ne 0) { throw "staging 组装失败" }
-} elseif (-not (Test-Path $Stage)) {
-    throw "-SkipStaging 但 staging 不存在"
+} elseif (-not (Test-Path $Stage) -or -not (Test-Path $StageData)) {
+    throw "-SkipStaging 但 staging/staging_data 不存在"
 }
 
-# 5) AES-256 加密 7z 载荷（-SkipPayload 可跳过重打包）
+# 5) AES-256 加密 7z 双载荷（-SkipPayload 可跳过重打包）
+#    主载荷内嵌安装包（数十 MB）；素材载荷外置单独分发（约 3 GB，不入包）
 if (-not $SkipPayload) {
     python (Join-Path $InstDir "make_payload.py") $Stage $Payload
-    if ($LASTEXITCODE -ne 0) { throw "载荷打包失败" }
-    Remove-Item $Stage -Recurse -Force   # 载荷已生成，暂存区即删防污染
+    if ($LASTEXITCODE -ne 0) { throw "主载荷打包失败" }
+    python (Join-Path $InstDir "make_payload.py") $StageData $DataArc
+    if ($LASTEXITCODE -ne 0) { throw "素材载荷打包失败" }
+    Remove-Item $Stage,$StageData -Recurse -Force   # 载荷已生成，暂存区即删防污染
 }
 
 # 6) 编译安装程序（ISCC；iss 需 UTF-8 BOM 以正确显示中文）
@@ -84,20 +92,31 @@ $issText = Get-Content $IssFile -Raw -Encoding UTF8
 
 # 载荷为已加密的高压缩数据，Inno 再压缩无收益且巨慢——用 store（none）
 $PayloadInfo = Get-Item $Payload
-& $Iscc "/DAppVersion=$AppVersion" "/DComp=none" "/DPayloadBytes=$($PayloadInfo.Length)" "/DPayloadGBStr=$([math]::Round($PayloadInfo.Length/1GB,1))" $IssFile
+$DataInfo = Get-Item $DataArc
+& $Iscc "/DAppVersion=$AppVersion" "/DComp=none" `
+    "/DPayloadBytes=$($PayloadInfo.Length)" "/DPayloadMBStr=$([math]::Round($PayloadInfo.Length/1MB))" `
+    "/DDataBytes=$($DataInfo.Length)" "/DDataGBStr=$([math]::Round($DataInfo.Length/1GB,1))" `
+    "/DDataFileName=$DataName" $IssFile
 if ($LASTEXITCODE -ne 0) { throw "ISCC 编译失败" }
 
-# 7) 产出 SHA256 校验文件
+# 素材载荷移入输出目录与安装包并置（分发时成对交付）
+Move-Item $DataArc (Join-Path $OutDir $DataName) -Force
+
+# 7) 产出 SHA256 校验文件（安装包与素材数据文件都要）
 $SetupExe = Join-Path $OutDir "EchoHymn_Setup_v$AppVersion.exe"
 if (-not (Test-Path $SetupExe)) { throw "编译成功但未找到产物: $SetupExe" }
-$hash = (Get-FileHash $SetupExe -Algorithm SHA256).Hash
-"$hash  $(Split-Path $SetupExe -Leaf)" | Set-Content "$SetupExe.sha256" -Encoding ASCII
+foreach ($f in @($SetupExe, (Join-Path $OutDir $DataName))) {
+    $h = (Get-FileHash $f -Algorithm SHA256).Hash
+    "$h  $(Split-Path $f -Leaf)" | Set-Content "$f.sha256" -Encoding ASCII
+    Write-Host "SHA256 $(Split-Path $f -Leaf): $h"
+}
 
 $sizeMB = [math]::Round((Get-Item $SetupExe).Length / 1MB, 1)
+$sizeGB = [math]::Round((Get-Item (Join-Path $OutDir $DataName)).Length / 1GB, 2)
 Write-Host ""
 Write-Host "══════════════════════════════════════════"
-Write-Host " 安装包构建完成"
-Write-Host "  产物: $SetupExe"
-Write-Host "  大小: $sizeMB MB"
-Write-Host "  SHA256: $hash"
+Write-Host " 安装包构建完成（主体/素材拆分双产物）"
+Write-Host "  安装包: $SetupExe（$sizeMB MB）"
+Write-Host "  素材包: $(Join-Path $OutDir $DataName)（$sizeGB GB）"
+Write-Host "  分发时两文件须置于同一目录"
 Write-Host "══════════════════════════════════════════"

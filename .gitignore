@@ -65,3 +65,5 @@ installer/payload.7z
 installer/staging/
 installer/output/
 installer/app_icon.ico
+installer/staging_data/
+installer/EchoHymn_Data_v*.7z
