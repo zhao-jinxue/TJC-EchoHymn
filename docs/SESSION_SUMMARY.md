@@ -5,6 +5,7 @@
 > **重要**：每次 git commit 到 master/main 会**自动触发 Windows 发布**（见「自动发布机制」章节），请提交后核对 `release/auto-release.log`。
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
+> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（≈33MB 内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（≈3GB 外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/INSTALLER.md` 与 `docs/RELEASE_RULES.md`。
 
 ---
 
@@ -48,6 +49,9 @@
 | `(v1.5.1，2026-09-02)` | **歌名+歌词统一模糊搜索弹窗**：搜索框不变，中文关键字回车同时搜歌名+歌词（新增 `HymnSearchService`，繁简双向匹配、内存全扫），命中进三列弹窗（编号/诗歌名称/歌词，640×560）——歌名关键字**红色加粗**+歌词列默认第一节、歌词关键字**主题色加粗**+显示第一命中节、双命中同行并存；排序歌名在前歌词在后组内按编号；**单击选中、双击=左栏定位+播放**；无命中左栏空态+Toast；左栏标题匹配列表被弹窗取代（`_titleResults` → `_searchEmpty`）；编号搜索行为不变；用户手册搜索条目同步；单元测试 12 用例 + 测试清单 `test/v151/`（S01~S41，含换肤/字号适配） |
 | `e07975a`（v1.5.1 修复，2026-09-02） | **首轮实机 6 NG 修复 + 手册子项化**：S02 编号/双击播放后自动清框（空框回车无动作）；S04 ×/删空强制滚回定位行（`scrollCurrentIntoView(force)` + 滚动统一排帧，修列表重建 hasClients 时序与行高 34px 近似误判）；S09 弹窗回焦取消全选、光标折叠末尾；S11+S24 交互重定义——中文回车永远只弹窗，**弹窗双击是唯一播放入口**，再回车=重新弹窗；S27 歌词命中单元格**从关键字所在行开窗**（「…」前缀，Python 复刻映射表定位根因=3 行截断非匹配 bug）；手册操作说明重排 12 小节「▶标题+圆点子项」两级结构（`_guideSections`）；单测 18 用例 |
 | `v1.5.1`（**tag**，2026-09-02） | 🎉 **v1.5.1 验收完成**：首轮 S01~S41（35 OK/6 NG）→ 修复 → 复测 R01~R20 **全量实机通过（全 OK）**；交付歌名+歌词统一搜索弹窗（红/蓝关键字加粗+开窗显示）、弹窗双击唯一播放入口、播后清框、清除强制回定位、手册 12 小节子项化；含 3 个提交（feat 1 + fix 1 + docs/test 1） |
+| `f1a9810` | **Windows 安装包工程**（2026-09-04，Inno Setup 6 + 加密 7z 载荷）：三页向导（环境检查→目录选择→**誓言宣誓**关卡）；AES-256 加密头载荷（媒体按 `payload_manifest.txt` 过滤，当时 ~3GB 单包）；版本单源注入 pubspec 1.5.1；升级保留歌单库、`icacls` 授权 Users 可写（Program Files 下 `state.json` 前提）、卸载询问默认保留个人数据、`/VERYSILENT` 通道；`tools/build_installer.ps1` 一键构建 + SHA256；实机安装/启动/卸载全生命周期验证通过 |
+| `54ceccc` | **安装包实机体验五类缺陷修复**（2026-09-05）：① 语言文件换**官方 6.5.0+ 简体中文全量 296 键**（自制 57 键补丁版致内置页中英混杂 + `%1` 占位符不替换，删 `make_chinese_isl.py`）；② 誓言页**右键复制/粘贴旁路封堵**（展示框改静态文本 + 输入框 OnChange 非键盘变更回滚守卫——Pascal Script 无菜单 hook 能力下的等效方案）；③ 环境检查「重新检测」按钮超 Surface 被裁 + "约需 约"重复修复；④ `DefaultGroupName` 显式（Inno 6.7 会把 `(Default)` 哨兵值建成字面文件夹）；⑤ icacls 中文状态文案；静默装/卸全链路复验通过 |
+| `15082d5` | **主体/素材双载荷拆分**（2026-09-05）：根治"双击→UAC 弹窗 ~10 秒空档"（Defender/SmartScreen 对 3GB 未签名大文件的系统级扫描）——安装包 3.2GB **瘦身至 32.7MB（1/100）**；`Hymn_Downloads`（2.96GB）拆为外置加密数据文件 `EchoHymn_Data_v<版本>.7z` 单独分发；环境检查新增**素材文件同目录就位**检测（缺失 ✘ 阻断 + 重新检测联动）；安装改两段解包（主程序秒级 → 素材直接从同级目录解密释放，不再占用系统盘临时空间，磁盘口径放宽：系统盘仅 2GB 缓冲）；构建脚本双载荷 + 双 SHA256；冒烟三项全过（缺素材阻断 / 完整安装 3040 文件+ACL / 静默卸载数据保留） |
 
 **关键文件**：
 
@@ -60,6 +64,7 @@
 - 搜索：`hymn_app/lib/services/hymn_search_service.dart`（歌名+歌词统一模糊搜索计算）+ `hymn_app/lib/widgets/hymn_search_dialog.dart`（三列结果弹窗）
 - 其他：`widgets/{hymn_display, playlist_dialog}.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
 - 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
+- **安装包**：`installer/echohymn.iss`（三页向导 + 誓言 OnChange 守卫 + 素材检测两段解包）、`installer/{prepare_staging,make_payload}.py`（双暂存/双载荷）、`installer/payload_manifest.txt`（`tools/scan_db_refs.py` 生成）、`installer/ChineseSimplified.isl`（官方 6.5.0+ 翻译固化）、`tools/build_installer.ps1`（一键双产物 + 双 SHA256）、`docs/RELEASE_RULES.md`（18 条发布规范）、`docs/INSTALLER.md`（用户/发布者指南）
 
 ---
 
@@ -77,6 +82,7 @@
 - **换肤**：`AppPalette` 语义色槽（**27 色，含 8 个分区底色 + controlBg/controlBorder 未选中控件底色与描边**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
 - **字号（v1.5.0）**：`FontScaleController`（ValueNotifier）+ `AppFonts` 门面 + `MaterialApp.builder` 内 `Transform.scale` 全局等比缩放（含弹窗/菜单/Toast）；**4 级**：默认 ×1.0 / 中号 ×1.3 / 大号 ×1.6 / 最大 ×1.9（系数集中一处可调）；**歌词区单独处理**（铺满自适应算法 × 系数，大字号滚动阅读）；**左栏宽度随系数缩放**（350×s）并同步 native 窗口扩展，**右栏宽度固定 600 不缩放**（有滚动条，画布内反向缩放抵消）；`state.json fontSizeLevel` 持久化；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
+- **安装包（2026-09-05 起主体/素材拆分）**：Inno Setup 6 向导壳（内嵌主程序载荷 ≈33MB）+ **外置加密素材文件** `EchoHymn_Data_v<版本>.7z`（≈3GB，AES-256 加密头，与主载荷同口令）；两文件同目录分发，环境检查检测素材就位（缺失 ✘ 阻断）；语言文件用官方 6.5.0+ 简体中文全量翻译（仓库固化）；构建 `tools/build_installer.ps1` 一键双产物 + 双 SHA256；发布规范 18 条见 `docs/RELEASE_RULES.md`
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
 ---
@@ -193,6 +199,17 @@
 
 ---
 
+### 2026-09-04 ~ 05 会话追加（Windows 安装包工程 + 体验修复 + 主体/素材拆分）
+
+1. **安装包技术选型**：Inno Setup 6（向导 UI/卸载注册/静默通道）+ py7zr AES-256 加密头载荷；**誓言宣誓**为宗教仪式关卡（非安全机制）——键盘拦截 + OnChange 非键盘变更回滚 + 全文归一比对
+2. **语言文件教训**：自制"Default.isl 补丁版"（只译 57 键）会同时产生内置页中英混杂与 `%1`/`%n1$2` 占位符不替换——正解是**固化与 Inno 版本配套的官方简体中文翻译**（6.5.0+，296 键，维护者 Zhenghan Yang/Kira）
+3. **Pascal Script 无右键菜单 hook 能力**（`OnContextPopup`/`TPopupMenu` 均不暴露）：誓言输入框改"非键盘引发的内容变化一律回滚"守卫（IME 走键事件通道不受影响）；展示框用静态文本杜绝复制源头
+4. **Inno 6.7 陷阱**：未显式 `DefaultGroupName` 时 `(Default)` 哨兵值会被建成字面开始菜单文件夹；`{ }` 注释体内不得再出现花括号（如 `{app}`）
+5. **UAC 前 10 秒空档根治 = 主体/素材拆分**：系统安全扫描（Defender 全文件 + SmartScreen 哈希信誉）成本与文件体积成正比，3GB 未签名大文件无法靠代码优化提速——素材拆出后安装包 32.7MB，空档自然消失；副带收益：素材不再过系统盘临时目录，磁盘口径放宽（系统盘仅 2GB 缓冲）
+6. **分发形态**：`EchoHymn_Setup_v<版本>.exe` + `EchoHymn_Data_v<版本>.7z`（文件名带版本防错配）+ 两份 `.sha256`，同目录交付；安装包构建保持手动触发（素材压缩耗时，不并入 post-commit 自动发布）
+
+---
+
 ## 四、剩余/遗留任务清单
 
 1. ✅ 个人歌单 UI / 表结构 / 播放上下文
@@ -212,8 +229,9 @@
 13b. ✅ **音量双重衰减修复·方案 A（2026-09-01，已验收）**：系统音量=唯一响度旋钮（滑条为其镜像），播放器增益恒 100%（静音 0），根治输出 v² 叠乘导致的比系统播放器轻 ~12dB——**Q01~Q08 实机全 OK**（Q01 响度 A/B 与系统播放器对齐）
 13c. ✅ **歌名+歌词统一模糊搜索弹窗（v1.5.1，2026-09-02 验收完成）**：中文回车同时搜歌名+歌词进三列弹窗（歌名关键字红粗/歌词关键字主题蓝粗/双命中同行），单击选中双击定位播放；编号搜索不变；单测 18 用例全过 + analyze 0 issues；**首轮实机 S01~S41：35 OK / 6 NG 全部修复**（S02 播后自动清框、S04 ×/删空强制滚回定位行[force+排帧双修]、S09 回焦取消全选折叠光标、S11+S24 取消"回车播第一首"——弹窗双击为唯一播放入口、S27 歌词单元格从关键字所在行开窗显示保证加粗可见[Python 复刻映射表排查定位]）；**复测 R01~R20 全量实机通过（全 OK，tag v1.5.1）**
 13d. ✅ **用户手册操作说明子项化（2026-09-02，已验收）**：13 条整段说明重排为 **12 小节「标题+圆点子项」两级结构**（`_guideSections` 顶层常量：title+lines record），搜索小节同步 v1.5.1 新交互；复测 R20 实机 OK
-14. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-15. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
+14. ✅ **Windows 安装包（2026-09-04~05，`f1a9810`+`54ceccc`+`15082d5`）**：三页向导 + 加密载荷 + 主体/素材双文件拆分（安装包 32.7MB + 素材包 2.96GB）；静默装/卸冒烟全过——**待用户实机 GUI 走查**（UAC 秒弹、素材缺失 ✘ 阻断指引、誓言右键粘贴回滚、两段解包进度）；素材包分发通道（网盘/U盘）待规划；OV 代码签名证书留作预算决策（规则 9，收益已降为消除"未知发布者"提示）
+15. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
+16. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
 
 ---
 
