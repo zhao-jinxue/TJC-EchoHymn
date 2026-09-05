@@ -52,6 +52,9 @@
 | `f1a9810` | **Windows 安装包工程**（2026-09-04，Inno Setup 6 + 加密 7z 载荷）：三页向导（环境检查→目录选择→**誓言宣誓**关卡）；AES-256 加密头载荷（媒体按 `payload_manifest.txt` 过滤，当时 ~3GB 单包）；版本单源注入 pubspec 1.5.1；升级保留歌单库、`icacls` 授权 Users 可写（Program Files 下 `state.json` 前提）、卸载询问默认保留个人数据、`/VERYSILENT` 通道；`tools/build_installer.ps1` 一键构建 + SHA256；实机安装/启动/卸载全生命周期验证通过 |
 | `54ceccc` | **安装包实机体验五类缺陷修复**（2026-09-05）：① 语言文件换**官方 6.5.0+ 简体中文全量 296 键**（自制 57 键补丁版致内置页中英混杂 + `%1` 占位符不替换，删 `make_chinese_isl.py`）；② 誓言页**右键复制/粘贴旁路封堵**（展示框改静态文本 + 输入框 OnChange 非键盘变更回滚守卫——Pascal Script 无菜单 hook 能力下的等效方案）；③ 环境检查「重新检测」按钮超 Surface 被裁 + "约需 约"重复修复；④ `DefaultGroupName` 显式（Inno 6.7 会把 `(Default)` 哨兵值建成字面文件夹）；⑤ icacls 中文状态文案；静默装/卸全链路复验通过 |
 | `15082d5` | **主体/素材双载荷拆分**（2026-09-05）：根治"双击→UAC 弹窗 ~10 秒空档"（Defender/SmartScreen 对 3GB 未签名大文件的系统级扫描）——安装包 3.2GB **瘦身至 32.7MB（1/100）**；`Hymn_Downloads`（2.96GB）拆为外置加密数据文件 `EchoHymn_Data_v<版本>.7z` 单独分发；环境检查新增**素材文件同目录就位**检测（缺失 ✘ 阻断 + 重新检测联动）；安装改两段解包（主程序秒级 → 素材直接从同级目录解密释放，不再占用系统盘临时空间，磁盘口径放宽：系统盘仅 2GB 缓冲）；构建脚本双载荷 + 双 SHA256；冒烟三项全过（缺素材阻断 / 完整安装 3040 文件+ACL / 静默卸载数据保留） |
+| `88d396e`（v1.5.2 功能，2026-09-05） | **谱面图片宽度驱动缩放 + 滚轮语义定稿 + 手册三级分层**：`_ScoreImageView` 替换 `InteractiveViewer`（默认 maxScale=2.5 令纵向长图两侧空白无法利用）——最小宽=初始 contain 显示宽、**最大宽=歌词区当前显示宽**（`LayoutBuilder` 实时取值，缩放上限随窗口/字号自动跟随），高度按宽高比同步，超高出常显纵向滚动条，切歌自动复位缩放+滚动位置；**滚轮两条固定规则（用户定稿）**：Ctrl+滚轮=缩放、滚轮=滚动（双响应根治：`PointerSignalResolver` 先注册者赢 + 认领 Listener 置于滚动内容内部）；手册升级「▶小节 + • 二级圆点 + – 三级短横」三级结构（`GuideLine` 模型，全文 9 处多情况混排拆分）；快捷键表 7→12 行（补 Esc 关闭手册 + 滚轮操作）；附带排查定案："手册未更新"=旧进程（Windows Dart 代码在 `data\app.so` 非 exe，rebuild 后必须重启） |
+| `e22d8b4`（v1.5.2 稳健性，2026-09-05） | **全局 Bug 诊断修复 P1×1 + P2×4**：① `state.json` 双写队列竞态根治（HomeScreen 改用 `AppStateService.shared`，全进程唯一串行写链，消除并发 rename 冲突误删主文件/字段丢失更新）；② 谱面 http 判定统一 `startsWith`；③ 换谱面滚动复位；④ dispose 注销窗口 MethodCallHandler；⑤ `createPlaylist` 单次 INSERT 原子建单（级联 dialog）；回滚检查点 tag `pre-bugfix-2026-09-05`；**报告存档 `docs/BUGFIX_REPORT_2026-09-05.md`** |
+| `v1.5.2`（**tag**，2026-09-05） | 🎉 **v1.5.2 验收完成**：谱面缩放交互与手册三级结构经用户实机逐项确认；含 4 个提交（feat 1 + fix 1 + docs 2）；pubspec 升 1.5.2（版本单源） |
 
 **关键文件**：
 
@@ -62,7 +65,7 @@
 - 字号：`hymn_app/lib/theme/app_fonts.dart`（`FontSizeLevel`/`FontScaleController`/`AppFonts`）+ `MaterialApp.builder` 全局 `Transform.scale`（app.dart）
 - 用户手册弹窗：`hymn_app/lib/widgets/user_manual_dialog.dart`
 - 搜索：`hymn_app/lib/services/hymn_search_service.dart`（歌名+歌词统一模糊搜索计算）+ `hymn_app/lib/widgets/hymn_search_dialog.dart`（三列结果弹窗）
-- 其他：`widgets/{hymn_display, playlist_dialog}.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
+- 其他：`widgets/hymn_display.dart`（主内容区，含 `_ScoreImageView` 谱面宽度驱动查看器）、`widgets/playlist_dialog.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
 - 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
 - **安装包**：`installer/echohymn.iss`（三页向导 + 誓言 OnChange 守卫 + 素材检测两段解包）、`installer/{prepare_staging,make_payload}.py`（双暂存/双载荷）、`installer/payload_manifest.txt`（`tools/scan_db_refs.py` 生成）、`installer/ChineseSimplified.isl`（官方 6.5.0+ 翻译固化）、`tools/build_installer.ps1`（一键双产物 + 双 SHA256）、`docs/RELEASE_RULES.md`（18 条发布规范）、`docs/INSTALLER.md`（用户/发布者指南）
 
@@ -71,12 +74,13 @@
 ## 二、当前技术栈
 
 - **UI**：Flutter（Material），**基座画面 850×890 物理像素** + 侧栏抽屉式展开（左 **350** / 右 **600**）；**自上而下四栏**：自绘窗口标题栏 **30px**（移除系统 `WS_CAPTION`，左侧 logo+应用名，右侧「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组，整条可拖拽/双击最大化）→ 顶栏 **40px**（左右侧栏切换 + 中央当前歌曲）→ 内容区 → 底部状态栏 **30px**；窗口**等比缩放**（`Transform.scale`，最大化铺满不裁切）；最小客户区 850×890
-- **操作**：**全局快捷键**（v1.3.0）：空格/Ctrl+P 播放暂停、Ctrl+→ 或 Alt+→ 下一首、Ctrl+← 或 Alt+← 上一首、Ctrl+↑/↓ 音量、Ctrl+M 静音、F1 用户手册、通用媒体键；根 `Focus` 包裹 `MaterialApp`，任意焦点（含弹窗）事件冒泡统一处理；输入框聚焦时空格放行输入
-- **用户手册**：顶栏「？」按钮或 F1 打开（软件介绍 / 操作说明 / 快捷键说明），Esc 或 ✕ 关闭
+- **操作**：**全局快捷键**（v1.3.0）：空格/Ctrl+P 播放暂停、Ctrl+→ 或 Alt+→ 下一首、Ctrl+← 或 Alt+← 上一首、Ctrl+↑/↓ 音量、Ctrl+M 静音、F1 用户手册、通用媒体键；根 `Focus` 包裹 `MaterialApp`，任意焦点（含弹窗）事件冒泡统一处理；输入框聚焦时空格放行输入；**谱面滚轮两条规则（v1.5.2）**：滚轮=滚动、Ctrl+滚轮=缩放
+- **谱面显示（v1.5.2）**：`_ScoreImageView` 宽度驱动缩放——最小宽=初始 contain 宽 / 最大宽=歌词区当前显示宽（`LayoutBuilder` 实时，随窗口/字号跟随），高度按图片宽高比同步，超高出常显滚动条；换歌自动复位缩放与滚动位置
+- **用户手册**：标题栏「？」按钮或 F1 打开（软件介绍 / 操作说明 / 快捷键说明），Esc 或 ✕ 关闭；**操作说明三级结构（v1.5.2）**：▶小节标题 → • 二级圆点 → – 三级短横（`GuideLine{text, subs}`，不同情况分层拆开）；快捷键表 12 行（键盘 + Esc + 滚轮）
 - **数据**：SQLite `tjc_hymn.db`（474 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
 - **简繁转换**：**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`，由 `tools/gen_convert_map.py` 从数据库全量字符生成：繁→简 1052 / 简→繁 1025）；**弃用 OpenCC FFI**（本机 opencc.dll 与 UI 线程不兼容，导致白屏/崩溃）
 - **音频播放**：`audioplayers` 6.8.1 → Windows Media Foundation；`DeviceFileSource(abs)` 直读中文路径
-- **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列**防并发损坏；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**/**配色 appTheme**/**字号 fontSizeLevel**）
+- **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列防并发损坏；全进程唯一写入口 `AppStateService.shared`——v1.5.2 根治双实例双队列并发竞态**；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**/**配色 appTheme**/**字号 fontSizeLevel**）
 - **日志**：`echo_hymn.exe` 同级 `logs/`（`LogService` 文本日志，UTF-8 BOM，保留 7 份；FlutterError / 平台通道异常全局捕获）
 - **架构**：左栏三栏目 = 抽象基类 `LeftPanel` + 三子类（各自独立状态与滚动恢复）；切歌联动 `syncWithPlayback`（高亮滚动避开搜索框/标题栏）
 - **换肤**：`AppPalette` 语义色槽（**27 色，含 8 个分区底色 + controlBg/controlBorder 未选中控件底色与描边**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
@@ -208,6 +212,14 @@
 5. **UAC 前 10 秒空档根治 = 主体/素材拆分**：系统安全扫描（Defender 全文件 + SmartScreen 哈希信誉）成本与文件体积成正比，3GB 未签名大文件无法靠代码优化提速——素材拆出后安装包 32.7MB，空档自然消失；副带收益：素材不再过系统盘临时目录，磁盘口径放宽（系统盘仅 2GB 缓冲）
 6. **分发形态**：`EchoHymn_Setup_v<版本>.exe` + `EchoHymn_Data_v<版本>.7z`（文件名带版本防错配）+ 两份 `.sha256`，同目录交付；安装包构建保持手动触发（素材压缩耗时，不并入 post-commit 自动发布）
 
+### 2026-09-05 会话追加决策（v1.5.2 谱面缩放 + 手册分层 + 全局稳健性修复）
+
+1. **谱面缩放架构 = 宽度驱动**：弃用 `InteractiveViewer`（默认 maxScale=2.5，纵向长图放大后宽度仍到不了歌词区边缘，两侧空白无法利用）→ 自定义 `_ScoreImageView`：`zoom∈[1, 歌词区宽/初始宽]`，显示宽 = 初始宽 × zoom、高按图片宽高比同步；视口宽 `LayoutBuilder` 实时取值 → **缩放上限自动跟随窗口拉伸/最大化/字号等级**；横向宽图（初始已铺满宽）自然退化为"仅纵向滚动"，与"宽度不超过歌词区"约束一致
+2. **滚轮语义两条固定规则（用户定稿，否决状态切换方案）**："有/无滚动条时滚轮含义不同"被评审判为过度复杂——**Ctrl+滚轮=缩放、普通滚轮=滚动**，无需感知内部状态，可预期性最强；双响应冲突根治：Flutter 滚轮由 `PointerSignalResolver` **先注册者赢**，命中测试路径**深者优先** → 认领 Listener 必须放在滚动内容**内部**（外层会输给 Scrollable 内部监听器），缩放时以空回调占住 resolver
+3. **手册三级结构**：`GuideLine{text, subs}` 数据模型，`_guideSections.lines` 由 `List<String>` 改 `List<GuideLine>`——**类型系统兜底**保证 9 处多情况混排全量排查不遗漏（漏改即编译错误）；视觉层级 ▶小节 / • 二级圆点 / – 三级短横
+4. **"UI 未更新"排查范式**：本机 Flutter Windows 的 Dart AOT 代码在 **`data\app.so`**（非 exe 内嵌；C++ 无改动时 exe 不重链、时间戳不变，勿误判构建失效）；用户反馈"改动没生效"时先核对**运行实例启动时间 vs app.so 构建时间**——运行中进程持有启动时的代码，无热替换，rebuild 后必须重启
+5. **state.json 单队列原则 + 原子建单**：所有写入必须经 `AppStateService.shared`（双实例 = 双 `_writeChain` 并发写同一 `.tmp`，rename 冲突的 catch 分支"先删主文件再改名"可致状态整体丢失）；新建歌单改**单次 INSERT** 落库（消除"先建空再补成员"双写中间态）；另记本机 Flutter 教训：`ImageStream` 无公开 `dispose`、`NetworkImage/FileImage` 条件表达式 LUB 退化为 `Object`（if/else 分支赋值规避）
+
 ---
 
 ## 四、剩余/遗留任务清单
@@ -229,6 +241,8 @@
 13b. ✅ **音量双重衰减修复·方案 A（2026-09-01，已验收）**：系统音量=唯一响度旋钮（滑条为其镜像），播放器增益恒 100%（静音 0），根治输出 v² 叠乘导致的比系统播放器轻 ~12dB——**Q01~Q08 实机全 OK**（Q01 响度 A/B 与系统播放器对齐）
 13c. ✅ **歌名+歌词统一模糊搜索弹窗（v1.5.1，2026-09-02 验收完成）**：中文回车同时搜歌名+歌词进三列弹窗（歌名关键字红粗/歌词关键字主题蓝粗/双命中同行），单击选中双击定位播放；编号搜索不变；单测 18 用例全过 + analyze 0 issues；**首轮实机 S01~S41：35 OK / 6 NG 全部修复**（S02 播后自动清框、S04 ×/删空强制滚回定位行[force+排帧双修]、S09 回焦取消全选折叠光标、S11+S24 取消"回车播第一首"——弹窗双击为唯一播放入口、S27 歌词单元格从关键字所在行开窗显示保证加粗可见[Python 复刻映射表排查定位]）；**复测 R01~R20 全量实机通过（全 OK，tag v1.5.1）**
 13d. ✅ **用户手册操作说明子项化（2026-09-02，已验收）**：13 条整段说明重排为 **12 小节「标题+圆点子项」两级结构**（`_guideSections` 顶层常量：title+lines record），搜索小节同步 v1.5.1 新交互；复测 R20 实机 OK
+13e. ✅ **谱面宽度驱动缩放 + 滚轮语义定稿（v1.5.2，2026-09-05，实机已验收）**：`_ScoreImageView` 替换 InteractiveViewer（最小=初始 contain 宽 / 最大=歌词区当前显示宽，LayoutBuilder 实时跟随窗口与字号，超高出常显滚动条，切歌复位缩放+滚动）；滚轮两条规则——**Ctrl+滚轮=缩放、滚轮=滚动**（PointerSignalResolver 先注册认领 + Listener 置滚动内容内部，根治双响应）；手册三级分层（GuideLine）+ 全文 9 处混排拆分 + 快捷键表 7→12 行
+13f. ✅ **全局 Bug 诊断修复 P1×1 + P2×4（v1.5.2，2026-09-05）**：state.json 双写队列竞态根治（AppStateService.shared 全进程唯一串行链）+ 谱面 http 判定统一 + 换谱面滚动复位 + dispose 注销窗口回调 + 歌单单次 INSERT 原子建单；analyze 0 + 18/18 测试 + Release 构建全过；**修复报告存档 `docs/BUGFIX_REPORT_2026-09-05.md`**（检查点 tag `pre-bugfix-2026-09-05`）
 14. ✅ **Windows 安装包（2026-09-04~05，`f1a9810`+`54ceccc`+`15082d5`）**：三页向导 + 加密载荷 + 主体/素材双文件拆分（安装包 32.7MB + 素材包 2.96GB）；静默装/卸冒烟全过——**待用户实机 GUI 走查**（UAC 秒弹、素材缺失 ✘ 阻断指引、誓言右键粘贴回滚、两段解包进度）；素材包分发通道（网盘/U盘）待规划；OV 代码签名证书留作预算决策（规则 9，收益已降为消除"未知发布者"提示）
 15. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
 16. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
