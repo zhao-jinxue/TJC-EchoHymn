@@ -206,9 +206,22 @@ def make_docx(lines: list[str], path: Path, font_pt: float) -> None:
     hp.text = HEADER_TEXT
     fp = s.footer.paragraphs[0]
     fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    fld = OxmlElement("w:fldSimple")
-    fld.set(qn("w:instr"), "PAGE")
-    fp._p.append(fld)
+    def _field(instr: str, cached: str):  # 04 建议格式：第 X 页 共 Y 页（含缓存值供不更新域的渲染器显示）
+        fld = OxmlElement("w:fldSimple")
+        fld.set(qn("w:instr"), instr)
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = cached
+        r.append(t)
+        fld.append(r)
+        return fld
+    fp.add_run("第 ")
+    fp._p.append(_field("PAGE", "1"))
+    fp.add_run(" 页  共 ")
+    fp._p.append(_field("NUMPAGES", "60"))
+    fp.add_run(" 页")
+    for r in fp.runs:
+        r.font.size = Pt(9)
     for ln in lines:
         doc.add_paragraph(ln)
     doc.save(str(path))
@@ -278,8 +291,52 @@ def build() -> int:
         print(f"[FAIL] docx 段落数 {n} != 3000", file=sys.stderr); return 1
     print(f"[OK] source_code.txt = 3000 物理行（前 1500 + 后 1500）")
     print(f"[OK] source_code.docx：A4 / 2cm 边距 / Consolas 9pt+宋体东亚 / 固定行距 14.5pt"
-          f"（版心 728.5pt÷50=14.57 -> 每页恰 50 行）/ 页眉「{HEADER_TEXT}」/ 页脚居中 PAGE 域 / "
+          f"（版心 728.5pt÷50=14.57 -> 每页恰 50 行）/ 页眉「{HEADER_TEXT}」/ 页脚「第X页 共Y页」域 / "
           f"段落 {n} / import 行 {imports} / 敏感 {len(sens)} 命中")
+    return 0
+
+
+def verify() -> int:
+    """verify 模式：源代码材料 docx/txt 理想态质检固化（04 任务一的可机检部分全项）。"""
+    import zipfile
+    from typing import cast
+    from docx import Document
+    from docx.enum.text import WD_LINE_SPACING
+    from docx.shared import Pt
+    from docx.styles.style import ParagraphStyle
+    docx_p = WS / "output" / "source_code.docx"
+    txt = (WS / "output" / "source_code.txt").read_text(encoding="utf-8").splitlines()
+    d = Document(str(docx_p))
+    s0 = d.sections[0]
+    st = cast(ParagraphStyle, d.styles["Normal"])
+    pf = st.paragraph_format
+    z = zipfile.ZipFile(str(docx_p))
+    fx = z.read([n for n in z.namelist() if "footer" in n][0]).decode("utf8")
+    pw, ph = s0.page_width, s0.page_height
+    tm, bm, lm, rm = s0.top_margin, s0.bottom_margin, s0.left_margin, s0.right_margin
+    assert pw is not None and ph is not None
+    assert tm is not None and bm is not None and lm is not None and rm is not None
+    checks = [
+        ("段落=txt 行数=3000", len(d.paragraphs) == 3000 == len(txt)),
+        ("txt≡docx 逐段一致", txt == [p.text for p in d.paragraphs]),
+        ("等宽 Consolas 9pt(小五)", st.font.name == "Consolas" and st.font.size == Pt(9)),
+        ("固定行距 EXACT 14.5pt", pf.line_spacing == Pt(14.5)
+         and pf.line_spacing_rule == WD_LINE_SPACING.EXACTLY),
+        ("A4 纵向 21×29.7cm", round(pw.cm, 1) == 21.0 and round(ph.cm, 1) == 29.7),
+        ("四边距 2cm", all(round(x.cm, 2) == 2.0 for x in (tm, bm, lm, rm))),
+        ("页眉逐页=全称+版本", s0.header.paragraphs[0].text == HEADER_TEXT),
+        ("页脚 第X页共Y页 双域", '"PAGE"' in fx.replace("'", '"') and "NUMPAGES" in fx),
+        ("无空行", all(l.strip() for l in txt)),
+        ("无注释残留", not any(l.lstrip().startswith(("//", "/*")) for l in txt)),
+    ]
+    bad = [n for n, ok in checks if not ok]
+    for n, ok in checks:
+        print(("✔ " if ok else "✘ ") + n)
+    if bad:
+        print(f"[FAIL] {len(bad)} 项未过", file=sys.stderr)
+        return 1
+    print(f"[OK] 理想态 {len(checks)} 项全过：3000 行 ÷ 50 行/页 = 60 页（几何精确，"
+          f"版心 728.5pt ÷ 14.5pt = 50.24 行 → 页页恰 50）")
     return 0
 
 
@@ -321,7 +378,10 @@ def main() -> int:
     if mode == "build":
         return build()
 
-    print("usage: clean.py report [lib_dir] | build", file=sys.stderr)
+    if mode == "verify":
+        return verify()
+
+    print("usage: clean.py report [lib_dir] | build | verify", file=sys.stderr)
     return 2
 
 
