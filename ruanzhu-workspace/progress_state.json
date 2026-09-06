@@ -1,0 +1,50 @@
+{
+  "project_name": "EchoHymn 赞美诗播放软件",
+  "version": "V1.5",
+  "current_step": "Step 1",
+  "declaration_facts": {
+    "dev_complete_date": "2026-09-05",
+    "published": true,
+    "first_publication_date": "2026-09-05",
+    "repo": "github.com/zhao-jinxue/TJC-EchoHymn (public)",
+    "repo_first_public_date": "2026-08-30（GitHub 可见最早提交日，当时公开至 v1.4.0；属历史版本发表，不影响 V1.5 口径）",
+    "license": "LICENSE 自定义专有：Copyright (c) 2026 赵金雪 All Rights Reserved（非开源；申请人实名须与之一致）",
+    "language_and_size": "Dart；约6600行（统计口径见 code_scope）"
+  },
+  "code_scope": {
+    "include": "hymn_app/lib/**/*.dart（手写业务源码，26 文件中排除下行）",
+    "exclude": [
+      "hymn_app/lib/data/chinese_convert_map.dart（2086 行纯简繁映射数据表）",
+      "hymn_app/windows/** 中 Flutter 模板生成物（自研 runner 定制是否计入待 Step 1 确认）",
+      "pubspec.lock / *.g.dart / 构建脚本 / .clinerules 等配置（含 API Key，严禁入材料）"
+    ],
+    "baseline_lines_dart": 8683,
+    "estimated_handwritten_lines": 6600,
+    "strategy": ">3000 行 → 前30页+后30页（每页50行，共60页）"
+  },
+  "step1_status": {
+    "done": false,
+    "plan_output": "output/material_plan.md"
+  },
+  "step2_status": {
+    "total_target_pages": 60,
+    "completed_pages": 0,
+    "last_processed_file": null,
+    "last_line_number": 0,
+    "output_file": "./output/source_code.txt"
+  },
+  "step3_status": {
+    "completed_sections": [],
+    "pending_sections": ["引言", "运行环境", "软件安装与初始化", "核心功能操作说明", "异常处理与常见问题"]
+  },
+  "step4_status": {
+    "done": false,
+    "risk_points_found": []
+  },
+  "step2_file_plan": [],
+  "pending_tasks": [
+    "Step 1：按 code_scope 扫描 hymn_app 生成《材料准备计划》(output/material_plan.md) 供用户确认，确认后进 Step 2",
+    "Step 2 前置：创建 tools_clean/ 确定性清洗脚本（去注释/空行、保留 import、50 行分页断言）"
+  ],
+  "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。"
+}

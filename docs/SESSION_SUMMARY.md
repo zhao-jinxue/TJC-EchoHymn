@@ -6,6 +6,7 @@
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
 > **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（≈33MB 内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（≈3GB 外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/INSTALLER.md` 与 `docs/RELEASE_RULES.md`。
+> **软著材料（支线，2026-09-06 起）**：申请材料的规范/进度/决策**全部在 `ruanzhu-workspace/`（入口 `00_README.md`）单独维护**，不进入本文件；与开发会话无关，日常开发无需阅读。
 
 ---
 
