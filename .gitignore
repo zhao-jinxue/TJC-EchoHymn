@@ -67,3 +67,7 @@ installer/output/
 installer/app_icon.ico
 installer/staging_data/
 installer/EchoHymn_Data_v*.7z
+
+# Python 缓存（软著清洗工具）
+__pycache__/
+*.pyc

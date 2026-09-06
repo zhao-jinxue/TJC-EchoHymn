@@ -181,17 +181,19 @@ def wrap_stream(line: str) -> list[str]:
 
 
 def make_docx(lines: list[str], path: Path, font_pt: float) -> None:
+    from typing import cast
     from docx import Document
     from docx.shared import Pt, Cm
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.styles.style import ParagraphStyle  # 运行期实际类型（库注解只声明基类 BaseStyle）
     doc = Document()
     s = doc.sections[0]
     s.page_width, s.page_height = Cm(21), Cm(29.7)
     s.top_margin = s.bottom_margin = s.left_margin = s.right_margin = Cm(2)
     s.header_distance = s.footer_distance = Cm(0.8)
-    st = doc.styles["Normal"]
+    st = cast(ParagraphStyle, doc.styles["Normal"])  # cast 消解 python-docx 注解精度问题（返回基类无 font 属性）
     st.font.name = "Consolas"
     st.font.size = Pt(font_pt)
     st.element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
@@ -246,8 +248,8 @@ def build() -> int:
             print(f"[FAIL] 空行残留 @{i}", file=sys.stderr); return 1
         if l.lstrip().startswith(("//", "/*")):
             print(f"[FAIL] 注释残留 @{i}: {l[:50]}", file=sys.stderr); return 1
-    sens = [(i, pat.search(l).group(0)) for i, l in enumerate(stream_head, 1)
-            for name, pat in SENSITIVE if pat.search(l)]
+    sens = [(i, m.group(0)) for i, l in enumerate(stream_head, 1)
+            for name, pat in SENSITIVE if (m := pat.search(l))]
     if sens:
         print(f"[FAIL] 敏感信息 {len(sens)} 处: {sens[:5]}", file=sys.stderr); return 1
     out = wrapped[:FRONT_LINES] + wrapped[-FRONT_LINES:]
