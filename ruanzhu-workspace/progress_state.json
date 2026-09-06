@@ -202,9 +202,10 @@
     }
   ],
   "pending_tasks": [
-    "人工: 实机截图18处补入 user_manual.docx（测试假数据, 品牌文案按 R1 处理）",
-    "人工: Word 打开两份 docx 复核（源码60页x50行 / 手册>=15页+更新目录域）并导出 PDF",
-    "人工: 按 03_application_process.md 注册实名并填报上传"
+    "人工(通道已定=Word机器, 2026-09-06用户选定): 拷贝 output/source_code.docx + user_manual.docx 到装有Word的电脑",
+    "人工: 源代码docx 目检每页恰50行+页脚页码1~60(verify脚本可先自检) -> 另存为 源代码.pdf",
+    "人工: 手册docx F9更新目录域+总页数>=15 -> 插入18处截图后另存为 用户手册.pdf",
+    "人工: 两份PDF回拷 ruanzhu-workspace/output/ 留档, 按03_application_process.md 填报CPCC"
   ],
-  "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。"
+  "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。 | PDF/目检通道: 用户选定在装有Word的电脑完成(官方审Word/WPS渲染), 本机不装LibreOffice; docx已含页脚第X页共Y页域+verify模式一键复核。"
 }
