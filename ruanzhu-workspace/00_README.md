@@ -33,7 +33,8 @@
 - [x] Step 1：资产盘点与《材料准备计划》（2026-09-06 完成：清洗后 5780 行→前30+后30页方案，`output/material_plan.md` **待用户确认**）
 - [x] Step 2：~~`clean.py` build 模式 + `output/source_code.txt`（3000 行 + 断言）~~ ✅ 2026-09-06 完成：txt+docx 双产物 3000 物理行，全断言 + 结构校验通过；**遗留：本机无 Word，页数=60 为几何推导，需在装有 Word 的电脑复核并导出 PDF**
 - [x] Step 3：`output/user_manual_draft.md` + `user_manual.docx`（2026-09-06 完成：五大章 26 标题 / 18 截图占位 / 4 表格 / 封面+目录域+页眉页脚，素材源 `user_manual_dialog.dart` + INSTALLER/SESSION_SUMMARY 交叉印证；**遗留：截图待实机补入，Word 复核页数≥15**）
-- [ ] Step 4：《自检报告》
+- [x] Step 4：《自检报告》（2026-09-06 完成：`output/consistency_check.md`，A名称版本/B功能↔代码18项对照/C可回溯6样全中/D脱敏0命中/E七项人工复核风险；结论：无退回级硬伤）
+- [x] **AI 四步全部完成**，余人工环节：18 截图补入 → Word 复核导 PDF → CPCC 填报（见报告的 E 表与 03/04 文档）
 - [ ] 人工：Word 排版（04）、截图（需软件实机运行）、CPCC 申报（03）
 
 ## 新会话续接方式

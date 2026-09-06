@@ -1,7 +1,7 @@
 {
   "project_name": "EchoHymn 赞美诗播放软件",
   "version": "V1.5",
-  "current_step": "Step 4（Step 3 完成：手册 md+docx 双产物已出，待指令启动一致性自检）",
+  "current_step": "AI Step 1~4 全部完成；余人工环节（截图/Word 复核/PDF/CPCC 填报）",
   "declaration_facts": {
     "dev_complete_date": "2026-09-05",
     "published": true,
@@ -60,8 +60,19 @@
     "pending_human": "18处截图待软件实机补图; Word打开更新目录域并复核页数>=15"
   },
   "step4_status": {
-    "done": false,
-    "risk_points_found": []
+    "done": true,
+    "report": "output/consistency_check.md",
+    "result": "无退回级硬伤：名称版本闭环/功能全溯源/敏感0命中/基线零漂移(73b0d20后 hymn_app 无提交)",
+    "risks_found": [
+      "R1 截图品牌文案一致性",
+      "R2 版本串界面显示复核",
+      "R3 60页Word逐页核对",
+      "R4 18截图+页数>=15",
+      "R5 中部排除段说明口径",
+      "R6 C++与安装器不在材料口径",
+      "R7 申请表填报对照"
+    ],
+    "replacement_registry": "**** 替换发生数 = 0（无需登记）"
   },
   "step2_file_plan": [
     {
@@ -191,8 +202,9 @@
     }
   ],
   "pending_tasks": [
-    "Step 4: 交叉比对 source_code.txt 与 user_manual_draft.md 输出《自检报告》output/consistency_check.md",
-    "人工: 实机截图18处 + Word复核目录/页数 + 导出 源代码.pdf / 用户手册.pdf"
+    "人工: 实机截图18处补入 user_manual.docx（测试假数据, 品牌文案按 R1 处理）",
+    "人工: Word 打开两份 docx 复核（源码60页x50行 / 手册>=15页+更新目录域）并导出 PDF",
+    "人工: 按 03_application_process.md 注册实名并填报上传"
   ],
   "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。"
 }
