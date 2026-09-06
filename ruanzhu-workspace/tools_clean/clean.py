@@ -57,8 +57,15 @@ def strip_dart(src: str) -> list[str]:
                 i += len(quote)
                 quote = None
                 continue
-            if ch == "\n" and len(quote) == 1:  # 单引号串内不应有裸换行，容错结束
-                quote = None
+            if ch == "\n":  # 三引号串内换行：逐物理行 flush，保持"元素=物理行"不变量
+                line = "".join(buf).rstrip()
+                if line:
+                    out.append(line)
+                buf = []
+                if len(quote) == 1:  # 单引号串内裸换行属异常，容错结束字符串
+                    quote = None
+                i += 1
+                continue
             buf.append(ch)
             i += 1
             continue
@@ -135,6 +142,145 @@ def rel(p: Path, root: Path) -> str:
     return str(p.relative_to(root.parent)).replace("\\", "/")
 
 
+# ---- build 模式常量（对齐 output/material_plan.md §4，基线 commit 73b0d20）----
+WS = Path(__file__).resolve().parent.parent            # ruanzhu-workspace/
+APP = WS.parent / "hymn_app"
+HEADER_TEXT = "EchoHymn 赞美诗播放软件 V1.5"
+TOTAL_CLEANED = 5788           # rev1：三引号 SQL 拆物理行后 (sqlite_repository 238->246)
+FRONT_LINES = 1500             # 前30页=换行后物理流行 1~1500；后30页=末 1500
+UNIT_CAP = 53.0                # 9pt 版心 481.9pt -> 53.5 单位；保守 53.0 保证 Word 不再二次换行
+
+
+def display_pt(line: str, font_pt: float) -> float:
+    """行宽（磅）：Consolas 半宽 ≈0.55em，CJK 全宽 =1em。"""
+    import unicodedata
+    w = 0.0
+    for ch in line.expandtabs(4):
+        w += font_pt if unicodedata.east_asian_width(ch) in ("F", "W") else font_pt * 0.55
+    return w
+
+
+def wrap_stream(line: str) -> list[str]:
+    """超宽行按保守宽度显式断行（终端换行式，不增删字符，tab 展开为 4 空格），
+    使每个产物行在 Word 9pt 下一行一页内呈现——页数与"每页 50 行"由此完全确定。"""
+    import unicodedata
+    parts: list[str] = []
+    cur: list[str] = []
+    u = 0.0
+    for ch in line.expandtabs(4):
+        w = 1.0 if unicodedata.east_asian_width(ch) in ("F", "W") else 0.55
+        if u + w > UNIT_CAP:
+            parts.append("".join(cur))
+            cur, u = [ch], w
+        else:
+            cur.append(ch)
+            u += w
+    if cur:
+        parts.append("".join(cur))
+    return parts
+
+
+def make_docx(lines: list[str], path: Path, font_pt: float) -> None:
+    from docx import Document
+    from docx.shared import Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    doc = Document()
+    s = doc.sections[0]
+    s.page_width, s.page_height = Cm(21), Cm(29.7)
+    s.top_margin = s.bottom_margin = s.left_margin = s.right_margin = Cm(2)
+    s.header_distance = s.footer_distance = Cm(0.8)
+    st = doc.styles["Normal"]
+    st.font.name = "Consolas"
+    st.font.size = Pt(font_pt)
+    st.element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+    pf = st.paragraph_format
+    pf.space_before = pf.space_after = Pt(0)
+    # 版心高 25.7cm=728.5pt ÷ 50 行 = 14.57pt -> 固定行距 14.5pt 精确保证每页 50 行
+    pf.line_spacing = Pt(14.5)
+    pf.widow_control = False
+    hp = s.header.paragraphs[0]
+    hp.text = HEADER_TEXT
+    fp = s.footer.paragraphs[0]
+    fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    fld = OxmlElement("w:fldSimple")
+    fld.set(qn("w:instr"), "PAGE")
+    fp._p.append(fld)
+    for ln in lines:
+        doc.add_paragraph(ln)
+    doc.save(str(path))
+
+
+def build() -> int:
+    """Step 2：按 step2_file_plan 有序清单清洗拼接 -> 断言 -> 前1500+后1500 -> txt+docx 双产物。"""
+    state = json.loads((WS / "progress_state.json").read_text(encoding="utf-8"))
+    plan = state["step2_file_plan"]
+    cleaned_total = 0
+    wrapped: list[str] = []
+    offsets: list[tuple[str, int, int]] = []      # (file, 换行流起, 换行流止) 1-based 由计算还原
+    stream_head: list[str] = []                   # 仅用于逐行质检
+    for e in plan:
+        f = APP / Path(e["file"].replace("/", "\\"))
+        cleaned = strip_dart(f.read_text(encoding="utf-8-sig", newline=""))
+        if len(cleaned) != e["cleaned_lines"]:
+            print(f"[FAIL] 漂移 {e['file']}: 计划={e['cleaned_lines']} 现状={len(cleaned)}"
+                  f"（代码与已确认计划不一致，须重跑 Step 1）", file=sys.stderr)
+            return 1
+        start = len(wrapped)
+        stream_head.extend(cleaned)
+        for ln in cleaned:
+            parts = wrap_stream(ln)
+            wrapped.extend(parts)
+            for p in parts:
+                if display_pt(p, 1.0) > 53.5:
+                    print(f"[FAIL] 断行后仍超宽: {p[:50]}", file=sys.stderr)
+                    return 1
+        offsets.append((e["file"], start + 1, len(wrapped)))
+        cleaned_total += len(cleaned)
+    if cleaned_total != TOTAL_CLEANED:
+        print(f"[FAIL] 清洗后物理行总数 {cleaned_total} != 计划 {TOTAL_CLEANED}", file=sys.stderr)
+        return 1
+    for i, l in enumerate(stream_head, 1):
+        if not l.strip():
+            print(f"[FAIL] 空行残留 @{i}", file=sys.stderr); return 1
+        if l.lstrip().startswith(("//", "/*")):
+            print(f"[FAIL] 注释残留 @{i}: {l[:50]}", file=sys.stderr); return 1
+    sens = [(i, pat.search(l).group(0)) for i, l in enumerate(stream_head, 1)
+            for name, pat in SENSITIVE if pat.search(l)]
+    if sens:
+        print(f"[FAIL] 敏感信息 {len(sens)} 处: {sens[:5]}", file=sys.stderr); return 1
+    out = wrapped[:FRONT_LINES] + wrapped[-FRONT_LINES:]
+    if len(out) != 3000:
+        print(f"[FAIL] 截取后 {len(out)} != 3000", file=sys.stderr); return 1
+    imports = sum(1 for l in out if l.startswith(("import ", "export ", "part ", "library ")))
+    if imports == 0:
+        print("[FAIL] import 行数为 0", file=sys.stderr); return 1
+
+    def seg_of(pos: int) -> str:
+        for fname, a, b in offsets:
+            if a <= pos <= b:
+                return f"{fname}(换行流{a}~{b})"
+        return "?"
+
+    tail_start = len(wrapped) - FRONT_LINES + 1
+    print(f"[INFO] 清洗 {cleaned_total} 行 -> 换行流 {len(wrapped)} 物理行（断行增 "
+          f"{len(wrapped) - cleaned_total} 行）")
+    print(f"[INFO] 前30页 = 换行流 1~1500，止于 {seg_of(FRONT_LINES)}")
+    print(f"[INFO] 后30页 = 换行流 {tail_start}~{len(wrapped)}，起于 {seg_of(tail_start)}")
+    (WS / "output" / "source_code.txt").write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")
+    make_docx(out, WS / "output" / "source_code.docx", 9.0)
+    from docx import Document as _D
+    n = len(_D(str(WS / "output" / "source_code.docx")).paragraphs)
+    if n != 3000:
+        print(f"[FAIL] docx 段落数 {n} != 3000", file=sys.stderr); return 1
+    print(f"[OK] source_code.txt = 3000 物理行（前 1500 + 后 1500）")
+    print(f"[OK] source_code.docx：A4 / 2cm 边距 / Consolas 9pt+宋体东亚 / 固定行距 14.5pt"
+          f"（版心 728.5pt÷50=14.57 -> 每页恰 50 行）/ 页眉「{HEADER_TEXT}」/ 页脚居中 PAGE 域 / "
+          f"段落 {n} / import 行 {imports} / 敏感 {len(sens)} 命中")
+    return 0
+
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "report"
     root = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("E:/EchoHymn/hymn_app/lib")
@@ -170,7 +316,10 @@ def main() -> int:
             encoding="utf-8")
         return 0
 
-    print("usage: clean.py report [lib_dir]", file=sys.stderr)
+    if mode == "build":
+        return build()
+
+    print("usage: clean.py report [lib_dir] | build", file=sys.stderr)
     return 2
 
 

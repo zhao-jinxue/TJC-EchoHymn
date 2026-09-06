@@ -11,8 +11,8 @@
 | 2 | `02_session_handoff_guide.md` | 跨会话"存档-读档"SOP + `progress_state.json` 模板 | 已补全（2026-09-06） |
 | 3 | `03_application_process.md` | CPCC 申报全流程（人工，线上操作） | 就绪 |
 | 4 | `04_manual_operations_guide.md` | Word 排版/截图/一致性终审（人工） | 就绪 |
-| — | `output/` | 产物目录（`source_code.txt`、`user_manual_draft.md`、自检报告） | 空 |
-| — | `tools_clean/`（待建） | Step 2 确定性清洗脚本（01 修订后新增的前置条件） | 未创建 |
+| — | `output/` | 产物目录：~~空~~ → **`source_code.txt` + `source_code.docx`（60页×50行）+ `material_plan.md`（已确认 rev1）** | ✅ Step 2 已出 |
+| — | `tools_clean/clean.py` | Step 2 确定性清洗脚本（report + build 双模式，Dart 状态机 + 全断言 + docx 排版） | ✅ 已建并使用 |
 
 ## 决策记录（2026-09-06 逐步落定）
 
@@ -31,7 +31,7 @@
 - [x] 决策落定：全称=EchoHymn 赞美诗播放软件 / 版本=V1.5 / 统计口径=排除数据表与模板 C++ / 发表状态=已发表（2026-09-05）
 - [x] 创建 `progress_state.json`（按 02 模板，2026-09-06 已建，current_step=Step 1）
 - [x] Step 1：资产盘点与《材料准备计划》（2026-09-06 完成：清洗后 5780 行→前30+后30页方案，`output/material_plan.md` **待用户确认**）
-- [ ] Step 2：`clean.py` build 模式 + `output/source_code.txt`（3000 行 + 断言）
+- [x] Step 2：~~`clean.py` build 模式 + `output/source_code.txt`（3000 行 + 断言）~~ ✅ 2026-09-06 完成：txt+docx 双产物 3000 物理行，全断言 + 结构校验通过；**遗留：本机无 Word，页数=60 为几何推导，需在装有 Word 的电脑复核并导出 PDF**
 - [ ] Step 3：`output/user_manual_draft.md`（素材优先用 `user_manual_dialog.dart` + docs/）
 - [ ] Step 4：《自检报告》
 - [ ] 人工：Word 排版（04）、截图（需软件实机运行）、CPCC 申报（03）

@@ -1,7 +1,7 @@
 {
   "project_name": "EchoHymn 赞美诗播放软件",
   "version": "V1.5",
-  "current_step": "Step 2（Step 1 已完成，《材料准备计划》待用户确认）",
+  "current_step": "Step 3（Step 2 完成：60 页源代码材料双产物已出，待指令启动手册生成）",
   "declaration_facts": {
     "dev_complete_date": "2026-09-05",
     "published": true,
@@ -27,58 +27,169 @@
     "plan_output": "output/material_plan.md",
     "plan_date": "2026-09-06",
     "code_baseline_commit": "73b0d20",
-    "cleaned_total": 5780,
+    "cleaned_total": 5788,
     "equivalent_pages": 115,
-    "strategy": "前30页(流1-1500)+后30页(流4281-5780)",
+    "strategy": "rev1：三引号SQL拆物理行(5780->5788)+超宽行显式断行后，前30页=换行流1~1500物理行，后30页=末1500物理行",
     "sensitive_scan": "0命中",
     "cleaner_verified": "注释零残留/空行零残留/http字符串保留3处完整 三项校验通过"
   },
   "step2_status": {
+    "done": true,
     "total_target_pages": 60,
-    "completed_pages": 0,
-    "last_processed_file": null,
-    "last_line_number": 0,
-    "output_file": "./output/source_code.txt"
+    "completed_pages": 60,
+    "output_file": "output/source_code.txt",
+    "docx_file": "output/source_code.docx",
+    "wrapped_stream_lines": 5798,
+    "front_segment": "换行流 1~1500（止于 hymn_display.dart）",
+    "back_segment": "换行流 4299~5798（起于 my_playlists_panel.dart 第353清洗行）",
+    "assertions": "3000物理行/0空行/0注释残留/0敏感命中/80 import行/结构级校验(9pt·EXACT 14.5pt·A4·2cm·页眉·PAGE域)全过",
+    "verify_limitation": "本机无 Word/LibreOffice 本体，页数=60 为几何推导(728.5÷14.5=50.24 行/页×60)；COM 实测已尝试不可行，需在装有 Word 的电脑复核并导出 PDF"
   },
   "step3_status": {
     "completed_sections": [],
-    "pending_sections": ["引言", "运行环境", "软件安装与初始化", "核心功能操作说明", "异常处理与常见问题"]
+    "pending_sections": [
+      "引言",
+      "运行环境",
+      "软件安装与初始化",
+      "核心功能操作说明",
+      "异常处理与常见问题"
+    ]
   },
   "step4_status": {
     "done": false,
     "risk_points_found": []
   },
   "step2_file_plan": [
-    {"file": "lib/main.dart", "cleaned_lines": 33, "done": false},
-    {"file": "lib/app.dart", "cleaned_lines": 228, "done": false},
-    {"file": "lib/screens/home_screen.dart", "cleaned_lines": 954, "done": false},
-    {"file": "lib/widgets/hymn_display.dart", "cleaned_lines": 676, "done": false},
-    {"file": "lib/widgets/hymn_search_dialog.dart", "cleaned_lines": 203, "done": false},
-    {"file": "lib/widgets/playlist_dialog.dart", "cleaned_lines": 455, "done": false},
-    {"file": "lib/widgets/user_manual_dialog.dart", "cleaned_lines": 521, "done": false},
-    {"file": "lib/widgets/panels/left_panel_base.dart", "cleaned_lines": 143, "done": false},
-    {"file": "lib/widgets/panels/hymn_list_panel.dart", "cleaned_lines": 408, "done": false},
-    {"file": "lib/widgets/panels/default_playlists_panel.dart", "cleaned_lines": 320, "done": false},
-    {"file": "lib/widgets/panels/my_playlists_panel.dart", "cleaned_lines": 385, "done": false},
-    {"file": "lib/services/app_paths.dart", "cleaned_lines": 65, "done": false},
-    {"file": "lib/services/app_state_service.dart", "cleaned_lines": 148, "done": false},
-    {"file": "lib/services/audio_service.dart", "cleaned_lines": 332, "done": false},
-    {"file": "lib/services/chinese_convert_native.dart", "cleaned_lines": 20, "done": false},
-    {"file": "lib/services/chinese_convert_service.dart", "cleaned_lines": 18, "done": false},
-    {"file": "lib/services/chinese_convert_stub.dart", "cleaned_lines": 3, "done": false},
-    {"file": "lib/services/hymn_search_service.dart", "cleaned_lines": 73, "done": false},
-    {"file": "lib/services/log_service.dart", "cleaned_lines": 123, "done": false},
-    {"file": "lib/services/sqlite_repository.dart", "cleaned_lines": 238, "done": false},
-    {"file": "lib/theme/app_fonts.dart", "cleaned_lines": 36, "done": false},
-    {"file": "lib/theme/app_palette.dart", "cleaned_lines": 234, "done": false},
-    {"file": "lib/models/hymn.dart", "cleaned_lines": 90, "done": false},
-    {"file": "lib/models/hymn_category.dart", "cleaned_lines": 33, "done": false},
-    {"file": "lib/models/playlist.dart", "cleaned_lines": 41, "done": false}
+    {
+      "file": "lib/main.dart",
+      "cleaned_lines": 33,
+      "done": true
+    },
+    {
+      "file": "lib/app.dart",
+      "cleaned_lines": 228,
+      "done": true
+    },
+    {
+      "file": "lib/screens/home_screen.dart",
+      "cleaned_lines": 954,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/hymn_display.dart",
+      "cleaned_lines": 676,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/hymn_search_dialog.dart",
+      "cleaned_lines": 203,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/playlist_dialog.dart",
+      "cleaned_lines": 455,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/user_manual_dialog.dart",
+      "cleaned_lines": 521,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/panels/left_panel_base.dart",
+      "cleaned_lines": 143,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/panels/hymn_list_panel.dart",
+      "cleaned_lines": 408,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/panels/default_playlists_panel.dart",
+      "cleaned_lines": 320,
+      "done": true
+    },
+    {
+      "file": "lib/widgets/panels/my_playlists_panel.dart",
+      "cleaned_lines": 385,
+      "done": true
+    },
+    {
+      "file": "lib/services/app_paths.dart",
+      "cleaned_lines": 65,
+      "done": true
+    },
+    {
+      "file": "lib/services/app_state_service.dart",
+      "cleaned_lines": 148,
+      "done": true
+    },
+    {
+      "file": "lib/services/audio_service.dart",
+      "cleaned_lines": 332,
+      "done": true
+    },
+    {
+      "file": "lib/services/chinese_convert_native.dart",
+      "cleaned_lines": 20,
+      "done": true
+    },
+    {
+      "file": "lib/services/chinese_convert_service.dart",
+      "cleaned_lines": 18,
+      "done": true
+    },
+    {
+      "file": "lib/services/chinese_convert_stub.dart",
+      "cleaned_lines": 3,
+      "done": true
+    },
+    {
+      "file": "lib/services/hymn_search_service.dart",
+      "cleaned_lines": 73,
+      "done": true
+    },
+    {
+      "file": "lib/services/log_service.dart",
+      "cleaned_lines": 123,
+      "done": true
+    },
+    {
+      "file": "lib/services/sqlite_repository.dart",
+      "cleaned_lines": 246,
+      "done": true
+    },
+    {
+      "file": "lib/theme/app_fonts.dart",
+      "cleaned_lines": 36,
+      "done": true
+    },
+    {
+      "file": "lib/theme/app_palette.dart",
+      "cleaned_lines": 234,
+      "done": true
+    },
+    {
+      "file": "lib/models/hymn.dart",
+      "cleaned_lines": 90,
+      "done": true
+    },
+    {
+      "file": "lib/models/hymn_category.dart",
+      "cleaned_lines": 33,
+      "done": true
+    },
+    {
+      "file": "lib/models/playlist.dart",
+      "cleaned_lines": 41,
+      "done": true
+    }
   ],
   "pending_tasks": [
-    "等待用户确认 output/material_plan.md（§3 三项拍板 + §4 切分映射），确认后进入 Step 2",
-    "Step 2：clean.py 增设 build 模式（按 step2_file_plan 顺序清洗拼接→前1500+后1500→断言→output/source_code.txt）",
-    "Step 2 完成后：Step 3 手册生成（素材源 user_manual_dialog.dart + docs/ 交叉印证）"
+    "Step 3: 生成 output/user_manual_draft.md + user_manual.docx（素材源 user_manual_dialog.dart + docs/ 交叉印证，截图占位符待人工补图）",
+    "Step 4: 一致性自检报告（材料 vs progress_state/计划）",
+    "人工: 装有 Word 的电脑打开 docx 逐页复核 50 行并导出 源代码.pdf（或 winget 安装 LibreOffice 无头转换）"
   ],
   "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。"
 }
