@@ -1,7 +1,7 @@
 {
   "project_name": "EchoHymn 赞美诗播放软件",
   "version": "V1.5",
-  "current_step": "Step 1",
+  "current_step": "Step 2（Step 1 已完成，《材料准备计划》待用户确认）",
   "declaration_facts": {
     "dev_complete_date": "2026-09-05",
     "published": true,
@@ -23,8 +23,15 @@
     "strategy": ">3000 行 → 前30页+后30页（每页50行，共60页）"
   },
   "step1_status": {
-    "done": false,
-    "plan_output": "output/material_plan.md"
+    "done": true,
+    "plan_output": "output/material_plan.md",
+    "plan_date": "2026-09-06",
+    "code_baseline_commit": "73b0d20",
+    "cleaned_total": 5780,
+    "equivalent_pages": 115,
+    "strategy": "前30页(流1-1500)+后30页(流4281-5780)",
+    "sensitive_scan": "0命中",
+    "cleaner_verified": "注释零残留/空行零残留/http字符串保留3处完整 三项校验通过"
   },
   "step2_status": {
     "total_target_pages": 60,
@@ -41,10 +48,37 @@
     "done": false,
     "risk_points_found": []
   },
-  "step2_file_plan": [],
+  "step2_file_plan": [
+    {"file": "lib/main.dart", "cleaned_lines": 33, "done": false},
+    {"file": "lib/app.dart", "cleaned_lines": 228, "done": false},
+    {"file": "lib/screens/home_screen.dart", "cleaned_lines": 954, "done": false},
+    {"file": "lib/widgets/hymn_display.dart", "cleaned_lines": 676, "done": false},
+    {"file": "lib/widgets/hymn_search_dialog.dart", "cleaned_lines": 203, "done": false},
+    {"file": "lib/widgets/playlist_dialog.dart", "cleaned_lines": 455, "done": false},
+    {"file": "lib/widgets/user_manual_dialog.dart", "cleaned_lines": 521, "done": false},
+    {"file": "lib/widgets/panels/left_panel_base.dart", "cleaned_lines": 143, "done": false},
+    {"file": "lib/widgets/panels/hymn_list_panel.dart", "cleaned_lines": 408, "done": false},
+    {"file": "lib/widgets/panels/default_playlists_panel.dart", "cleaned_lines": 320, "done": false},
+    {"file": "lib/widgets/panels/my_playlists_panel.dart", "cleaned_lines": 385, "done": false},
+    {"file": "lib/services/app_paths.dart", "cleaned_lines": 65, "done": false},
+    {"file": "lib/services/app_state_service.dart", "cleaned_lines": 148, "done": false},
+    {"file": "lib/services/audio_service.dart", "cleaned_lines": 332, "done": false},
+    {"file": "lib/services/chinese_convert_native.dart", "cleaned_lines": 20, "done": false},
+    {"file": "lib/services/chinese_convert_service.dart", "cleaned_lines": 18, "done": false},
+    {"file": "lib/services/chinese_convert_stub.dart", "cleaned_lines": 3, "done": false},
+    {"file": "lib/services/hymn_search_service.dart", "cleaned_lines": 73, "done": false},
+    {"file": "lib/services/log_service.dart", "cleaned_lines": 123, "done": false},
+    {"file": "lib/services/sqlite_repository.dart", "cleaned_lines": 238, "done": false},
+    {"file": "lib/theme/app_fonts.dart", "cleaned_lines": 36, "done": false},
+    {"file": "lib/theme/app_palette.dart", "cleaned_lines": 234, "done": false},
+    {"file": "lib/models/hymn.dart", "cleaned_lines": 90, "done": false},
+    {"file": "lib/models/hymn_category.dart", "cleaned_lines": 33, "done": false},
+    {"file": "lib/models/playlist.dart", "cleaned_lines": 41, "done": false}
+  ],
   "pending_tasks": [
-    "Step 1：按 code_scope 扫描 hymn_app 生成《材料准备计划》(output/material_plan.md) 供用户确认，确认后进 Step 2",
-    "Step 2 前置：创建 tools_clean/ 确定性清洗脚本（去注释/空行、保留 import、50 行分页断言）"
+    "等待用户确认 output/material_plan.md（§3 三项拍板 + §4 切分映射），确认后进入 Step 2",
+    "Step 2：clean.py 增设 build 模式（按 step2_file_plan 顺序清洗拼接→前1500+后1500→断言→output/source_code.txt）",
+    "Step 2 完成后：Step 3 手册生成（素材源 user_manual_dialog.dart + docs/ 交叉印证）"
   ],
   "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。"
 }

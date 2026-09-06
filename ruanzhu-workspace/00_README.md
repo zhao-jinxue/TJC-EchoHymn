@@ -30,8 +30,8 @@
 - [x] 2026-09-06：工作区建立（01~04 文档）；01 严谨性修订（import 保留、脱敏方式、统计口径、Step 2 脚本化）；02 补全存档/读档 SOP
 - [x] 决策落定：全称=EchoHymn 赞美诗播放软件 / 版本=V1.5 / 统计口径=排除数据表与模板 C++ / 发表状态=已发表（2026-09-05）
 - [x] 创建 `progress_state.json`（按 02 模板，2026-09-06 已建，current_step=Step 1）
-- [ ] Step 1：资产盘点与《材料准备计划》
-- [ ] Step 2：`tools_clean/` 脚本 + `output/source_code.txt`
+- [x] Step 1：资产盘点与《材料准备计划》（2026-09-06 完成：清洗后 5780 行→前30+后30页方案，`output/material_plan.md` **待用户确认**）
+- [ ] Step 2：`clean.py` build 模式 + `output/source_code.txt`（3000 行 + 断言）
 - [ ] Step 3：`output/user_manual_draft.md`（素材优先用 `user_manual_dialog.dart` + docs/）
 - [ ] Step 4：《自检报告》
 - [ ] 人工：Word 排版（04）、截图（需软件实机运行）、CPCC 申报（03）

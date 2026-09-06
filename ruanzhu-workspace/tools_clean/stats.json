@@ -1,0 +1,30 @@
+{
+  "total_cleaned": 5780,
+  "files": {
+    "lib/app.dart": 228,
+    "lib/main.dart": 33,
+    "lib/models/hymn.dart": 90,
+    "lib/models/hymn_category.dart": 33,
+    "lib/models/playlist.dart": 41,
+    "lib/screens/home_screen.dart": 954,
+    "lib/services/app_paths.dart": 65,
+    "lib/services/app_state_service.dart": 148,
+    "lib/services/audio_service.dart": 332,
+    "lib/services/chinese_convert_native.dart": 20,
+    "lib/services/chinese_convert_service.dart": 18,
+    "lib/services/chinese_convert_stub.dart": 3,
+    "lib/services/hymn_search_service.dart": 73,
+    "lib/services/log_service.dart": 123,
+    "lib/services/sqlite_repository.dart": 238,
+    "lib/theme/app_fonts.dart": 36,
+    "lib/theme/app_palette.dart": 234,
+    "lib/widgets/hymn_display.dart": 676,
+    "lib/widgets/hymn_search_dialog.dart": 203,
+    "lib/widgets/panels/default_playlists_panel.dart": 320,
+    "lib/widgets/panels/hymn_list_panel.dart": 408,
+    "lib/widgets/panels/left_panel_base.dart": 143,
+    "lib/widgets/panels/my_playlists_panel.dart": 385,
+    "lib/widgets/playlist_dialog.dart": 455,
+    "lib/widgets/user_manual_dialog.dart": 521
+  }
+}
