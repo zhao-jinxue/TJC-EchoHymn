@@ -1,7 +1,7 @@
 {
   "project_name": "EchoHymn 赞美诗播放软件",
   "version": "V1.5",
-  "current_step": "Step 3（Step 2 完成：60 页源代码材料双产物已出，待指令启动手册生成）",
+  "current_step": "Step 4（Step 3 完成：手册 md+docx 双产物已出，待指令启动一致性自检）",
   "declaration_facts": {
     "dev_complete_date": "2026-09-05",
     "published": true,
@@ -46,14 +46,18 @@
     "verify_limitation": "本机无 Word/LibreOffice 本体，页数=60 为几何推导(728.5÷14.5=50.24 行/页×60)；COM 实测已尝试不可行，需在装有 Word 的电脑复核并导出 PDF"
   },
   "step3_status": {
-    "completed_sections": [],
-    "pending_sections": [
+    "done": true,
+    "output_md": "output/user_manual_draft.md",
+    "output_docx": "output/user_manual.docx",
+    "sections_completed": [
       "引言",
       "运行环境",
       "软件安装与初始化",
       "核心功能操作说明",
       "异常处理与常见问题"
-    ]
+    ],
+    "structure": "H1×5 H2×21 截图占位18 表格4 封面+TOC域+页眉页脚",
+    "pending_human": "18处截图待软件实机补图; Word打开更新目录域并复核页数>=15"
   },
   "step4_status": {
     "done": false,
@@ -187,9 +191,8 @@
     }
   ],
   "pending_tasks": [
-    "Step 3: 生成 output/user_manual_draft.md + user_manual.docx（素材源 user_manual_dialog.dart + docs/ 交叉印证，截图占位符待人工补图）",
-    "Step 4: 一致性自检报告（材料 vs progress_state/计划）",
-    "人工: 装有 Word 的电脑打开 docx 逐页复核 50 行并导出 源代码.pdf（或 winget 安装 LibreOffice 无头转换）"
+    "Step 4: 交叉比对 source_code.txt 与 user_manual_draft.md 输出《自检报告》output/consistency_check.md",
+    "人工: 实机截图18处 + Word复核目录/页数 + 导出 源代码.pdf / 用户手册.pdf"
   ],
   "notes_for_ai": "2026-09-06 决策全部落定（申请人=赵金雪本人，与 LICENSE/CPCC 实名三方一致）。用户补充事实：GitHub 可见最早提交 2026-08-30（当时公开至 v1.4.0）——属历史版本发表，V1.5 申报口径（完成=发表=2026-09-05）经校验仍然自洽，勿因此改期。手册素材优先用 hymn_app/lib/widgets/user_manual_dialog.dart。"
 }

@@ -32,7 +32,7 @@
 - [x] 创建 `progress_state.json`（按 02 模板，2026-09-06 已建，current_step=Step 1）
 - [x] Step 1：资产盘点与《材料准备计划》（2026-09-06 完成：清洗后 5780 行→前30+后30页方案，`output/material_plan.md` **待用户确认**）
 - [x] Step 2：~~`clean.py` build 模式 + `output/source_code.txt`（3000 行 + 断言）~~ ✅ 2026-09-06 完成：txt+docx 双产物 3000 物理行，全断言 + 结构校验通过；**遗留：本机无 Word，页数=60 为几何推导，需在装有 Word 的电脑复核并导出 PDF**
-- [ ] Step 3：`output/user_manual_draft.md`（素材优先用 `user_manual_dialog.dart` + docs/）
+- [x] Step 3：`output/user_manual_draft.md` + `user_manual.docx`（2026-09-06 完成：五大章 26 标题 / 18 截图占位 / 4 表格 / 封面+目录域+页眉页脚，素材源 `user_manual_dialog.dart` + INSTALLER/SESSION_SUMMARY 交叉印证；**遗留：截图待实机补入，Word 复核页数≥15**）
 - [ ] Step 4：《自检报告》
 - [ ] 人工：Word 排版（04）、截图（需软件实机运行）、CPCC 申报（03）
 
