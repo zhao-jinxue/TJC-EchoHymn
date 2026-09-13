@@ -1,11 +1,13 @@
 # EchoHymn 开发会话总结（2026-08-15 ~ 当前）
 
-> 本文档用于**新会话续接开发**。新会话开始时先读本文件 + `docs/UI_CONFIRMATION.md`（最终设计定稿），再 `git log --oneline -15` 查看提交。
-> **目标平台**：Windows（已开发）+ Android（目录就绪）+ OpenHarmony 鸿蒙（目录占位）。**Web 已移除**。
+> 本文档用于**新会话续接开发**。新会话开始时先读本文件 + `docs/Windows/UI_CONFIRMATION.md`（最终设计定稿），再 `git log --oneline -15` 查看提交。
+> **文档目录已按平台归档（2026-09-13）**：Windows 文档在本目录 `docs/Windows/`，Android 在 `docs/Android/`（**Android 开发总结另见 `docs/Android/SESSION_SUMMARY.md`**），鸿蒙 `docs/OpenHarmony/`、苹果 `docs/iOS/`（占位），总索引见 `docs/README.md`。
+> 本文件是 **Windows 主线 + 跨平台工程史**的开发总结；Android 侧的立项、环境搭建与适配记录不写入本文件。
+> **目标平台**：Windows（已开发）+ Android（2026-09-11 立项，阶段 0 环境完成）+ OpenHarmony 鸿蒙（占位）+ 苹果（占位）。**Web 已移除**。
 > **重要**：每次 git commit 到 master/main 会**自动触发 Windows 发布**（见「自动发布机制」章节），请提交后核对 `release/auto-release.log`。
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
-> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（≈33MB 内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（≈3GB 外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/INSTALLER.md` 与 `docs/RELEASE_RULES.md`。
+> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（≈33MB 内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（≈3GB 外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
 > **软著材料（支线，2026-09-06 起）**：申请材料的规范/进度/决策**全部在 `ruanzhu-workspace/`（入口 `00_README.md`）单独维护**，不进入本文件；与开发会话无关，日常开发无需阅读。
 
 ---
@@ -35,13 +37,13 @@
 | `b39967f`~`06c61f5`（v1.2.x 窗口重构） | **基座画面 + 抽屉式侧栏 + 等比缩放**：基座画面物理像素 **850×890**；侧栏改为**抽屉式向两侧扩展**（左 350 / 右 600，窗口整体加宽，基座永远居中）；侧栏状态持久化（`showLeft/showRight`）；窗口**等比缩放**（`Transform.scale` 渲染层缩放，不再依赖布局约束）；最大化感知 + resize 后重建消除时序竞态 |
 | `bb5a0e6`（tag v1.2.1） | **四轮 UI 回归测试收尾（2026-08-29~30）**：回归清单纯测试视角化；27 条 NG 分批修复——窗口单实例保护/最小尺寸随侧栏同步、歌词字号随窗口铺满 + 整体 +4、搜索回车与焦点保持、弹窗 Toast 就地/字数计数/重名检查/删除落库、播放条防抖/版本高亮、just_audio 残留清理 |
 | `9a9452c`（v1.3.0，2026-08-30） | **自定义标题栏 + 全局播放快捷键 + 用户手册**：移除系统标题栏（`WS_CAPTION`），Flutter 顶栏自绘「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组，标题区空白处可拖拽窗口、双击最大化；全局快捷键（空格/Ctrl+P 播放暂停、Ctrl/Alt+方向键切歌、Ctrl+↑↓ 音量、Ctrl+M 静音、F1 手册、通用媒体键）；用户手册弹窗（软件介绍 / 操作说明 / 快捷键说明）；`AudioService` 新增音量/静音控制 |
-| `debcf20`（v1.4.0，2026-08-30） | **五套换肤配色 + 标题栏换肤按钮**：`AppPalette` 语义色槽（19 色）设计 5 套方案（晨光蓝=默认/v1.3.1 一致、暖阳金·圣堂、静谧绿·草木、典雅紫·暮云、暗夜墨·深色）；`AppColors` 由 static const 改为「当前调色板门面」，`EchoHymnApp` 用 `ValueListenableBuilder` 监听重建实现即时换肤；标题栏新增「调色盘」按钮（用户手册左侧）弹出配色菜单；配色持久化 `state.json appTheme`，重启保持；`docs/theme_preview.html` 交互式效果图预览 |
+| `debcf20`（v1.4.0，2026-08-30） | **五套换肤配色 + 标题栏换肤按钮**：`AppPalette` 语义色槽（19 色）设计 5 套方案（晨光蓝=默认/v1.3.1 一致、暖阳金·圣堂、静谧绿·草木、典雅紫·暮云、暗夜墨·深色）；`AppColors` 由 static const 改为「当前调色板门面」，`EchoHymnApp` 用 `ValueListenableBuilder` 监听重建实现即时换肤；标题栏新增「调色盘」按钮（用户手册左侧）弹出配色菜单；配色持久化 `state.json appTheme`，重启保持；`docs/Windows/theme_preview.html` 交互式效果图预览 |
 | `85e5e42`（v1.4.0 完善，2026-08-30） | **分区极浅底色 + 配色全称**：`AppPalette` 扩展 6 个分区底色槽（titleBarBg/topBarBg/rightPanelBg/versionBarBg/playBarBg/statusBarBg，共 25 色）——白主调下各 UI 分区用**同色相极浅色**区分（晨光蓝：标题栏纯白→顶栏/侧栏/版本栏逐级浅蓝→歌词区暖白；暗夜墨：相近深色层次）；配色名改**全称**（晨光蓝 · 经典 等） |
 | `19c1af0`（v1.4.0 完善②，2026-08-30） | **歌词区回归同色相层次**：晨光蓝歌词区 `#FDF8EE`（暖白特例）→`#F2F6FD`（浅蓝白）；静谧绿→`#EEF8F2`、典雅紫→`#F1EBFA`、暖阳金→`#FCF4E0`；微调相邻分区确保层次可辨 |
 | `bd02c90`（v1.4.0 NG 修复，2026-08-30） | **首轮测试 6 项 NG 修复**：① 暗夜墨顶部白带→native `SetAppearance` 随主题设 DWM 深色模式+边框色；② 换肤整树重建→HomeScreen 外包 ValueListenableBuilder；③/④ 暗夜墨改 `ThemeData.dark()`（弹窗输入框深底浅字）；⑤⑥ 左栏列表行 `cardBg→sidebarBg`（实机=预览）；新增 `v140_theme_retest_checklist.md`（R01~R14） |
 | `bc308dd`（v1.4.0 完善③，2026-08-30） | **未选中控件底色 `controlBg`（二轮复测 R03）**：新增语义色槽（26 色），顶栏切换/版本/模式按钮未选中背景由纯白/侧栏色改为**同色相浅色**（晨光蓝 `#EDF3FB` 等 5 套），严格匹配主题；新增 `v140_theme_retest2_checklist.md`（R15~R23） |
 | `d9067a7`（v1.4.0 完善④，2026-08-30） | **未选中控件描边 `controlBorder`（三轮前复测 R15/R16）**：新增语义色槽（27 色），三处未选中按钮加 1px 明显描边（晨光蓝 `#98A1B2` 等 5 套），选中态无边框；PrintWindow 扫描确认矩形描边轮廓；新增 `v140_theme_retest3_checklist.md`（R24~R32） |
-| `v1.4.0`（**tag**，2026-08-30） | **换肤功能验收完成**：三轮复测全部通过（R24a~R25c + R26~R32 全 OK）——5 套配色 / 调色盘即时切换 / `state.json` 持久化 / 深色模式 / 未选中控件描边全部交付；`docs/theme_preview.html` 效果图预览与实机一致 |
+| `v1.4.0`（**tag**，2026-08-30） | **换肤功能验收完成**：三轮复测全部通过（R24a~R25c + R26~R32 全 OK）——5 套配色 / 调色盘即时切换 / `state.json` 持久化 / 深色模式 / 未选中控件描边全部交付；`docs/Windows/theme_preview.html` 效果图预览与实机一致 |
 | `(v1.5.0，2026-08-31)` | **四级字号切换 + 全局等比缩放**：新增 `lib/theme/app_fonts.dart`（`FontSizeLevel` 枚举 ×1.0/×1.3/×1.6/×1.9 + `FontScaleController` ValueNotifier + `AppFonts` 门面）；`MaterialApp.builder` 内 `Transform.scale`（复用 v1.2.x 已验证模式）把整棵 Navigator（含弹窗/菜单/Toast）等比例缩放；标题栏调色盘右侧新增字号按钮（大小写双 T 图标，4 级菜单 + ✓）；**歌词区单独处理**（铺满自适应算法 × 系数）；**左栏宽度随系数缩放**（350×s）并同步 native 窗口扩展，**右栏宽度固定 600 不缩放**（有滚动条）；`state.json fontSizeLevel` 持久化 + 重启恢复；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放；单元测试 `font_size_level_test.dart`。**测试后修复**：F27 音量滑条、F28 最大化盖任务栏（`WM_GETMINMAXINFO` 限工作区）、皮肤名称字重；测试清单入 `test/v150/` 目录 + 复测清单 |
 | `ca00532` + `4ffe140`（v1.5.0 方案 B×2，2026-09-01） | **播放条镜像 Row（音量重叠结构性根治）**：`_buildControls` 由 Stack+leftMax 手工预算改为单一 Row——左 Expanded(音量)/中按钮组/右 Expanded(👥或空配重)，Flex 等分天然隔离，百分比永不与上一首重叠、按钮组含 👥 显隐两态绝对居中；滑轨下限 40/系数防极限溢出。**内置字体 EchoSans**：Noto Sans SC 子集（OFL，Regular/Medium/Bold 三档实体字面各 ~10.3MB，覆盖 CJK 基本区+全角+拉丁），`textTheme.apply(fontFamily)` 全局挂接——根治最大档（×1.9）换肤名称「蓝/经/谧/绿/雅/紫/墨/色」逐字字重不均（雅黑无 Medium + 逐字 fallback 混排），且字体自足不依赖目标机器（迁移/Android/鸿蒙友好）；复测清单 R41/R42 **已全部实机通过（全 OK，v1.5.0 验收完成）** |
 | `(v1.5.x 手册优化，2026-09-01)` | **用户手册重构 + 启动弹出**：① 内容无版本概念（删除「新增」等版本化句式），操作说明按界面区域**全覆盖重写**，首条自述「本手册的打开与关闭」；② **每次启动自动弹出**手册，弹窗底部固定区新增「启动时显示本手册」勾选框（取消→启动不弹，勾回→恢复），`ManualPrefs` 单例 + state.json `manualOnStart` 单键持久化（共用串行写队列）；测试清单 `test/v150/v150_manual_test_cases.md`（M01~M15）——**已实机验收全 OK（2026-09-01）** |
@@ -54,7 +56,7 @@
 | `54ceccc` | **安装包实机体验五类缺陷修复**（2026-09-05）：① 语言文件换**官方 6.5.0+ 简体中文全量 296 键**（自制 57 键补丁版致内置页中英混杂 + `%1` 占位符不替换，删 `make_chinese_isl.py`）；② 誓言页**右键复制/粘贴旁路封堵**（展示框改静态文本 + 输入框 OnChange 非键盘变更回滚守卫——Pascal Script 无菜单 hook 能力下的等效方案）；③ 环境检查「重新检测」按钮超 Surface 被裁 + "约需 约"重复修复；④ `DefaultGroupName` 显式（Inno 6.7 会把 `(Default)` 哨兵值建成字面文件夹）；⑤ icacls 中文状态文案；静默装/卸全链路复验通过 |
 | `15082d5` | **主体/素材双载荷拆分**（2026-09-05）：根治"双击→UAC 弹窗 ~10 秒空档"（Defender/SmartScreen 对 3GB 未签名大文件的系统级扫描）——安装包 3.2GB **瘦身至 32.7MB（1/100）**；`Hymn_Downloads`（2.96GB）拆为外置加密数据文件 `EchoHymn_Data_v<版本>.7z` 单独分发；环境检查新增**素材文件同目录就位**检测（缺失 ✘ 阻断 + 重新检测联动）；安装改两段解包（主程序秒级 → 素材直接从同级目录解密释放，不再占用系统盘临时空间，磁盘口径放宽：系统盘仅 2GB 缓冲）；构建脚本双载荷 + 双 SHA256；冒烟三项全过（缺素材阻断 / 完整安装 3040 文件+ACL / 静默卸载数据保留） |
 | `88d396e`（v1.5.2 功能，2026-09-05） | **谱面图片宽度驱动缩放 + 滚轮语义定稿 + 手册三级分层**：`_ScoreImageView` 替换 `InteractiveViewer`（默认 maxScale=2.5 令纵向长图两侧空白无法利用）——最小宽=初始 contain 显示宽、**最大宽=歌词区当前显示宽**（`LayoutBuilder` 实时取值，缩放上限随窗口/字号自动跟随），高度按宽高比同步，超高出常显纵向滚动条，切歌自动复位缩放+滚动位置；**滚轮两条固定规则（用户定稿）**：Ctrl+滚轮=缩放、滚轮=滚动（双响应根治：`PointerSignalResolver` 先注册者赢 + 认领 Listener 置于滚动内容内部）；手册升级「▶小节 + • 二级圆点 + – 三级短横」三级结构（`GuideLine` 模型，全文 9 处多情况混排拆分）；快捷键表 7→12 行（补 Esc 关闭手册 + 滚轮操作）；附带排查定案："手册未更新"=旧进程（Windows Dart 代码在 `data\app.so` 非 exe，rebuild 后必须重启） |
-| `e22d8b4`（v1.5.2 稳健性，2026-09-05） | **全局 Bug 诊断修复 P1×1 + P2×4**：① `state.json` 双写队列竞态根治（HomeScreen 改用 `AppStateService.shared`，全进程唯一串行写链，消除并发 rename 冲突误删主文件/字段丢失更新）；② 谱面 http 判定统一 `startsWith`；③ 换谱面滚动复位；④ dispose 注销窗口 MethodCallHandler；⑤ `createPlaylist` 单次 INSERT 原子建单（级联 dialog）；回滚检查点 tag `pre-bugfix-2026-09-05`；**报告存档 `docs/BUGFIX_REPORT_2026-09-05.md`** |
+| `e22d8b4`（v1.5.2 稳健性，2026-09-05） | **全局 Bug 诊断修复 P1×1 + P2×4**：① `state.json` 双写队列竞态根治（HomeScreen 改用 `AppStateService.shared`，全进程唯一串行写链，消除并发 rename 冲突误删主文件/字段丢失更新）；② 谱面 http 判定统一 `startsWith`；③ 换谱面滚动复位；④ dispose 注销窗口 MethodCallHandler；⑤ `createPlaylist` 单次 INSERT 原子建单（级联 dialog）；回滚检查点 tag `pre-bugfix-2026-09-05`；**报告存档 `docs/Windows/BUGFIX_REPORT_2026-09-05.md`** |
 | `v1.5.2`（**tag**，2026-09-05） | 🎉 **v1.5.2 验收完成**：谱面缩放交互与手册三级结构经用户实机逐项确认；含 4 个提交（feat 1 + fix 1 + docs 2）；pubspec 升 1.5.2（版本单源） |
 
 **关键文件**：
@@ -62,13 +64,13 @@
 - 面板：`hymn_app/lib/widgets/panels/{left_panel_base, hymn_list_panel, default_playlists_panel, my_playlists_panel}.dart`
 - 协调者：`hymn_app/lib/screens/home_screen.dart`（含自定义标题栏/窗口按钮组）
 - 全局快捷键：`hymn_app/lib/app.dart`（根 `Focus` 包裹 `MaterialApp` + `kNavigatorKey`）
-- 换肤：`hymn_app/lib/theme/app_palette.dart`（`AppPalette`/5 套预设/`ThemeController`）+ `docs/theme_preview.html`（交互式效果图预览）
+- 换肤：`hymn_app/lib/theme/app_palette.dart`（`AppPalette`/5 套预设/`ThemeController`）+ `docs/Windows/theme_preview.html`（交互式效果图预览）
 - 字号：`hymn_app/lib/theme/app_fonts.dart`（`FontSizeLevel`/`FontScaleController`/`AppFonts`）+ `MaterialApp.builder` 全局 `Transform.scale`（app.dart）
 - 用户手册弹窗：`hymn_app/lib/widgets/user_manual_dialog.dart`
 - 搜索：`hymn_app/lib/services/hymn_search_service.dart`（歌名+歌词统一模糊搜索计算）+ `hymn_app/lib/widgets/hymn_search_dialog.dart`（三列结果弹窗）
 - 其他：`widgets/hymn_display.dart`（主内容区，含 `_ScoreImageView` 谱面宽度驱动查看器）、`widgets/playlist_dialog.dart`、`services/{sqlite_repository, audio_service, app_state_service, app_paths, chinese_convert_service, log_service}.dart`、`models/{hymn,hymn_category,playlist}.dart`
 - 窗口控制：`windows/runner/{flutter_window, win32_window}.cpp`（自定义标题栏样式 + `echo_hymn/window` 通道：setClientSize / minimize / maximizeToggle / close / startWindowDrag + 最大化状态推送）
-- **安装包**：`installer/echohymn.iss`（三页向导 + 誓言 OnChange 守卫 + 素材检测两段解包）、`installer/{prepare_staging,make_payload}.py`（双暂存/双载荷）、`installer/payload_manifest.txt`（`tools/scan_db_refs.py` 生成）、`installer/ChineseSimplified.isl`（官方 6.5.0+ 翻译固化）、`tools/build_installer.ps1`（一键双产物 + 双 SHA256）、`docs/RELEASE_RULES.md`（18 条发布规范）、`docs/INSTALLER.md`（用户/发布者指南）
+- **安装包**：`installer/echohymn.iss`（三页向导 + 誓言 OnChange 守卫 + 素材检测两段解包）、`installer/{prepare_staging,make_payload}.py`（双暂存/双载荷）、`installer/payload_manifest.txt`（`tools/scan_db_refs.py` 生成）、`installer/ChineseSimplified.isl`（官方 6.5.0+ 翻译固化）、`tools/build_installer.ps1`（一键双产物 + 双 SHA256）、`docs/Windows/RELEASE_RULES.md`（18 条发布规范）、`docs/Windows/INSTALLER.md`（用户/发布者指南）
 
 ---
 
@@ -87,7 +89,7 @@
 - **换肤**：`AppPalette` 语义色槽（**27 色，含 8 个分区底色 + controlBg/controlBorder 未选中控件底色与描边**）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ `ThemeController`（ValueNotifier）；`AppColors` 为当前调色板门面，整树 `ValueListenableBuilder` 重建即时换肤；`state.json appTheme` 持久化
 - **字号（v1.5.0）**：`FontScaleController`（ValueNotifier）+ `AppFonts` 门面 + `MaterialApp.builder` 内 `Transform.scale` 全局等比缩放（含弹窗/菜单/Toast）；**4 级**：默认 ×1.0 / 中号 ×1.3 / 大号 ×1.6 / 最大 ×1.9（系数集中一处可调）；**歌词区单独处理**（铺满自适应算法 × 系数，大字号滚动阅读）；**左栏宽度随系数缩放**（350×s）并同步 native 窗口扩展，**右栏宽度固定 600 不缩放**（有滚动条，画布内反向缩放抵消）；`state.json fontSizeLevel` 持久化；换肤菜单 `localToGlobal` 加 `ancestor: overlay` 兼容缩放
 - **发布包**：CMake 打包 VC 运行库（MSVCP140/VCRUNTIME140/VCRUNTIME140_1）就近加载
-- **安装包（2026-09-05 起主体/素材拆分）**：Inno Setup 6 向导壳（内嵌主程序载荷 ≈33MB）+ **外置加密素材文件** `EchoHymn_Data_v<版本>.7z`（≈3GB，AES-256 加密头，与主载荷同口令）；两文件同目录分发，环境检查检测素材就位（缺失 ✘ 阻断）；语言文件用官方 6.5.0+ 简体中文全量翻译（仓库固化）；构建 `tools/build_installer.ps1` 一键双产物 + 双 SHA256；发布规范 18 条见 `docs/RELEASE_RULES.md`
+- **安装包（2026-09-05 起主体/素材拆分）**：Inno Setup 6 向导壳（内嵌主程序载荷 ≈33MB）+ **外置加密素材文件** `EchoHymn_Data_v<版本>.7z`（≈3GB，AES-256 加密头，与主载荷同口令）；两文件同目录分发，环境检查检测素材就位（缺失 ✘ 阻断）；语言文件用官方 6.5.0+ 简体中文全量翻译（仓库固化）；构建 `tools/build_installer.ps1` 一键双产物 + 双 SHA256；发布规范 18 条见 `docs/Windows/RELEASE_RULES.md`
 - **依赖已移除**：just_audio / just_audio_windows / audio_session / rxdart / shared_preferences（改原生 state.json）/ flutter_opencc_ffi（改用纯 Dart）
 
 ---
@@ -164,15 +166,15 @@
 
 ### 2026-08-30 会话补充（UI 设计文档最终定稿重写）
 
-1. **重写 `docs/UI_DESIGN_TEMPLATE.md`**：由早期「填写范本」整理为**最终设计规范**（v1.3.1）——补齐 ① 窗口/页面/弹窗清单（主窗口分块、用户手册、个人歌单弹窗、搜索结果弹窗）② 全局组件规范（按钮/窗口按钮/输入框/列表/弹窗/Toast/滚动条/音量控件/分隔线）③ 交互行为（全局快捷键、窗口与标题栏、侧栏抽屉、搜索定位、播放切歌、音量双向同步、状态持久化）④ 主题样式/间距/圆角/图标 ⑤ 响应式 ⑥ 数据方案；清除早期失真项（400px 侧栏/Web/1280×800/OpenCC/三级分类等）。
-2. **重写 `docs/UI_CONFIRMATION.md`**：整合第 1~5 轮修订为**最终定稿确认单**（v1.3.1），以当前实现为准。
+1. **重写 `docs/Windows/UI_DESIGN_TEMPLATE.md`**：由早期「填写范本」整理为**最终设计规范**（v1.3.1）——补齐 ① 窗口/页面/弹窗清单（主窗口分块、用户手册、个人歌单弹窗、搜索结果弹窗）② 全局组件规范（按钮/窗口按钮/输入框/列表/弹窗/Toast/滚动条/音量控件/分隔线）③ 交互行为（全局快捷键、窗口与标题栏、侧栏抽屉、搜索定位、播放切歌、音量双向同步、状态持久化）④ 主题样式/间距/圆角/图标 ⑤ 响应式 ⑥ 数据方案；清除早期失真项（400px 侧栏/Web/1280×800/OpenCC/三级分类等）。
+2. **重写 `docs/Windows/UI_CONFIRMATION.md`**：整合第 1~5 轮修订为**最终定稿确认单**（v1.3.1），以当前实现为准。
 
 ### 2026-08-30 会话补充（v1.4.0 五套换肤配色 + 换肤机制）
 
 1. **配色架构 = 语义色槽**：新建 `lib/theme/app_palette.dart` —— `AppPalette` 定义 19 个**语义色槽**（primary/primaryHover/accent/pageBg/cardBg/sidebarBg/lyricsBg/三级文字/divider/border/success/warning/danger/selectedBg/scrollbarThumb/windowBtnHover），预设 5 套方案：**晨光蓝**（默认，与 v1.3.1 完全一致，零回归）、**暖阳金·圣堂**（圣金黄+橄榄绿）、**静谧绿·草木**（鼠尾草绿+薄荷白）、**典雅紫·暮云**（紫罗兰+青碧）、**暗夜墨·深色**。换肤 = 只换色值，界面引用色槽自动跟随。
 2. **换肤机制 = 静态门面 + 调色板指针**（相比 ThemeExtension 改造量小一个数量级）：`AppColors` 由 static const 改为**读取当前调色板的静态 getter**（全部 170 处引用零改动）；`EchoHymnApp` 外包 `ValueListenableBuilder<AppPalette>` 监听 `ThemeController.instance.notifier`，切色即重建 MaterialApp/ThemeData；被波及的 76 处 `const` 由一次性脚本 `tools/_fix_const.py` 去除（analyze 逐项收敛）。
 3. **入口与持久化**：标题栏新增「调色盘」按钮（用户手册左侧，Tooltip 显示当前配色名）→ `showMenu` 弹出 5 套（主色圆点+名称+当前✓）→ 切换即 `_saveState()` 写入 `state.json` 的 `appTheme`；`main()` 启动时恢复（缺失/非法回退晨光蓝）。
-4. **效果图**：`docs/theme_preview.html` 交互式高保真预览（1800×890 = 基座+双抽屉），5 套一键切换/对比全部/缩放，调色板明细与 Flutter 字段一一对应。
+4. **效果图**：`docs/Windows/theme_preview.html` 交互式高保真预览（1800×890 = 基座+双抽屉），5 套一键切换/对比全部/缩放，调色板明细与 Flutter 字段一一对应。
 5. **硬编码收敛**：滚动条滑块 `#C1C1C1` → `palette.scrollbarThumb`；标题栏按钮悬停灰 `#E5E6EB` → `palette.windowBtnHover`；关闭悬停红 `#E81123` 与「主色底白字」`Colors.white` 保留（5 套配色下均正确）。
 
 ### 2026-08-30 会话追加（v1.4.0 完善：分区极浅底色 + 配色全称）
@@ -236,27 +238,28 @@
 9. ✅ **v1.2.x 窗口重构**：基座画面 850×890、抽屉式侧栏、等比缩放、最大化/竞态处理、日志系统
 10. ✅ **v1.2.1 四轮 UI 回归测试（2026-08-29~30）**：27 条 NG 分批修复并复测归档（窗口/歌词/搜索/弹窗/播放条）
 11. ✅ **v1.3.0 自定义标题栏 + 全局快捷键 + 用户手册（2026-08-30）**：移除系统标题栏，Flutter 自绘窗口按钮组（用户手册在最小化左侧）；通用播放快捷键 + 媒体键；用户手册弹窗（软件介绍/操作说明/快捷键说明）
-12. ✅ **v1.4.0 五套换肤配色 + 换肤按钮（2026-08-30，tag v1.4.0 验收完成）**：语义色槽架构（27 色：8 分区底色 + 未选中控件底色/描边）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ 标题栏调色盘即时切换 + `state.json` 持久化 + 深色模式 + `docs/theme_preview.html` 效果图；三轮测试（v140 首轮 26 项 + 复测 1/2/3）全部通过
+12. ✅ **v1.4.0 五套换肤配色 + 换肤按钮（2026-08-30，tag v1.4.0 验收完成）**：语义色槽架构（27 色：8 分区底色 + 未选中控件底色/描边）+ 5 套方案（晨光蓝·经典/暖阳金·圣堂/静谧绿·草木/典雅紫·暮云/暗夜墨·深色）+ 标题栏调色盘即时切换 + `state.json` 持久化 + 深色模式 + `docs/Windows/theme_preview.html` 效果图；三轮测试（v140 首轮 26 项 + 复测 1/2/3）全部通过
 13. ✅ **v1.5.0 四级字号切换（2026-08-31 功能 + 2026-09-01 方案 B×2）**：`FontScaleController` + `AppFonts` + `MaterialApp.builder` 全局 `Transform.scale`（含弹窗/菜单/Toast）；标题栏字号按钮（大小写双 T，调色盘右侧）+ 4 级菜单；**系数已定稿 1.3/1.6/1.9**；歌词区铺满算法 × 系数；左栏宽 × 系数 + 右栏固定 600；`state.json fontSizeLevel` 持久化。**方案 B×2（09-01）**：播放条镜像 Row（音量百分比与上一首重叠结构性根治，👥 纳入右配重）+ 内置字体 EchoSans（Noto Sans SC 子集真 400/500/700，根治最大档换肤名称逐字字重不均，字体不依赖系统）——**复测清单 R37~R42 已全量实机通过（全 OK），v1.5.0 验收完成**
 13a. ✅ **用户手册优化（2026-09-01，已验收）**：内容重构（无版本概念 + 完整操作说明 + 自述打开方式）+ 启动自动弹出 + 底部「启动时显示本手册」勾选框（`ManualPrefs` + state.json `manualOnStart`）——**M01~M15 实机全 OK**
 13b. ✅ **音量双重衰减修复·方案 A（2026-09-01，已验收）**：系统音量=唯一响度旋钮（滑条为其镜像），播放器增益恒 100%（静音 0），根治输出 v² 叠乘导致的比系统播放器轻 ~12dB——**Q01~Q08 实机全 OK**（Q01 响度 A/B 与系统播放器对齐）
 13c. ✅ **歌名+歌词统一模糊搜索弹窗（v1.5.1，2026-09-02 验收完成）**：中文回车同时搜歌名+歌词进三列弹窗（歌名关键字红粗/歌词关键字主题蓝粗/双命中同行），单击选中双击定位播放；编号搜索不变；单测 18 用例全过 + analyze 0 issues；**首轮实机 S01~S41：35 OK / 6 NG 全部修复**（S02 播后自动清框、S04 ×/删空强制滚回定位行[force+排帧双修]、S09 回焦取消全选折叠光标、S11+S24 取消"回车播第一首"——弹窗双击为唯一播放入口、S27 歌词单元格从关键字所在行开窗显示保证加粗可见[Python 复刻映射表排查定位]）；**复测 R01~R20 全量实机通过（全 OK，tag v1.5.1）**
 13d. ✅ **用户手册操作说明子项化（2026-09-02，已验收）**：13 条整段说明重排为 **12 小节「标题+圆点子项」两级结构**（`_guideSections` 顶层常量：title+lines record），搜索小节同步 v1.5.1 新交互；复测 R20 实机 OK
 13e. ✅ **谱面宽度驱动缩放 + 滚轮语义定稿（v1.5.2，2026-09-05，实机已验收）**：`_ScoreImageView` 替换 InteractiveViewer（最小=初始 contain 宽 / 最大=歌词区当前显示宽，LayoutBuilder 实时跟随窗口与字号，超高出常显滚动条，切歌复位缩放+滚动）；滚轮两条规则——**Ctrl+滚轮=缩放、滚轮=滚动**（PointerSignalResolver 先注册认领 + Listener 置滚动内容内部，根治双响应）；手册三级分层（GuideLine）+ 全文 9 处混排拆分 + 快捷键表 7→12 行
-13f. ✅ **全局 Bug 诊断修复 P1×1 + P2×4（v1.5.2，2026-09-05）**：state.json 双写队列竞态根治（AppStateService.shared 全进程唯一串行链）+ 谱面 http 判定统一 + 换谱面滚动复位 + dispose 注销窗口回调 + 歌单单次 INSERT 原子建单；analyze 0 + 18/18 测试 + Release 构建全过；**修复报告存档 `docs/BUGFIX_REPORT_2026-09-05.md`**（检查点 tag `pre-bugfix-2026-09-05`）
+13f. ✅ **全局 Bug 诊断修复 P1×1 + P2×4（v1.5.2，2026-09-05）**：state.json 双写队列竞态根治（AppStateService.shared 全进程唯一串行链）+ 谱面 http 判定统一 + 换谱面滚动复位 + dispose 注销窗口回调 + 歌单单次 INSERT 原子建单；analyze 0 + 18/18 测试 + Release 构建全过；**修复报告存档 `docs/Windows/BUGFIX_REPORT_2026-09-05.md`**（检查点 tag `pre-bugfix-2026-09-05`）
 14. ✅ **Windows 安装包（2026-09-04~05，`f1a9810`+`54ceccc`+`15082d5`）**：三页向导 + 加密载荷 + 主体/素材双文件拆分（安装包 32.7MB + 素材包 2.96GB）；静默装/卸冒烟全过——**待用户实机 GUI 走查**（UAC 秒弹、素材缺失 ✘ 阻断指引、誓言右键粘贴回滚、两段解包进度）；素材包分发通道（网盘/U盘）待规划；OV 代码签名证书留作预算决策（规则 9，收益已降为消除"未知发布者"提示）
 15. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-16. Android / 鸿蒙 ——**暂不作为当前任务**（目录占位）
+16. ~~Android / 鸿蒙——暂不作为当前任务（目录占位）~~ → **Android 已于 2026-09-11 立项**（阶段 0 环境完成，续接见 `docs/Android/SESSION_SUMMARY.md` + `docs/Android/ANDROID_PLAN.md`）；鸿蒙/苹果仍为占位
 
 ---
 
-## 五、平台规划（2026-08-16 定稿）
+## 五、平台规划（2026-09-13 修订）
 
 | 平台 | 状态 | 说明 |
 | --- | --- | --- |
-| **Windows** | ✅ 已开发 | 桌面优先；**提交后自动发布** |
-| **Android** | 📂 目录就绪，未开发 | 待适配 `AppPaths`/数据库/音频路径 |
-| **OpenHarmony（鸿蒙）** | 📁 占位，未开发 | `ohos/` 仅 README；需 OpenHarmony Flutter SDK |
+| **Windows** | ✅ 已开发 | 桌面优先；**提交后自动发布**（本目录文档全集） |
+| **Android** | 🚧 已立项（2026-09-11），阶段 0 完成 | 文档：`docs/Android/SESSION_SUMMARY.md`（开发总结）+ `docs/Android/ANDROID_PLAN.md`（移植计划） |
+| **OpenHarmony（鸿蒙）** | 📁 占位，未开发 | 接入须知：`docs/OpenHarmony/README.md` |
+| **苹果（iOS/macOS）** | 📁 占位，未立项 | 接入须知：`docs/iOS/README.md` |
 | ~~Web~~ | ❌ 已移除 | `dart:ffi` 在 Web 不可用 |
 
 ---

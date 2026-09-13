@@ -2,6 +2,7 @@
 
 > 目标：将 EchoHymn（Flutter）从 Windows 桌面移植到 Android。**开发环境全家部署到 D 盘**（`D:\Android`），调试载体为官方 Android 模拟器（AVD）。
 > 当前基线：v1.5.2（Windows 已验收）；`hymn_app/android/` 为 `flutter create` 默认工程，尚未做任何适配。
+> **配套文档**：Android 开发总结（里程碑/决策/教训留档，续接必读）见 [SESSION_SUMMARY.md](SESSION_SUMMARY.md)——计划以本文为准，历史与进度口径以总结为准。
 
 ---
 
@@ -65,7 +66,7 @@ D:\Java\jdk-17.0.20.1+1\ # JAVA_HOME（Microsoft OpenJDK 17 ZIP 免安装版）
 - **素材（2.96GB）**：两步走——先内置 10~20 首小样本 assets 跑通 `DeviceFileSource` 播放链路；大包方案（首启解压内置 7z / 后续在线下载）届时另行对齐
 - 音频中文路径在 Android 侧复测；如读外置媒体需 `READ_MEDIA_AUDIO`（API 33+）再补权限流
 
-## 四、阶段 3：UI 移动化（工作量主体，对齐 UI_CONFIRMATION.md 定稿出移动端版式）
+## 四、阶段 3：UI 移动化（工作量主体，对齐 `docs/Windows/UI_CONFIRMATION.md` 定稿出移动端版式）
 
 - 竖屏布局：歌词/谱面区为主体；左栏（诗歌/默认歌单/我的歌单）与右栏改 **overlay 抽屉**；底部播放条常驻
 - 触屏手势替代快捷键：切歌走播放条按钮；谱面双指缩放映射 `_ScoreImageView` 宽度驱动模型

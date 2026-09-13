@@ -58,8 +58,8 @@ MCP 工具定义开销排行：
 
 新会话开始时按以下顺序加载上下文（目的：最小化消耗）：
 
-1. 读 `<项目>/docs/SESSION_SUMMARY.md`（开发总结）——按需全文或关键章节
-2. 读 `<项目>/docs/UI_CONFIRMATION.md` 的「最终定稿」章节（可按需读全文）
+1. 读 `<项目>/docs/Windows/SESSION_SUMMARY.md`（开发总结）——按需全文或关键章节
+2. 读 `<项目>/docs/Windows/UI_CONFIRMATION.md` 的「最终定稿」章节（可按需读全文）
 3. 执行 `git log --oneline -15` 查看提交历史
 
 **禁止**：
@@ -78,7 +78,7 @@ MCP 工具定义开销排行：
 | 全局 `C:\Users\<用户>\.clinerules` | **通用原则**（所有项目生效） | MCP 精简指引、禁止遍历的目录、防中断策略、公共 API key、git 安全守则 |
 | 项目级 `<项目>/.clinerules` | **项目专属**（仅本项目） | 项目启动路径、架构、构建命令、发布机制、遗留任务 |
 
-**铁律**：全局规则里**绝不写项目专属路径**（如 `读 docs/SESSION_SUMMARY.md`），否则所有项目的新会话都会去读不存在的路径、白耗上下文。
+**铁律**：全局规则里**绝不写项目专属路径**（如 `读 docs/Windows/SESSION_SUMMARY.md`），否则所有项目的新会话都会去读不存在的路径、白耗上下文。
 
 ### 方案 4：大文件按需读取（-2~3K）
 
@@ -145,8 +145,8 @@ MCP 工具定义开销排行：
 # <项目名> 项目规则
 
 ## 新会话启动流程（续接开发）
-1. 读 `docs/SESSION_SUMMARY.md`（或同等续接文档）——按需全文或关键章节
-2. 读 `docs/UI_CONFIRMATION.md` 的「最终设计定稿」章节（可按需读全文）
+1. 读 `docs/Windows/SESSION_SUMMARY.md`（或同等续接文档）——按需全文或关键章节
+2. 读 `docs/Windows/UI_CONFIRMATION.md` 的「最终设计定稿」章节（可按需读全文）
 3. 执行 `git log --oneline -15` 查看提交历史
 
 ## 重要须知（项目）
@@ -164,8 +164,8 @@ MCP 工具定义开销排行：
 这是一个全新 Cline 会话。请按最小上下文方式完成启动，严格执行以下指令，不要多做任何事：
 
 1. 只读取这三个内容：
-   a. docs/SESSION_SUMMARY.md（若存在，读全文；目标 ≤ 300 行时）
-   b. docs/UI_CONFIRMATION.md 中「最终设计定稿」章节（用 start_line/end_line 只读该章节，不读全文）
+   a. docs/Windows/SESSION_SUMMARY.md（若存在，读全文；目标 ≤ 300 行时）
+   b. docs/Windows/UI_CONFIRMATION.md 中「最终设计定稿」章节（用 start_line/end_line 只读该章节，不读全文）
    c. 执行 git log --oneline -15
 2. 被禁止的操作（不要做）：
    - 不读 .clinerules / .mcp.json / 全局规则（系统已自动注入）

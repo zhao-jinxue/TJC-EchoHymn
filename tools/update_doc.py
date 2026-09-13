@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import io
 
-p = r'E:\EchoHymn\docs\UI_CONFIRMATION.md'
+p = r'E:\EchoHymn\docs\Windows\UI_CONFIRMATION.md'
 c = io.open(p, encoding='utf-8').read()
 block = '\n\n---\n\n## \u7b2c 3 \u8f6e\u4fee\u8ba2\uff08\u6700\u7ec8\u8bbe\u8ba1\u5b9a\u7a3f 2026-08-16\uff09\n\n' \
         '> \u4ee5\u4e0b\u4e3a\u5f53\u524d\u5b9e\u9645\u5b9e\u73b0\u7684**\u6700\u7ec8\u6807\u51c6**\uff0c\u4ee5\u6b64\u4e3a\u51c6\uff1a\n\n' \

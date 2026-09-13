@@ -42,7 +42,7 @@
 
 ### Step 3: 用户操作手册生成 (User Manual Drafting)
 
-- 读取项目的 README、docs 目录或核心业务逻辑代码。**本项目特殊优势**：应用内已自绘完整用户手册（`hymn_app/lib/widgets/user_manual_dialog.dart`，含软件介绍/操作说明三级结构/快捷键表），必须作为手册"核心功能操作说明"章节的首要素材源，与 `docs/SESSION_SUMMARY.md`、`docs/UI_CONFIRMATION.md`、`docs/INSTALLER.md` 交叉印证。
+- 读取项目的 README、docs 目录或核心业务逻辑代码。**本项目特殊优势**：应用内已自绘完整用户手册（`hymn_app/lib/widgets/user_manual_dialog.dart`，含软件介绍/操作说明三级结构/快捷键表），必须作为手册"核心功能操作说明"章节的首要素材源，与 `docs/Windows/SESSION_SUMMARY.md`、`docs/Windows/UI_CONFIRMATION.md`、`docs/Windows/INSTALLER.md` 交叉印证。
 - 按照以下大纲生成 Markdown 格式的说明书（目标篇幅对应Word约15-20页）：
   1. 引言（编写目的、软件概述）
   2. 运行环境（硬件、软件要求）

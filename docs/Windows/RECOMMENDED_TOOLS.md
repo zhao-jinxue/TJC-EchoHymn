@@ -124,7 +124,7 @@
 | --- | --- |
 | 安装 Flutter SDK | 官网下载 zip，解压并配置 `PATH` |
 | 验证 Flutter | `flutter doctor` |
-| 安装 CMake | `winget install Kitware.CMake`（或直接用 VS 内置，见 `docs/INSTALL_CMAKE.md`） |
+| 安装 CMake | `winget install Kitware.CMake`（或直接用 VS 内置，见 `docs/Windows/INSTALL_CMAKE.md`） |
 | 安装 C++ 编译器 | Visual Studio Build Tools（含 MSVC，Flutter Windows 构建必需） |
 | 下载依赖 | `cd hymn_app && flutter pub get` |
 | 静态分析 | `cd hymn_app && flutter analyze` |

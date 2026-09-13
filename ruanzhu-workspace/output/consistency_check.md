@@ -31,7 +31,7 @@
 | state.json 原子写+唯一串行队列 / logs 保留 7 份 | app_state_service ✓ / log_service `maxFiles = 7`（材料流 2304 行命中）✓ | ✓ |
 | 内置用户手册打开关闭三方式、防叠加 `_isOpen` | user_manual_dialog（中段排除）+ ManualPrefs（home_screen 材料内引用 ✓） | 部分（R5） |
 | 单实例保护（第二实例聚焦已有窗口退出） | `hymn_app/windows/runner/main.cpp:15` `CreateMutexW` | ❌ C++ 按已确认计划不纳入（R6） |
-| 安装双文件/三页向导/两段解包/卸载保留数据 | `installer/echohymn.iss` + `docs/INSTALLER.md` | 安装器不在材料（属另一独立软件/构件，申报对象为 hymn_app 运行时，见 R6 注） |
+| 安装双文件/三页向导/两段解包/卸载保留数据 | `installer/echohymn.iss` + `docs/Windows/INSTALLER.md` | 安装器不在材料（属另一独立软件/构件，申报对象为 hymn_app 运行时，见 R6 注） |
 | 内置字体 EchoSans | app.dart:202（材料内命中） | ✓ |
 
 **结论**：手册所有功能性陈述均可回源到实际代码/文档，无虚构；未实现功能零提及。

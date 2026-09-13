@@ -114,7 +114,7 @@ flutter build windows --release
 
 产物：`hymn_app\build\windows\x64\runner\Release\echo_hymn.exe`
 
-> ✅ **当前架构为纯 Dart**（简繁转换/搜索/状态/日志均在 Dart 层），**不需要**手动构建 `hymn_app/native` 的 C++ 引擎，也无需拷贝任何 DLL。`native/` 目录为历史可选组件，详见 `docs/README.native.md`。
+> ✅ **当前架构为纯 Dart**（简繁转换/搜索/状态/日志均在 Dart 层），**不需要**手动构建 `hymn_app/native` 的 C++ 引擎，也无需拷贝任何 DLL。`native/` 目录为历史可选组件，详见 `docs/README.md`。
 
 ### 2)（可选）构建 C++ 原生引擎（仅恢复 FFI 时）
 
@@ -146,7 +146,7 @@ cmake --build build --config Release
 ### Q3：安装失败 / 被防火墙拦 / 需要管理员权限？
 
 - 安装器需要**管理员权限**（右键 → 以管理员身份运行）。
-- 若下载慢，可在安装器「下载位置」改到其它盘；镜像源可参考 `docs/DEPLOY.md` 中的网络配置说明。
+- 若下载慢，可在安装器「下载位置」改到其它盘；镜像源可参考 `docs/Windows/DEPLOY.md` 中的网络配置说明。
 - 公司网络有代理时，可能需要临时关代理或加白名单 `aka.ms`。
 
 ### Q4：装了 Build Tools 还是报找不到 VS？

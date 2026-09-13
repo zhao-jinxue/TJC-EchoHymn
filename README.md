@@ -107,7 +107,7 @@ EchoHymn/
 ├── tools/                       # publish_windows.ps1（自动发布）· build_installer.ps1（一键双产物+SHA256）·
 │                                # scan_db_refs.py（素材清单）· gen_convert_map.py · git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
-└── docs/                        # 📚 文档（见文末索引；开发环境类在 docs/knowledge/）
+└── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/，总纲见 docs/README.md）
 ```
 
 **架构要点**：左栏三个栏目 = `LeftPanel` 抽象基类（渲染接口 / 公共播放 / `scrollToCurrent` / `restoreSaved` / `syncWithPlayback`）
@@ -119,7 +119,7 @@ EchoHymn/
 ## 🚀 本地开发
 
 **前置（仅首次）**：Flutter SDK · Visual Studio 2022「使用 C++ 的桌面开发」+ Windows SDK · CMake · 开启 Windows 开发者模式
-（步骤见 [docs/knowledge/INSTALL_VISUAL_STUDIO.md](docs/knowledge/INSTALL_VISUAL_STUDIO.md) 与 [docs/knowledge/INSTALL_CMAKE.md](docs/knowledge/INSTALL_CMAKE.md)）
+（步骤见 [docs/Windows/INSTALL_VISUAL_STUDIO.md](docs/Windows/INSTALL_VISUAL_STUDIO.md) 与 [docs/Windows/INSTALL_CMAKE.md](docs/Windows/INSTALL_CMAKE.md)）
 
 ```bash
 cd hymn_app
@@ -145,7 +145,7 @@ flutter build windows --release   # 期望构建成功
 | **绿色目录** | `flutter build windows --release`（或提交自动触发） | `hymn_app\build\windows\x64\runner\Release\` → `release\echohymn_win_<时间戳>_<短哈希>\` | 开发自用 / 内部验证，整目录拷贝即可运行 |
 | **安装包** | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\build_installer.ps1` | `installer\output\EchoHymn_Setup_v<版本>.exe`（≈33 MB）+ `EchoHymn_Data_v<版本>.7z`（≈3 GB）+ 两份 `.sha256` | 对外分发（v1.5.2 实测 32.7 MB / 3035 MB） |
 
-安装包要点（操作手册 [docs/INSTALLER.md](docs/INSTALLER.md)，规范基线 [docs/RELEASE_RULES.md](docs/RELEASE_RULES.md) 18 条）：
+安装包要点（操作手册 [docs/Windows/INSTALLER.md](docs/Windows/INSTALLER.md)，规范基线 [docs/Windows/RELEASE_RULES.md](docs/Windows/RELEASE_RULES.md) 18 条）：
 
 1. **双文件同目录分发**：素材包必须与安装包放在同一文件夹，缺失时首屏环境检查 ✘ 阻断并给指引——主体/素材拆分（2026-09-05）根治了旧 3GB 单文件双击后 5~15 秒的系统扫描空档
 2. **三步向导**：系统兼容性检查（64 位 / Win10+ / Media Foundation / 素材就位 / 磁盘空间 / VC 运行库内置说明）→ 安装位置（默认 `D:\Program Files\EchoHymn`，无 D 盘或空间不足自动回退 C 盘）→ **誓言宣誓**（只读展示禁复制粘贴、逐字键入 + 归一化全文比对，不通过不安装）
@@ -189,16 +189,17 @@ flutter build windows --release   # 期望构建成功
 
 - **单元测试**（`flutter test`）：`hymn_app/test/font_size_level_test.dart`（3）+ `hymn_app/test/hymn_search_service_test.dart`（15）= **18 用例**
 - **实机测试与回归清单**：`hymn_app/test/v120/`~`v151/`（窗口/歌词/搜索/弹窗/播放条 G 系列回归、配色 T/R 系列、字号 R37~R42、手册 M01~M15、音量 Q01~Q08、搜索 S01~S41 + 复测 R01~R20）
-- **发布验证基线**：静默装到非默认目录核对文件数（完整安装 3040 文件）→ 以普通（非提权）权限启动确认 `state.json`/`logs/` 可写 → 静默卸载确认程序文件清空且个人数据保留 → 三页向导人工走查（详见 `docs/RELEASE_RULES.md` 第三节）
-- **诊断存档**：[docs/BUGFIX_REPORT_2026-09-05.md](docs/BUGFIX_REPORT_2026-09-05.md)（P0 零发现 / P1×1 / P2×4，回滚检查点 tag `pre-bugfix-2026-09-05`）
+- **发布验证基线**：静默装到非默认目录核对文件数（完整安装 3040 文件）→ 以普通（非提权）权限启动确认 `state.json`/`logs/` 可写 → 静默卸载确认程序文件清空且个人数据保留 → 三页向导人工走查（详见 `docs/Windows/RELEASE_RULES.md` 第三节）
+- **诊断存档**：[docs/Windows/BUGFIX_REPORT_2026-09-05.md](docs/Windows/BUGFIX_REPORT_2026-09-05.md)（P0 零发现 / P1×1 / P2×4，回滚检查点 tag `pre-bugfix-2026-09-05`）
 
 ## 🗺 平台规划
 
 | 平台 | 状态 | 说明 |
 | --- | --- | --- |
 | **Windows** | ✅ 已开发 | 桌面优先；提交自动发布 + 手动安装包双通道 |
-| **Android** | 📂 目录就绪，未开发 | 需适配 `AppPaths`、数据库与音频路径、系统音量通道（无该通道时自动退化为应用增益） |
-| **OpenHarmony 鸿蒙** | 📁 占位，未开发 | `hymn_app/ohos/` 仅 README；需 OpenHarmony 版 Flutter SDK |
+| **Android** | 🚧 已立项（2026-09-11） | 阶段 0 环境搭建完成（D 盘 SDK/JDK17/AVD，flutter doctor 全绿）；移植计划见 [docs/Android/ANDROID_PLAN.md](docs/Android/ANDROID_PLAN.md) |
+| **OpenHarmony 鸿蒙** | 📁 占位，未开发 | `hymn_app/ohos/` 仅 README；接入须知见 [docs/OpenHarmony/](docs/OpenHarmony/README.md) |
+| **苹果（iOS/macOS）** | 📁 占位，未立项 | 需 macOS + Xcode；接入须知见 [docs/iOS/](docs/iOS/README.md) |
 | ~~Web~~ | ❌ 已移除 | `dart:ffi` 与桌面窗口通道不可用，目录与流水线已删 |
 
 ## 🏷 版本沿革
@@ -217,17 +218,16 @@ flutter build windows --release   # 期望构建成功
 
 ## 📚 文档索引
 
+`docs/` 已按平台归档（2026-09-13），**总纲与完整索引见 [docs/README.md](docs/README.md)**：
+
 | 文档 | 用途 |
 | --- | --- |
-| [docs/SESSION_SUMMARY.md](docs/SESSION_SUMMARY.md) | 📋 开发总结与新会话续接必读（完整里程碑、技术栈、逐会话决策记录、遗留任务） |
-| [docs/UI_CONFIRMATION.md](docs/UI_CONFIRMATION.md) · [docs/UI_DESIGN_TEMPLATE.md](docs/UI_DESIGN_TEMPLATE.md) | 🎨 UI 最终定稿确认单 · 设计规范（组件/交互/主题/间距） |
-| [docs/INSTALLER.md](docs/INSTALLER.md) | 📦 安装与卸载（用户视角）+ 安装包构建（发布者视角） |
-| [docs/RELEASE_RULES.md](docs/RELEASE_RULES.md) | 📐 安装包发布规范 18 条 + 发布前验证基线 |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | 🚚 绿色目录打包与跨机迁移 |
-| [docs/README.native.md](docs/README.native.md) | 🧪 C++ `hymn_engine`（历史可选组件）构建与恢复 FFI 的路径 |
-| [docs/theme_preview.html](docs/theme_preview.html) | 🎨 五套配色交互式效果图预览（与实机像素一致） |
-| [docs/BUGFIX_REPORT_2026-09-05.md](docs/BUGFIX_REPORT_2026-09-05.md) | 🩺 全局诊断修复报告（问题-触发-修复-回滚指引） |
-| [docs/knowledge/](docs/knowledge/) | 🛠 开发环境知识：VS / CMake 安装、推荐工具、Cline 上下文最小化 |
+| [docs/README.md](docs/README.md) | 📍 文档总纲：目录索引 + 平台导航 + 附录（C++ `hymn_engine` 历史组件构建/恢复 FFI 路径） |
+| [docs/Windows/](docs/Windows/) | 🖥 **Windows 开发全集**：开发总结（续接必读）· UI 定稿确认单 · UI 设计规范 · 配色效果图预览 · 打包迁移 · 安装/发布规范 · 诊断报告 · VS/CMake 环境安装 · 推荐工具 |
+| [docs/Android/](docs/Android/) | 🚧 Android 移植计划（立项 2026-09-11）：环境现状、阶段 0~3、风险清单 |
+| [docs/OpenHarmony/](docs/OpenHarmony/README.md) | 📦 鸿蒙占位：接入前提与待办 |
+| [docs/iOS/](docs/iOS/README.md) | 📦 苹果平台占位：接入前提与待办 |
+| [docs/knowledge/](docs/knowledge/) | 🛠 跨平台通用知识（Cline 上下文最小化等） |
 | [docs/sessions/](docs/sessions/) | 🗂 逐会话开发档案（提问 / 解决思路 / 最终结果） |
 
 ## ⚠️ 说明与当前遗留

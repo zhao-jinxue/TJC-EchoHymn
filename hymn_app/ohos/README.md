@@ -11,7 +11,7 @@ EchoHymn 目标平台为：
 | Windows | ✅ 已开发（桌面优先，v1.2.0 起含应用日志） |
 | Android | ✅ 目录已存在（`hymn_app/android/`），后续开发 |
 | OpenHarmony（鸿蒙） | 📁 本目录占位，后续开发 |
-| ~~Web~~ | ❌ 已移除（2026-08-16，详见 docs/SESSION_SUMMARY.md） |
+| ~~Web~~ | ❌ 已移除（2026-08-16，详见 docs/Windows/SESSION_SUMMARY.md） |
 
 ## 后续接入方式（供参考，暂不执行）
 

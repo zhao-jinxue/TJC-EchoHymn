@@ -17,7 +17,7 @@
 
 反正你**必须安装 VS 2026**（才能构建 Windows 桌面应用），而 **VS 2026 的「使用 C++ 的桌面开发」工作负载内置了 CMake**。装完后只需把它加进 PATH 即可，完全不用额外下载任何东西。
 
-### 第 1 步：确认/安装 VS 2026（见 `docs/INSTALL_VISUAL_STUDIO.md`）
+### 第 1 步：确认/安装 VS 2026（见 `docs/Windows/INSTALL_VISUAL_STUDIO.md`）
 
 ### 第 2 步：找到 VS 内置的 cmake.exe
 

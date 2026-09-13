@@ -1,6 +1,6 @@
 # EchoHymn 软著材料工作区（ruanzhu-workspace）
 
-> **定位**：计算机软件著作权申请材料的编辑工作区，与开发主线（`docs/SESSION_SUMMARY.md`）**解耦**——本目录维护自己的进度与决策，`SESSION_SUMMARY.md` 只保留一行指针。会话过程记录仍遵循项目 `.clinerules` 强制流程写入 `docs/sessions/`。
+> **定位**：计算机软件著作权申请材料的编辑工作区，与开发主线（`docs/Windows/SESSION_SUMMARY.md`）**解耦**——本目录维护自己的进度与决策，`SESSION_SUMMARY.md` 只保留一行指针。会话过程记录仍遵循项目 `.clinerules` 强制流程写入 `docs/sessions/`。
 
 ## 文档地图与使用顺序
 
