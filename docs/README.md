@@ -83,7 +83,6 @@ docs/
 ## 附录：C++ 原生引擎构建指南（hymn_engine）
 
 > 本附录即原 `docs/README.native.md`（2026-09-13 并入本文档并更名）。
-
 > ⚠️ **现状说明（2026-08-21）**：当前 Flutter 侧**已不再通过 `dart:ffi` 调用** `hymn_engine.dll`。
 > 简繁转换已改为**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`），搜索/排序全部在 Dart 层完成。
 > `hymn_app/native/` 为**可选的历史组件**，保留源码与原生单元测试，如需恢复 FFI 调用可参考下文。

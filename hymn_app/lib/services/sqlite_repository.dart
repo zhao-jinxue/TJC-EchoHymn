@@ -4,6 +4,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../models/hymn.dart';
 import '../models/hymn_category.dart';
+import '../models/hymn_score.dart';
 import '../models/playlist.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
@@ -319,6 +320,131 @@ class SqliteRepository {
 
   /// sqlite3 的 Row 即实现 Map<String, Object?>，此处仅在需要时转为普通 Map
   Map<String, Object?> _rowToMap(Row row) => Map<String, Object?>.from(row);
+
+  // ---------- 简谱曲谱（hymn_score_* 表，任务 2「曲谱+歌词同步」显示用） ----------
+
+  /// 曲谱三表是否存在（老数据库可能没有 v9 表）
+  bool get hasScoreTables {
+    if (_scoreTablesChecked) return _hasScoreTables;
+    _scoreTablesChecked = true;
+    try {
+      final rows = _db.select(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name IN "
+          "('hymn_score_line','hymn_score_lyric','hymn_score_char')");
+      _hasScoreTables = rows.length == 3;
+    } catch (_) {
+      _hasScoreTables = false;
+    }
+    return _hasScoreTables;
+  }
+
+  bool _scoreTablesChecked = false;
+  bool _hasScoreTables = false;
+
+  /// 库内码位映射（`hymn_codepoint_map`，全量加载一次缓存；优先于 Dart 侧种子）
+  Map<String, String> codepointMap() {
+    if (_codepointMap != null) return _codepointMap!;
+    final out = <String, String>{};
+    try {
+      for (final r in _db.select('SELECT codepoint, sym FROM hymn_codepoint_map')) {
+        final cp = (r['codepoint'] as String?) ?? '';
+        final sym = (r['sym'] as String?) ?? '';
+        if (cp.isNotEmpty && sym.isNotEmpty) out[cp] = sym;
+      }
+    } catch (_) {}
+    _codepointMap = out;
+    return out;
+  }
+
+  Map<String, String>? _codepointMap;
+
+  /// 装载某首歌的曲谱分页（每节一页；副歌行每页重复）
+  ///
+  /// [chorus] 传 `tjc_hymn.chorus` 原文，用于副歌行判定（与爬虫侧
+  /// `show_score.chorus_line_nos` 同判据：只有第 1 节 **且** 与官网副歌某行吻合，
+  /// 双重判据避免把「其他节词缺失」的行误判为副歌）。
+  List<ScorePage> loadScorePages(String hymnNumber, {String chorus = ''}) {
+    if (!hasScoreTables) return const [];
+    final map = codepointMap();
+
+    // 逐字对位（按行分组，char_no 升序 = 字序）
+    final charsByLine = <int, List<ScoreChar>>{};
+    for (final r in _db.select(
+        'SELECT line_no, char_no, syllable, note_index FROM hymn_score_char '
+        'WHERE hymn_number = ? ORDER BY line_no, char_no',
+        [hymnNumber])) {
+      final ln = (r['line_no'] as int?) ?? 0;
+      charsByLine
+          .putIfAbsent(ln, () => [])
+          .add(ScoreChar((r['char_no'] as int?) ?? 0,
+              (r['syllable'] as String?) ?? '', (r['note_index'] as int?) ?? -1));
+    }
+
+    // 各节歌词（行 → 节 → 文本）
+    final lyricsByLine = <int, Map<int, String>>{};
+    for (final r in _db.select(
+        'SELECT line_no, stanza_no, text FROM hymn_score_lyric '
+        'WHERE hymn_number = ? ORDER BY line_no, stanza_no',
+        [hymnNumber])) {
+      final ln = (r['line_no'] as int?) ?? 0;
+      lyricsByLine
+          .putIfAbsent(ln, () => {})[(r['stanza_no'] as int?) ?? 1] =
+          (r['text'] as String?) ?? '';
+    }
+
+    final chorusLines = _chorusLineNos(lyricsByLine, chorus);
+
+    final rows = _db.select(
+        'SELECT line_no, phrase_no, notes, code_seq FROM hymn_score_line '
+        'WHERE hymn_number = ? AND is_primary = 1 ORDER BY line_no',
+        [hymnNumber]);
+    final lines = <ScoreLineRow>[];
+    for (final r in rows) {
+      final ln = (r['line_no'] as int?) ?? 0;
+      final codeSeq = (r['code_seq'] as String?) ?? '';
+      final notes = (r['notes'] as String?) ?? '';
+      var elements = decodeScoreElements(codeSeq, map);
+      // 旧数据无 code_seq 时退化为逐字符（与爬虫侧 decode_elements 同兜底）
+      if (elements.isEmpty) elements = notes.split('');
+      final lyrics = lyricsByLine[ln];
+      if (lyrics == null || lyrics.isEmpty) continue; // 无词乐句（间奏）不占页
+      lines.add(ScoreLineRow(
+        lineNo: ln,
+        phraseNo: (r['phrase_no'] as int?) ?? 0,
+        elements: elements,
+        chars: charsByLine[ln] ?? const [],
+        lyrics: lyrics,
+        isChorus: chorusLines.contains(ln),
+      ));
+    }
+    return buildScorePages(lines: lines);
+  }
+
+  /// 副歌行号集合（判据同爬虫侧 `show_score.chorus_line_nos`）
+  static Set<int> _chorusLineNos(Map<int, Map<int, String>> lyricsByLine, String chorus) {
+    if (chorus.trim().isEmpty) return const {};
+    final targets = <String>{
+      for (final ln in chorus.split('\n')) _normText(ln),
+    }..remove('');
+    if (targets.isEmpty) return const {};
+    final out = <int>{};
+    lyricsByLine.forEach((ln, stanzas) {
+      if (stanzas.length != 1 || !stanzas.containsKey(1)) return;
+      final t = _normText(stanzas[1]!);
+      if (t.isEmpty) return;
+      for (final c in targets) {
+        if (t == c || (t.length >= 6 && (t.contains(c) || c.contains(t)))) {
+          out.add(ln);
+          break;
+        }
+      }
+    });
+    return out;
+  }
+
+  /// 归一化：只留字母/数字（去标点与空白），供副歌逐行比对
+  static String _normText(String s) =>
+      s.replaceAll(RegExp(r'[^\p{L}\p{N}]', unicode: true), '');
 
   void dispose() {
     _db.dispose();

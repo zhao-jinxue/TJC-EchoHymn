@@ -85,6 +85,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _currentAudioVersion = '鋼琴版';
   String _currentDisplayMode = 'lyrics';
 
+  /// 歌词翻页模式（true=自动跟随播放进度 / false=手动按钮翻页）
+  bool _lyricAutoMode = true;
+
   // 恢复锚点（传给左栏面板自动恢复）
   AppState? _anchor;
 
@@ -159,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             state.audioVersion.isEmpty ? '鋼琴版' : state.audioVersion;
         _currentDisplayMode =
             state.displayMode.isEmpty ? 'lyrics' : state.displayMode;
+        _lyricAutoMode = state.lyricAutoMode;
         _restoredPlaylistIndex = state.playlistIndex;
         _playSubcategory = state.subcategory.isEmpty ? null : state.subcategory;
         _playPlaylistName =
@@ -307,6 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       appTheme: ThemeController.instance.current.id,
       fontSizeLevel: FontScaleController.instance.current.id,
       manualOnStart: ManualPrefs.instance.showOnStart,
+      lyricAutoMode: _lyricAutoMode,
     );
   }
 
@@ -812,9 +817,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         Expanded(
           child: HymnDisplay(
             audio: audio,
+            repo: repo,
             initialMode: _currentDisplayMode,
+            initialAutoPaging: _lyricAutoMode,
             onModeChanged: (mode) {
               _currentDisplayMode = mode;
+              _saveState();
+            },
+            onAutoPagingChanged: (auto) {
+              _lyricAutoMode = auto;
               _saveState();
             },
             onAudioVersionChanged: (v) {

@@ -8,14 +8,17 @@ import 'package:flutter/services.dart' show HardwareKeyboard;
 
 import '../app.dart';
 import '../models/hymn.dart';
+import '../models/hymn_score.dart';
 import '../services/audio_service.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
+import '../services/sqlite_repository.dart';
 import '../theme/app_fonts.dart';
+import 'score_lyric_view.dart';
 
 /// 歌词显示模式
-enum DisplayMode { lyrics, numbered, staff }
+enum DisplayMode { lyrics, scoreLyric, numbered, staff }
 
 /// 主内容区：版本切换 + 歌词/谱面 + 播放控制
 class HymnDisplay extends StatefulWidget {
@@ -24,18 +27,30 @@ class HymnDisplay extends StatefulWidget {
   /// 初始歌词模式（状态恢复用）
   final String? initialMode;
 
+  /// 初始歌词翻页模式（true=自动，状态恢复用）
+  final bool? initialAutoPaging;
+
   /// 选中歌词模式回调（供上层持久化）
   final ValueChanged<String>? onModeChanged;
 
   /// 选中音频版本回调（供上层持久化）
   final ValueChanged<String>? onAudioVersionChanged;
 
+  /// 手/自动翻页切换回调（供上层持久化）
+  final ValueChanged<bool>? onAutoPagingChanged;
+
+  /// 数据仓库（读 `hymn_score_*` 表渲染「曲谱+歌词」同步视图；可为 null=该模式不可用）
+  final SqliteRepository? repo;
+
   const HymnDisplay({
     super.key,
     required this.audio,
     this.initialMode,
+    this.initialAutoPaging,
     this.onModeChanged,
     this.onAudioVersionChanged,
+    this.onAutoPagingChanged,
+    this.repo,
   });
 
   @override
@@ -44,12 +59,38 @@ class HymnDisplay extends StatefulWidget {
 
 class _HymnDisplayState extends State<HymnDisplay> {
   late DisplayMode _mode;
+
+  /// 当前歌词页（0 基节号）
+  int _page = 0;
+
+  /// 翻页模式：true=自动（跟随播放进度），false=手动（按钮翻页）
+  late bool _auto;
+
+  /// 播放进度 / 播放器上报时长（自动翻页的两个输入）
+  Duration _pos = Duration.zero;
+  Duration _playerDur = Duration.zero;
+
+  /// 上一次分页归属的「诗歌 + 音频版本」键，变化即复位到第 1 页
+  String? _pageKey;
+
+  /// 「曲谱+歌词」模式的当前页数据（按诗歌异步装载，避免 UI 线程同步查库）
+  List<ScorePage> _scorePages = const [];
+
+  /// 曲谱数据装载归属的诗歌编号
+  String? _scoreLoadedFor;
+
+  /// 曲谱装载中（占位显示用）
+  bool _scoreLoading = false;
+
   StreamSubscription? _statusSub;
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
 
   @override
   void initState() {
     super.initState();
     LogService.instance.info(LogTag.ui, '主内容区 HymnDisplay 初始化');
+    _auto = widget.initialAutoPaging ?? true;
     _mode = DisplayMode.values.firstWhere(
       (m) => m.name == widget.initialMode,
       orElse: () => DisplayMode.lyrics,
@@ -59,19 +100,137 @@ class _HymnDisplayState extends State<HymnDisplay> {
       setState(() {});
       if (s == PlayerStatus.error) _showAudioError();
     });
+    // 进度/时长驱动自动翻页。positionStream 每秒推送一次，
+    // **仅当页码真的变化才 setState**——否则歌词/曲谱区每秒无谓整树重建。
+    _posSub = widget.audio.positionStream.listen((p) {
+      if (!mounted) return;
+      final old = _page;
+      _pos = p;
+      _applyAutoPage();
+      if (_page != old) setState(() {});
+    });
+    _durSub = widget.audio.durationStream.listen((d) {
+      if (!mounted) return;
+      final old = _page;
+      _playerDur = d;
+      _applyAutoPage();
+      if (_page != old) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _statusSub?.cancel();
+    _posSub?.cancel();
+    _durSub?.cancel();
     super.dispose();
   }
 
   String get currentModeName => _mode.name;
 
+  // ============ 分页（歌词 / 曲谱歌词共用） ============
+
+  /// 当前诗歌的页数（歌词/曲谱歌词模式各自的分页单位都是「节」）
+  int _pageCount(Hymn? hymn) {
+    if (hymn == null) return 0;
+    if (_mode == DisplayMode.scoreLyric) return _scorePages.length;
+    return hymn.lyricPages.length;
+  }
+
+  /// 异步装载「曲谱+歌词」数据（一诗歌一次；查库在 microtask 中执行，
+  /// 单首仅数十行记录，不阻塞 UI）
+  void _ensureScorePages(Hymn? hymn) {
+    if (hymn == null || _mode != DisplayMode.scoreLyric) return;
+    if (_scoreLoadedFor == hymn.hymnNumber) return;
+    if (_scoreLoading) return;
+    _scoreLoading = true;
+    _scorePages = const [];
+    final repo = widget.repo;
+    final number = hymn.hymnNumber;
+    final chorus = hymn.chorus;
+    Future.microtask(() {
+      List<ScorePage> pages;
+      try {
+        pages = repo?.loadScorePages(number, chorus: chorus) ?? const [];
+      } catch (e) {
+        LogService.instance.error(LogTag.error, '装载曲谱数据失败',
+            detail: '诗歌: $number\n异常: $e');
+        pages = const [];
+      }
+      if (!mounted) return;
+      setState(() {
+        _scoreLoading = false;
+        _scoreLoadedFor = number;
+        _scorePages = pages;
+        _page = 0;
+        _applyAutoPage();
+      });
+    });
+  }
+
+  /// 有效总时长（秒）：优先播放器上报，回退数据库 audio_durations
+  double? _effectiveDuration(Hymn hymn) {
+    final pd = _playerDur.inMilliseconds / 1000.0;
+    if (pd > 5) return pd;
+    return hymn.durationOf(widget.audio.currentAudioVersion) ??
+        (hymn.audioDurations.isEmpty
+            ? null
+            : hymn.audioDurations.values.first);
+  }
+
+  /// 自动模式下按「进度 / (总时长/页数)」重算当前页（**只改状态，不 setState**，
+  /// 由调用方统一 setState，避免嵌套 setState）
+  void _applyAutoPage() {
+    if (!_auto) return;
+    final hymn = widget.audio.currentHymn;
+    if (hymn == null) return;
+    final pages = _pageCount(hymn);
+    if (pages <= 1) return;
+    _page = autoPageIndexFor(
+      position: _pos,
+      totalSeconds: _effectiveDuration(hymn) ?? 0,
+      pageCount: pages,
+    );
+  }
+
+  /// 切歌/切版本 → 复位第 1 页；进度缓存清零（新歌的 position 流尚未推送时不用旧值）
+  void _resetPageIfNeeded(Hymn? hymn) {
+    final key = hymn == null ? null : '${hymn.hymnNumber}|${widget.audio.currentAudioVersion}';
+    if (key == _pageKey) return;
+    _pageKey = key;
+    _page = 0;
+    _pos = Duration.zero;
+    _playerDur = Duration.zero;
+  }
+
+  void _turnPage(int delta) {
+    final hymn = widget.audio.currentHymn;
+    final pages = _pageCount(hymn);
+    if (pages == 0) return;
+    final next = (_page + delta).clamp(0, pages - 1);
+    if (next == _page) return;
+    LogService.instance.info(
+      LogTag.action,
+      delta > 0 ? '歌词翻到下一页（第 ${next + 1} 节）' : '歌词翻到上一页（第 ${next + 1} 节）',
+    );
+    setState(() => _page = next);
+  }
+
+  void _toggleAutoPaging() {
+    setState(() => _auto = !_auto);
+    widget.onAutoPagingChanged?.call(_auto);
+    LogService.instance
+        .info(LogTag.action, _auto ? '歌词翻页切换为自动模式' : '歌词翻页切换为手动模式');
+    if (_auto) {
+      setState(_applyAutoPage);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hymn = widget.audio.currentHymn;
+    _resetPageIfNeeded(hymn);
+    _ensureScorePages(hymn);
     return Container(
       color: AppColors.pageBg,
       child: Column(
@@ -106,6 +265,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
           _buildVoiceButton(hymn),
           const Spacer(),
           _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
+          const SizedBox(width: 4),
+          _modeBtn('曲谱', DisplayMode.scoreLyric, Icons.queue_music),
           const SizedBox(width: 4),
           _modeBtn('简谱', DisplayMode.numbered, Icons.music_note),
           const SizedBox(width: 4),
@@ -221,7 +382,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
   }
 
   void _setMode(DisplayMode mode) {
-    setState(() => _mode = mode);
+    if (mode == _mode) return;
+    setState(() {
+      _mode = mode;
+      _page = 0; // 模式切换回到第一节
+    });
     widget.onModeChanged?.call(mode.name);
     LogService.instance.info(
       LogTag.action,
@@ -263,6 +428,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
     switch (_mode) {
       case DisplayMode.lyrics:
         return _buildLyrics(hymn);
+      case DisplayMode.scoreLyric:
+        return _buildScoreLyric(hymn);
       case DisplayMode.numbered:
         return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
       case DisplayMode.staff:
@@ -270,9 +437,49 @@ class _HymnDisplayState extends State<HymnDisplay> {
     }
   }
 
+  /// 「曲谱+歌词」同步视图（简谱记号 + 逐字对齐歌词，按节翻页）
+  Widget _buildScoreLyric(Hymn hymn) {
+    return Container(
+      color: AppColors.lyricsBg,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (_scorePages.isEmpty) {
+                  return Center(
+                    child: Text(
+                      _scoreLoading ? '曲谱加载中…' : '暂无曲谱数据',
+                      style: TextStyle(
+                          fontSize: 14, color: AppColors.textTertiary),
+                    ),
+                  );
+                }
+                return ScoreLyricPageView(
+                  hymn: hymn,
+                  page: _scorePages[_page.clamp(0, _scorePages.length - 1)],
+                  constraints: constraints,
+                );
+              },
+            ),
+          ),
+          Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
+          if (_scorePages.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 6,
+              child: _buildPageNav(_scorePages.length),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 文字歌词页（**一页 = 一节**：正歌 + 副歌），叠加翻页与手自切换控件
   Widget _buildLyrics(Hymn hymn) {
-    final verses = hymn.verses;
-    if (verses.isEmpty) {
+    final pages = hymn.lyricPages;
+    if (pages.isEmpty) {
       return Center(
         child: Text(
           '暂无歌词',
@@ -280,100 +487,241 @@ class _HymnDisplayState extends State<HymnDisplay> {
         ),
       );
     }
+    final page = pages[_page.clamp(0, pages.length - 1)];
 
     // 歌词显示区：暖白背景（与左右侧栏冷灰形成轻微色差，便于感知区域大小）
     return Container(
       color: AppColors.lyricsBg,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // 以「铺满显示区」为目标计算字号：用内容行数估算高度，再按比例放大字号
-          const pad = 48.0; // 上下留白 24+24
-          // 粗估总行数：标题 + 「第 N 首」 + 每节（节标签 + 歌词行）
-          final verseTexts = verses.where((v) => v.trim().isNotEmpty).toList();
-          int lineCount = 2; // 标题 + 「第 N 首」
-          for (final v in verseTexts) {
-            final lines = v.split('\n').length;
-            lineCount += lines + 1; // + 节标签
-          }
-          // 每行按 1.8 倍字号高度估算
-          final availH = (constraints.maxHeight - pad).clamp(100.0, 4000.0);
-          final availW = constraints.maxWidth - pad;
-          // 行高与字号关系：行距 1.8 → 每行约 2.0 倍字号
-          final maxByH = lineCount > 0 ? availH / (lineCount * 2.0) : 40.0;
-          final maxByW = availW / 14.0; // 每行约 14 个汉字
-          // K10c：字号完全由窗口尺寸决定（maxByH/maxByW）。
-          // 不再用固定 baseBody=18 参与最小值运算——否则窗口放大后
-          // 字号被 18 卡住、无法随窗口增大铺满歌词区。
-          // 优化（2026-08-28）：整体字号 +4，改善最小尺寸界面的可读性。
-          // v1.5.0 字号等级：铺满算法保持为「基准」，结果再乘字号系数——
-          // 全局 Transform.scale 会把画布缩小 1/s 再放大 s，铺满算法若不做
-          // 补偿会自我抵消（歌词不随字号变化）；乘系数后视觉字号 ≈ 基准×系数。
-          // 大字号下歌词会超出显示区 → 由外层 SingleChildScrollView 滚动兜底。
-          final ls = AppFonts.lyricsScale;
-          final bodySize =
-              ([maxByH, maxByW].reduce((a, b) => a < b ? a : b) + 4.0)
-                      .clamp(12.0, 100.0) *
-                  ls;
-          final titleSize = (bodySize * 1.4).clamp(20.0 * ls, 34.0 * ls);
-          final labelSize = (bodySize * 0.7).clamp(12.0 * ls, 16.0 * ls);
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) =>
+                  _buildLyricPage(hymn, page, constraints),
+            ),
+          ),
+          // 右上角：歌词翻页「手动 / 自动」切换按钮（默认自动）
+          Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
+          // 底部中央：上一页 / 页码 / 下一页（仅多页时出现）
+          if (pages.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 6,
+              child: _buildPageNav(pages.length),
+            ),
+        ],
+      ),
+    );
+  }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            // K10c：内容垂直铺满——不足显示区高度时用 spaceBetween 均匀分布
-            // 各节（标题贴顶、结尾贴底），避免「底部大片空白」；超出时正常滚动
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight:
-                    (constraints.maxHeight - pad).clamp(0.0, double.infinity),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    ChineseConvertService.instance.toSimplified(hymn.title),
-                    style: TextStyle(
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '第 ${hymn.hymnNumber} 首',
-                    style: TextStyle(
-                        fontSize: labelSize, color: AppColors.textTertiary),
-                  ),
-                  const SizedBox(height: 24),
-                  for (var i = 0; i < verses.length; i++) ...[
-                    if (verses[i].trim().isNotEmpty) ...[
-                      Text(
-                        '第${i + 1}节',
-                        style: TextStyle(
-                          fontSize: labelSize,
-                          color: AppColors.textTertiary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        ChineseConvertService.instance.toSimplified(verses[i]),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: bodySize,
-                          height: 1.8,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  ],
-                ],
+  /// 单页歌词渲染：字号受「铺满显示区」与「每行不换行」双约束
+  Widget _buildLyricPage(
+      Hymn hymn, LyricPage page, BoxConstraints constraints) {
+    final conv = ChineseConvertService.instance;
+    // 底部翻页条预留高度，避免歌词与控件重叠
+    const padX = 24.0;
+    const padTop = 24.0;
+    const padBottom = 56.0;
+    final availH =
+        (constraints.maxHeight - padTop - padBottom).clamp(100.0, 4000.0);
+    final availW = constraints.maxWidth - padX * 2;
+
+    // 总行数：标题 + 「第 N 首」 + 节标签 + 本页歌词行
+    final lineCount = 3 + page.lineCount;
+    final maxByH = lyricMaxFontByHeight(availH, lineCount);
+    final maxByW = lyricMaxFontByWidth(availW, page.maxDisplayWidth);
+
+    // K10c：字号完全由窗口尺寸决定（maxByH/maxByW），不再被固定 baseBody 卡住
+    // （否则窗口放大后字号被卡死、无法铺满）。整体 +4 改善最小尺寸可读性，
+    // 但**宽度上限是不可破的硬约束**——超过 maxByW 必须回钳，否则长句会被折行
+    // （实测 343 首第 1 节 34 字全角句被折成两行，正是用户要求根治的现象）。
+    // v1.5.0 字号等级：系数只作用于**高度方向**（行数少时字可更大），
+    // 宽度受限的长句不会被放大到折行。
+    final ls = AppFonts.lyricsScale;
+    var size = maxByH * ls;
+    if (size > maxByW) size = maxByW;
+    size = size + 4.0 > maxByW ? maxByW : size + 4.0;
+    final bodySize = size.clamp(12.0, 100.0);
+    final titleSize = (bodySize * 1.4).clamp(16.0, 40.0);
+    final labelSize = (bodySize * 0.7).clamp(11.0, 18.0);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
+      // 内容垂直铺满——不足显示区高度时用 spaceBetween 均匀分布
+      // （标题贴顶、结尾贴底），避免「底部大片空白」；超出时正常滚动
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: (constraints.maxHeight - padTop - padBottom)
+              .clamp(0.0, double.infinity),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              conv.toSimplified(hymn.title),
+              style: TextStyle(
+                fontSize: titleSize,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
-          );
-        },
+            const SizedBox(height: 4),
+            Text(
+              '第 ${hymn.hymnNumber} 首',
+              style:
+                  TextStyle(fontSize: labelSize, color: AppColors.textTertiary),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '第${page.stanzaIndex + 1}节',
+              style: TextStyle(
+                fontSize: labelSize,
+                color: AppColors.textTertiary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final line in page.verseLines)
+              Text(
+                conv.toSimplified(line),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: bodySize,
+                  height: 1.8,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            if (page.hasChorus) ...[
+              const SizedBox(height: 16),
+              Text(
+                '副歌',
+                style: TextStyle(
+                  fontSize: labelSize,
+                  color: AppColors.textTertiary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final line in page.chorusLines)
+                Text(
+                  conv.toSimplified(line),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: bodySize,
+                    height: 1.8,
+                    color: AppColors.primary,
+                  ),
+                ),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+
+  /// 右上角「手动 / 自动」翻页切换按钮（默认自动：歌词随播放进度切节）
+  Widget _buildPagingModeButton() {
+    final auto = _auto;
+    return Material(
+      color: auto ? AppColors.primary : AppColors.controlBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(
+          color: auto ? Colors.transparent : AppColors.controlBorder,
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: _toggleAutoPaging,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                auto ? Icons.autorenew : Icons.touch_app_outlined,
+                size: 14,
+                color: auto ? Colors.white : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                auto ? '自动' : '手动',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: auto ? Colors.white : AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 底部翻页条：◀ 上一页 · 第 N / M 节 · 下一页 ▶
+  ///
+  /// 自带歌词区底色背景：内容超高时翻页条浮在文字之上，无背景会压字难读。
+  Widget _buildPageNav(int total) {
+    final current = _page.clamp(0, total - 1);
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.lyricsBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _pageBtn(
+              icon: Icons.chevron_left,
+              tooltip: current > 0 ? '上一页：第 $current 节' : '已是第一节',
+              enabled: current > 0,
+              onTap: () => _turnPage(-1),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                '第 ${current + 1} / $total 节',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            _pageBtn(
+              icon: Icons.chevron_right,
+              tooltip:
+                  current < total - 1 ? '下一页：第 ${current + 2} 节' : '已是最后一节',
+              enabled: current < total - 1,
+              onTap: () => _turnPage(1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pageBtn({
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return IconButton(
+      icon: Icon(
+        icon,
+        size: 26,
+        color: enabled ? AppColors.textPrimary : AppColors.textTertiary,
+      ),
+      tooltip: tooltip,
+      onPressed: enabled ? onTap : null,
     );
   }
 
