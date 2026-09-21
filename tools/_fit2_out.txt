@@ -1,0 +1,3 @@
+space=0.25em: n=43 R mean=2.031 median=2.117 pstdev=0.159
+space=0.50em: n=43 R mean=1.938 median=2.000 pstdev=0.098
+space=1.00em: n=43 R mean=1.779 median=1.775 pstdev=0.051

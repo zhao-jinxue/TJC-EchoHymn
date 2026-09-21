@@ -118,6 +118,46 @@ void main() {
       expect(normalizeScoreSym('a'), '1^---');
       expect(normalizeScoreSym('5'), '5');
     });
+
+    test('2026-09-19 视觉校准码位：4e5e=高音1、4e5f=低音2、5d29/5d2e=升降号、531c=3', () {
+      // 与库内 hymn_codepoint_map（source=ocr-vision-20260919）同源
+      expect(decodeScoreElements('4e5e', const {}), ['1^']);
+      expect(decodeScoreElements('4e5f', const {}), ['2,']);
+      expect(decodeScoreElements('5d29 4e58', const {}), ['#', '4']);
+      expect(decodeScoreElements('5d2e 4e5d', const {}), ['b', '7']);
+      expect(decodeScoreElements('531c', const {}), ['3']);
+      // 第 1 首第 2 谱行：女高「5 5 5 5 1̇ - 7 5 …」高音1 不再是 ?
+      expect(decodeScoreElements('4e59 4e59 4e59 4e59 4e5e 5d1f', const {}),
+          ['5', '5', '5', '5', '1^', '-']);
+    });
+
+    test('2026-09-20 全库扩量码位：4ef6/4e73=高音4、4f62=高音3（组合字形归一）', () {
+      // PDF 字形目视定案：数字+高音点+时值短线，短线在本记号体系不表征
+      expect(decodeScoreElements('4ef6', const {}), ['4^']);
+      expect(decodeScoreElements('4e73', const {}), ['4^']);
+      expect(decodeScoreElements('4f62', const {}), ['3^']);
+      // 第 240 首 L15 现场：…4̇… 解码不再产生 ?
+      expect(decodeScoreElements('4e5c 4ef6 4e5d', const {}), ['6', '4^', '7']);
+    });
+
+    test('高音/低音记号显示宽度为半角 2 列内（不破坏不换行约束）', () {
+      expect(displayWidth('1^'), 2);
+      expect(displayWidth('2,'), 2);
+      expect(displayWidth('5-'), 2);
+    });
+
+    test('2026-09-20 记号扩展：多码位元素（\'+\' 连接）解码为 音符+修饰', () {
+      expect(decodeScoreElements('4e59+5d3d 5d1f', const {}), ['5.', '-']);
+      expect(decodeScoreElements('4e59+5d3d+602d 4e52', const {}), ['5.|', '1']);
+      expect(decodeScoreElements('4e56+5d49', const {}), ['3_']);
+      expect(decodeScoreElements('4e52+5e6b', const {}), ['1=']);
+      // 组合字形（数字+时值线一体）单码位
+      expect(decodeScoreElements('5e67 5e66', const {}), ['1_', '6_']);
+      // 小节线码位
+      expect(decodeScoreElements('602d', const {}), ['|']);
+      // 多码位元素中未知码位跳过（不产生 ?，避免污染音符）
+      expect(decodeScoreElements('4e59+ffff', const {}), ['5']);
+    });
   });
 
   group('一谱多词：各节按第 1 节列位模板落字', () {
@@ -137,6 +177,21 @@ void main() {
 
     test('字数不足时只落已有字（不越界）', () {
       expect(stanzaCells(chars, '甲', 3), {0: '甲'});
+    });
+
+    test('2026-09-20 标点入库：第 1 节标点行（note_index<0）并入前字', () {
+      const punctChars = [
+        ScoreChar(1, '聖', 0),
+        ScoreChar(2, '，', -1),
+        ScoreChar(3, '哉', 1),
+        ScoreChar(4, '，', -1),
+        ScoreChar(5, '！', -1),
+      ];
+      expect(stanzaCells(punctChars, '', 1), {0: '聖，', 1: '哉，！'});
+    });
+
+    test('2026-09-20 第 k 节文本标点不占列位，后附前字', () {
+      expect(stanzaCells(chars, '耶，稣。尊', 2), {0: '耶，', 2: '稣。', 3: '尊'});
     });
   });
 

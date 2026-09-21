@@ -4,6 +4,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../models/hymn.dart';
 import '../models/hymn_category.dart';
+import '../models/hymn_ppt.dart';
 import '../models/hymn_score.dart';
 import '../models/playlist.dart';
 import 'app_paths.dart';
@@ -418,6 +419,57 @@ class SqliteRepository {
       ));
     }
     return buildScorePages(lines: lines);
+  }
+
+  // ---------- PPT 官方编码曲谱（hymn_ppt / hymn_ppt_line，任务 6） ----------
+
+  /// PPT 两表是否存在（老数据库没有）
+  bool get hasPptTables {
+    if (_pptTablesChecked) return _hasPptTables;
+    _pptTablesChecked = true;
+    try {
+      final rows = _db.select(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name IN "
+          "('hymn_ppt','hymn_ppt_line')");
+      _hasPptTables = rows.length == 2;
+    } catch (_) {
+      _hasPptTables = false;
+    }
+    return _hasPptTables;
+  }
+
+  bool _pptTablesChecked = false;
+  bool _hasPptTables = false;
+
+  /// 装载某首歌的 PPT 编码曲谱（无数据返回 null → 调用方回退 PDF 解码视图）
+  PptDoc? loadPptDoc(String hymnNumber) {
+    if (!hasPptTables) return null;
+    final slides = <PptSlide>[];
+    for (final r in _db.select(
+        'SELECT slide_no, header, page_mark FROM hymn_ppt '
+        'WHERE hymn_number = ? ORDER BY slide_no',
+        [hymnNumber])) {
+      final sn = (r['slide_no'] as int?) ?? 0;
+      final lines = <PptLine>[];
+      for (final l in _db.select(
+          'SELECT score_enc, lyric FROM hymn_ppt_line '
+          'WHERE hymn_number = ? AND slide_no = ? ORDER BY pair_no',
+          [hymnNumber, sn])) {
+        lines.add(PptLine(
+          scoreEnc: (l['score_enc'] as String?) ?? '',
+          lyric: l['lyric'] as String?,
+        ));
+      }
+      if (lines.isEmpty) continue;
+      slides.add(PptSlide(
+        slideNo: sn,
+        header: r['header'] as String?,
+        pageMark: r['page_mark'] as String?,
+        lines: lines,
+      ));
+    }
+    if (slides.isEmpty) return null;
+    return PptDoc(hymnNumber: hymnNumber, slides: slides);
   }
 
   /// 副歌行号集合（判据同爬虫侧 `show_score.chorus_line_nos`）

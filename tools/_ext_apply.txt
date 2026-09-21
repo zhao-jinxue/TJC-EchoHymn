@@ -1,0 +1,33 @@
+PPT 瑙ｆ瀽瀹屾垚: hymns=475 slides=3032 pairs=12674 warnings=612 unknown_char_hymns=0
+  W: 20: lyric_without_score: (浜?
+  W: 20: lyric_without_score: (涓?
+  W: 20: lyric_without_score: (涓?
+  W: 21: lyric_without_score: (浜?
+  W: 21: lyric_without_score: (涓?
+  W: 21: lyric_without_score: (鍥?
+  W: 22: lyric_without_score: (浜?
+  W: 22: lyric_without_score: (涓?
+  W: 22: lyric_without_score: (鍥?
+  W: 22: lyric_without_score: (浜?
+  W: 23: lyric_without_score: (鍥?
+  W: 23: lyric_without_score: (浜?
+  W: 24: lyric_without_score: (鍓瓕)
+  W: 24: lyric_without_score: (浜?
+  W: 24: lyric_without_score: (鍓瓕)
+  W: 24: lyric_without_score: (涓?
+  W: 24: lyric_without_score: (鍓瓕)
+  W: 24: lyric_without_score: (鍥?
+  W: 24: lyric_without_score: (鍓瓕)
+  W: 25: lyric_without_score: (鍓瓕)
+  W: 25: lyric_without_score: (浜?
+  W: 25: lyric_without_score: (鍓瓕)
+  W: 25: lyric_without_score: (涓?
+  W: 25: lyric_without_score: (鍓瓕)
+  W: 26: lyric_without_score: (浜?
+  W: 26: lyric_without_score: (涓?
+  W: 27: lyric_without_score: (鍓瓕)
+  W: 27: lyric_without_score: (浜?
+  W: 27: lyric_without_score: (鍓瓕)
+  W: 27: lyric_without_score: (涓?
+澶囦唤: e:\EchoHymn\data\tjc_hymn.bak-20260921_080223-pre-ppt.db
+鍏ュ簱: hymn_ppt=3032 hymn_ppt_line=12674

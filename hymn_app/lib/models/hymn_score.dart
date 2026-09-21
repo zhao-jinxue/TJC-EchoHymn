@@ -22,6 +22,17 @@ const Map<String, String> kSeedCodepoints = {
   '5d1f': '-', '5d26': '#',
   '4e3c': '5', '5d4c': '0', '5d42': '7', '4e43': '6',
   '4e42': '7', '4ed9': '7', '5d27': 'b',
+  // 2026-09-19 视觉校准新增（与库内 hymn_codepoint_map 同源）
+  '4e5e': '1^', '5d29': '#', '5d2e': 'b', '531c': '3', '4e5f': '2,',
+  '4ef6': '4^', '4f62': '3^', '4e73': '4^',
+  // 2026-09-20 记号扩展（PDF 字形目视定案）：附点/低音点/时值线/小节线/组合字形
+  '5d3d': '.', '5e60': '.', '5e63': '.',
+  '5d39': ',', '5e61': ',', '5e62': ',',
+  '5d49': '_', '5e6c': '_', '5e6b': '=',
+  '5e66': '6_', '5e67': '1_', '5e68': '3_', '5e69': '5_', '5e6a': '2_',
+  '5e6d': '5_', '5e6e': '4_', '5e6f': '4_',
+  '4edc': '|', '5d3a': '|', '5e28': '|', '601d': '|',
+  '6032': '|', '6047': '|', '602d': '|',
 };
 
 /// PPT 合成字形 → 简谱记号（与爬虫侧 `pdf_score._SYM_ALIASES` 同源）
@@ -49,41 +60,69 @@ Map<String, String> _buildSymAliases() {
 /// PPT/PDF 记号 → 简谱记号（未收录者原样返回；`?` 表示该码位未解码）
 String normalizeScoreSym(String sym) => kSymAliases[sym] ?? sym;
 
-/// 码位序列（`code_seq`，空格分隔）→ 元素记号序列
+/// 码位序列（`code_seq`，空格分隔；元素可含 '+' 连接的多码位）→ 元素记号序列
 ///
 /// [dbMap] 为库内 `hymn_codepoint_map`（优先级高于种子，与爬虫入库同序）。
+/// 单码位元素未解码 → `?`；多码位组合元素（音符+修饰）未知修饰 → 跳过。
 List<String> decodeScoreElements(String codeSeq, Map<String, String> dbMap) {
   final cps = codeSeq.trim().isEmpty ? const <String>[] : codeSeq.trim().split(RegExp(r'\s+'));
   if (cps.isEmpty) return const [];
   return [
-    for (final cp in cps)
-      normalizeScoreSym(dbMap[cp] ?? kSeedCodepoints[cp] ?? '?'),
+    for (final tok in cps)
+      if (!tok.contains('+'))
+        normalizeScoreSym(dbMap[tok] ?? kSeedCodepoints[tok] ?? '?')
+      else
+        [
+          for (final cp in tok.split('+'))
+            if ((dbMap[cp] ?? kSeedCodepoints[cp]) != null)
+              normalizeScoreSym(dbMap[cp] ?? kSeedCodepoints[cp]!),
+        ].join(),
   ];
 }
 
-/// 谱行的一行歌词在某节下的「列位（元素序号）→ 字」
+/// 谱行的一行歌词在某节下的「列位（元素序号）→ 显示文本」
 ///
 /// - 第 1 节：直接用 `hymn_score_char` 的几何对位真值；
-/// - 第 k 节：按字序落到第 1 节的列位模板上（一谱多词，各节字数相等）。
+///   标点行（note_index < 0）并入前一字的显示文本（不占列位）；
+/// - 第 k 节：按字序落到第 1 节的列位模板上（一谱多词，各节字数相等），
+///   文本中的标点后附到前一字。
 Map<int, String> stanzaCells(
     List<ScoreChar> chars, String text, int stanzaNo) {
   if (stanzaNo == 1) {
-    return {for (final c in chars) if (c.noteIndex >= 0) c.noteIndex: c.syllable};
+    final out = <int, String>{};
+    int? last;
+    for (final c in chars) {
+      if (c.noteIndex >= 0) {
+        out[c.noteIndex] = c.syllable;
+        last = c.noteIndex;
+      } else if (last != null && c.syllable.isNotEmpty) {
+        out[last] = '${out[last]}${c.syllable}';
+      }
+    }
+    return out;
   }
   final slots = [for (final c in chars) if (c.noteIndex >= 0) c.noteIndex];
-  final syllables = [
-    for (final r in text.runes)
-      if (!_isSpace(r)) String.fromCharCode(r),
-  ];
+  final toks = <String>[];
+  for (final r in text.runes) {
+    if (_isSpace(r)) continue;
+    final ch = String.fromCharCode(r);
+    if (_isCjk(r)) {
+      toks.add(ch);
+    } else if (toks.isNotEmpty) {
+      toks[toks.length - 1] = '${toks.last}$ch';
+    }
+  }
   final out = <int, String>{};
-  for (var i = 0; i < slots.length && i < syllables.length; i++) {
-    out[slots[i]] = syllables[i];
+  for (var i = 0; i < slots.length && i < toks.length; i++) {
+    out[slots[i]] = toks[i];
   }
   return out;
 }
 
 bool _isSpace(int rune) =>
     rune == 0x20 || rune == 0x09 || rune == 0x0A || rune == 0x0D || rune == 0x3000;
+
+bool _isCjk(int rune) => rune >= 0x4e00 && rune <= 0x9fff;
 
 /// 逐字对位记录（`hymn_score_char` 行）
 class ScoreChar {

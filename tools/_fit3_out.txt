@@ -1,0 +1,4 @@
+样本数: 6249
+R: mean=2.014 median=2.000 pstdev=0.070  p10=2.00 p90=2.10
+各首中位 R: n=386 median-of-medians=2.000 pstdev=0.055
+R=2.0 时每行整体偏移(歌词em) 分布: mean=4.38 pstdev=2.37

@@ -1,0 +1,106 @@
+=== hymn 1
+  s1 p1 notes=11 syls=11 R=2.35 C=-4.33 | 1  1    3  3 \ 5/5/\6/6  6\5/3/\ | 圣哉，圣哉，圣哉，全能大主宰！
+  s1 p2 notes=12 syls=12 R=2.29 C=+1.14 |    5.t    5  5 \ !/7  5\2    5  6.t\5/ | 天上、地下、海中万物，颂主高名；
+  s1 p3 notes=12 syls=12 R=2.31 C=+1.31 |    1  1    3  3 \ 5/5/\6.y  6  6\5/5/\ | 圣善、恩慈、诚实，自古永无更改，
+  s1 p4 notes=10 syls=10 R=2.15 C=+9.64 |           !/5  5\6/3/\4  2  2.q\1///|  | 独一的真神，应当受赞美。
+  s2 p1 notes=11 syls=11 R=2.35 C=-4.33 | 1  1    3  3 \ 5/5/\6/6  6\5/3/\ | 圣哉，圣哉，圣哉，群圣皆跪拜！
+  s2 p2 notes=12 syls=12 R=2.13 C=+0.36 |      5.t  5  5\!/7    5\2  5  6.t\5/// | 各以华丽冠冕，捧在宝座面前；
+  s2 p3 notes=12 syls=12 R=2.31 C=+1.31 |    1  1    3  3 \ 5/5/\6.y  6  6\5/5/\ | 权柄、尊贵、荣耀，都归被杀羔羊，
+  s2 p4 notes=10 syls=10 R=2.15 C=+9.64 |           !/5  5\6/3/\4  2  2.q\1///| | 昔在而今在，永在万万年。
+  s3 p1 notes=11 syls=11 R=2.35 C=-4.33 | 1  1    3  3 \ 5/5/\6/6  6\5/3/\ | 圣哉，圣哉，圣哉，鸿恩遍宇内！
+  s3 p2 notes=12 syls=12 R=2.11 C=+0.88 |      5.t  5  5 \ !/7  5\2  5  6.t\5/// | 蒙赎信徒，得瞻救主威赫荣光；
+  s3 p3 notes=12 syls=12 R=2.31 C=+1.31 |    1  1    3  3 \ 5/5/\6.y  6  6\5/5/\ | 公义、真理、审判，谁与圣灵堪比？
+  s3 p4 notes=10 syls=10 R=2.30 C=+1.46 |          ! / 5    5\6/3/\4  2  2.q\1// | 智、仁、勇全备，大哉保惠师。
+=== hymn 12
+  s1 p1 notes=13 syls= 8 R=1.47 C=-1.73 |   tiyi \ 1  1  1  eq \ 68  yiojk   yit | 耶  稣尊名入  我耳  中，
+  s1 p2 notes=12 syls= 8 R=1.32 C=+12.06 |             38 \ 58  58  68  qos \ew   | 好 像和谐美  妙 乐 声；
+  s1 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 愿  传此名，音  大声洪，
+  s1 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 天 上地下都  听。
+  s2 p1 notes=13 syls= 9 R=1.94 C=+1.54 |        tiyi \ 1      1  1      eq \ 68 | 美  哉，大哉，耶  稣我  主﹗
+  s2 p2 notes=12 syls= 8 R=1.80 C=+7.81 |         38 \ 58      58  68      qos \ | 创 造、救赎，权  能 无 比；
+  s2 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 离  去天上，降  生世间，
+  s2 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 舍 身替我受  死。
+  s3 p1 notes=13 syls= 8 R=1.47 C=+5.27 |          tiyi \ 1  1  1  eq \ 68       | 耶  稣尊名至  高、至  荣，
+  s3 p2 notes=12 syls= 8 R=1.32 C=+12.06 |             38 \ 58  58  68  qos \ew   | 超 乎世间古  今 万 名；
+  s3 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 医  我疾病，使  我得福，
+  s3 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 权 能永远常  新。
+  s4 p1 notes=13 syls= 9 R=1.94 C=+1.54 |        tiyi \ 1      1  1      eq \ 68 | 美  哉，大哉，耶  稣我  主﹗
+  s4 p2 notes=12 syls= 8 R=1.80 C=+7.81 |         38 \ 58      58  68      qos \ | 创 造、救赎，权  能 无 比；
+  s4 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 离  去天上，降  生世间，
+  s4 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 舍 身替我受  死。
+  s5 p1 notes=13 syls= 8 R=1.47 C=+5.27 |          tiyi \ 1  1  1  eq \ 68       | 耶  稣尊名至  宝、至  美，
+  s5 p2 notes=12 syls= 8 R=1.32 C=+12.06 |             38 \ 58  58  68  qos \ew   | 世 间珠宝黄  金 难 比；
+  s5 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 赦  我罪愆，使  我得生，
+  s5 p4 notes= 7 syls= 6 R=1.98 C=+12.52 |                 1 \ 68  1  58      yiu | 万 民所望、所  倚。
+  s6 p1 notes=13 syls= 9 R=1.94 C=+1.54 |        tiyi \ 1      1  1      eq \ 68 | 美  哉，大哉，耶  稣我  主﹗
+  s6 p2 notes=12 syls= 8 R=1.80 C=+7.81 |         38 \ 58      58  68      qos \ | 创 造、救赎，权  能 无 比；
+  s6 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 离  去天上，降  生世间，
+  s6 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 舍 身替我受  死。
+  s7 p1 notes=13 syls= 8 R=1.47 C=+5.27 |          tiyi \ 1  1  1  eq \ 68       | 耶  稣尊名至  善、至  圣，
+  s7 p2 notes=12 syls= 8 R=1.32 C=+12.06 |             38 \ 58  58  68  qos \ew   | 好 比园中兰  桂 清 香；
+  s7 p3 notes=10 syls= 8 R=1.56 C=+6.53 |            qe \ 5  5  5  yt \ 3      3 | 能  解世间苦  楚、愁闷，
+  s7 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 使 我免去心  伤。
+  s8 p1 notes=13 syls= 9 R=1.94 C=+1.54 |        tiyi \ 1      1  1      eq \ 68 | 美  哉，大哉，耶  稣我  主﹗
+  s8 p2 notes=12 syls= 8 R=1.80 C=+7.81 |         38 \ 58      58  68      qos \ | 创 造、救赎，权  能 无 比；
+  s8 p3 notes=10 syls= 8 R=1.85 C=+4.70 |            qe \ 5  5  5      yt \ 3  3 | 离  去天上，降  生世间，
+  s8 p4 notes= 7 syls= 6 R=1.61 C=+16.19 |                   1 \ 68  1  58  yiui  | 舍 身替我受  死。
+=== hymn 5
+  s1 p1 notes= 7 syls= 6 R=1.68 C=+12.86 |                   qw \ 3  5  3  2 \ 1/ | 万  有赞美天 父，
+  s1 p2 notes= 7 syls= 6 R=2.08 C=+9.33 |                 we \ 4      6  5  3 \  | 永  在、全能之 神，
+  s1 p3 notes= 9 syls= 8 R=1.66 C=+11.85 |               6 \ 5  3  3  wq \ 3  2   | 天 地万物互  相应声，
+  s1 p4 notes= 8 syls= 6 R=1.43 C=+14.71 |                  58 \ qw  3  5  we \ 1 | 赞 美 祂大尊  名；
+  s2 p1 notes= 6 syls= 6 R=2.78 C=+8.74 |                5 \ !      5  6      7  | 花 草、树木、水 泉、
+  s2 p2 notes= 7 syls= 6 R=2.31 C=+5.91 |               Qu \ 6      !  7      6  | 穹  苍、海洋、山 岭，
+  s2 p3 notes= 9 syls= 8 R=1.66 C=+11.85 |               6 \ 5  3  3  wq \ 3  2   | 述 说祂大权  能荣耀，
+  s2 p4 notes= 8 syls= 6 R=1.43 C=+14.71 |                  58 \ qw  3  5  we \ 1 | 显 明 信实慈  仁。
+  s3 p1 notes= 7 syls= 6 R=1.68 C=+12.86 |                   qw \ 3  5  3  2 \ 1/ | 万  有赞美天 父，
+  s3 p2 notes= 7 syls= 6 R=2.08 C=+9.33 |                 we \ 4      6  5  3 \  | 永  在、全智之 神，
+  s3 p3 notes= 9 syls= 8 R=1.66 C=+11.85 |               6 \ 5  3  3  wq \ 3  2   | 天 地万物齐  声唱诗，
+  s3 p4 notes= 8 syls= 6 R=1.43 C=+14.71 |                  58 \ qw  3  5  we \ 1 | 赞 美 祂大圣  名；
+  s4 p1 notes= 6 syls= 6 R=2.78 C=+8.74 |                5 \ !      5  6      7  | 走 兽、飞鸟、昆 虫、
+  s4 p2 notes= 7 syls= 6 R=2.31 C=+5.91 |               Qu \ 6      !  7      6  | 水  族、牲畜、家 禽，
+  s4 p3 notes= 9 syls= 8 R=1.79 C=+8.93 |             6 \ 5  3  3  wq \ 3      2 | 都 是天父创  造、养活，
+  s4 p4 notes= 8 syls= 6 R=1.43 C=+14.71 |                  58 \ qw  3  5  we \ 1 | 各 从 其类滋  生。
+  s5 p1 notes= 7 syls= 6 R=1.68 C=+12.86 |                   qw \ 3  5  3  2 \ 1/ | 我  心赞美天 父，
+  s5 p2 notes= 7 syls= 6 R=1.68 C=+12.86 |                   we \ 4  6  5  3 \ 2/ | 人  类本为一 家，
+  s5 p3 notes= 9 syls= 8 R=1.66 C=+11.85 |               6 \ 5  3  3  wq \ 3  2   | 虽 然始祖犯  罪堕落，
+  s5 p4 notes= 8 syls= 6 R=1.43 C=+14.71 |                  58 \ qw  3  5  we \ 1 | 神 恩 格外增  加；
+  s6 p1 notes= 6 syls= 6 R=2.00 C=+15.00 |                    5 \ !  5  6  7 \ !/ | 差 遣救主降 世，
+  s6 p2 notes= 7 syls= 6 R=1.68 C=+12.86 |                   Qu \ 6  !  7  6 \ 5/ | 宝  血洗净无 瑕，
+  s6 p3 notes= 9 syls= 8 R=2.20 C=+7.15 |           6 \ 5      3  3      wq \ 3  | 成 圣、称义，出  死入生，
+  s6 p4 notes= 8 syls= 6 R=1.43 C=+14.71 |                  58 \ qw  3  5  we \ 1 | 得 享 天国荣  华。
+=== hymn 90
+  s1 p1 notes=11 syls=11 R=2.24 C=-1.26 |     e  e  e  r \ t  t      t  e \ 4  3 | 有时遇见 苦难，如同 大波 浪，
+  s1 p2 notes=11 syls=11 R=2.37 C=+0.56 |       w  e  r  t \ u  y      t  r \ 3  | 有时忧愁、丧胆，似乎 要绝 望；
+  s1 p3 notes=11 syls=11 R=2.24 C=+0.74 |       e  e  e  r \ t  t      t  e \ 4  | 若把主的 恩典，从头 数一 数，
+  s1 p4 notes=11 syls=11 R=2.00 C=+4.00 |         w  e  r  t \ u  y  t  r \ 3  2 | 必能叫你 立得安慰 而欢 呼。
+  s2 p1 notes= 9 syls= 9 R=2.00 C=+7.00 |            5 . t \ Q  t  t  e \ 4  4 \ | 主 的 恩典样样 都要 数，
+  s2 p2 notes= 9 syls= 9 R=2.00 C=+7.00 |            4 . r \ u  y  t  r \ 3  4 \ | 主 的 恩典都要 记清 楚；
+  s2 p3 notes=10 syls= 9 R=1.68 C=+7.53 |           ! . Q \ u  y ` \u  u  y  y \ | 主 的 恩典  样样都要 数，
+  s2 p4 notes=11 syls=11 R=2.00 C=+4.00 |         Q  Q  u  Q \ u  y  t  r \ 3  2 | 必能叫你 立得安慰 而欢 呼。
+  s3 p1 notes=11 syls=11 R=2.24 C=+0.74 |       e  e  e  r \ t  t      t  e \ 4  | 有时挂念 世事，如同 挑重 担，
+  s3 p2 notes=11 syls=11 R=2.24 C=+0.74 |       w  e  r  t \ u  y      t  r \ 3  | 有时背着 十架，觉得 苦难 堪；
+  s3 p3 notes=11 syls=11 R=2.24 C=+0.74 |       e  e  e  r \ t  t      t  e \ 4  | 若数主的 恩典，疑惑 就飞 去，
+  s3 p4 notes=11 syls=11 R=2.20 C=+1.56 |        w  e  r  t \ u  y  t  r  \  3   | 必能叫你 立时快乐，心平 安。
+  s4 p1 notes= 9 syls= 9 R=2.00 C=+7.00 |            5 . t \ Q  t  t  e \ 4  4 \ | 主 的 恩典样样 都要 数，
+  s4 p2 notes= 9 syls= 9 R=2.00 C=+7.00 |            4 . r \ u  y  t  r \ 3  4 \ | 主 的 恩典都要 记清 楚；
+  s4 p3 notes=10 syls= 9 R=1.68 C=+7.53 |           ! . Q \ u  y ` \u  u  y  y \ | 主 的 恩典  样样都要 数，
+  s4 p4 notes=11 syls=11 R=2.00 C=+4.00 |         Q  Q  u  Q \ u  y  t  r \ 3  2 | 必能叫你 立得安慰 而欢 呼。
+  s5 p1 notes=11 syls=11 R=2.24 C=+0.74 |       e  e  e  r \ t  t      t  e \ 4  | 有时遇到 失败，生活 陷贫 穷，
+  s5 p2 notes=11 syls=11 R=2.00 C=+4.00 |         w  e  r  t \ u  y  t  r \ 3  4 | 但要深信 主的应许 不落 空，
+  s5 p3 notes=11 syls=11 R=2.00 C=+4.00 |         e  e  e  r \ t  t  t  e \ 4  3 | 主所赐的 恩典必够 你需 用，
+  s5 p4 notes=11 syls=11 R=2.37 C=+0.56 |       w  e  r  t \ u  y      t  r \ 3  | 先求神国、神义，缺乏 变裕 丰。
+  s6 p1 notes= 9 syls= 9 R=2.00 C=+7.00 |            5 . t \ Q  t  t  e \ 4  4 \ | 主 的 恩典样样 都要 数，
+  s6 p2 notes= 9 syls= 9 R=2.00 C=+7.00 |            4 . r \ u  y  t  r \ 3  4 \ | 主 的 恩典都要 记清 楚；
+  s6 p3 notes=10 syls= 9 R=1.68 C=+7.53 |           ! . Q \ u  y ` \u  u  y  y \ | 主 的 恩典  样样都要 数，
+  s6 p4 notes=11 syls=11 R=2.00 C=+4.00 |         Q  Q  u  Q \ u  y  t  r \ 3  2 | 必能叫你 立得安慰 而欢 呼。
+  s7 p1 notes=11 syls=11 R=2.24 C=+0.74 |       e  e  e  r \ t  t      t  e \ 4  | 有时遭遇 危险，无论 是大 小，
+  s7 p2 notes=11 syls=11 R=2.23 C=+2.70 |        w  e  r  t \   u  y  t  r \ 3   | 不要惊怕，只靠救主 大能 手；
+  s7 p3 notes=11 syls=11 R=2.24 C=+0.74 |       e  e  e  r \ t  t      t  e \ 4  | 在衪恩翅 之下，祂必 能保 护，
+  s7 p4 notes=11 syls=11 R=2.00 C=+4.00 |         w  e  r  t \ u  y  t  r \ 3  2 | 一路引导 我们平安 见天 父。
+  s8 p1 notes= 9 syls= 9 R=2.00 C=+7.00 |            5 . t \ Q  t  t  e \ 4  4 \ | 主 的 恩典样样 都要 数，
+  s8 p2 notes= 9 syls= 9 R=2.00 C=+7.00 |            4 . r \ u  y  t  r \ 3  4 \ | 主 的 恩典都要 记清 楚；
+  s8 p3 notes=10 syls= 9 R=1.68 C=+7.53 |           ! . Q \ u  y ` \u  u  y  y \ | 主 的 恩典  样样都要 数，
+  s8 p4 notes=11 syls=11 R=2.00 C=+4.00 |         Q  Q  u  Q \ u  y  t  r \ 3  2 | 必能叫你 立得安慰 而欢 呼。
+
+R 统计: n=100 mean=1.907 median=1.942 stdev=0.320 min=1.32 max=2.78
