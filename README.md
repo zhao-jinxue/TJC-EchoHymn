@@ -108,8 +108,10 @@ EchoHymn/
 │                                #    prepare_staging.py / make_payload.py（主体+素材双载荷 AES-256）、
 │                                #    payload_manifest.txt、ChineseSimplified.isl（官方翻译固化）、app_icon.ico、output/（双产物）
 ├── tools/                       # publish_windows.ps1（自动发布）· build_installer.ps1（一键双产物+SHA256）·
-│                                # scan_db_refs.py（素材清单）· gen_convert_map.py ·
-│                                # build_jianpu_font.py（合并印刷简谱字体+字形度量）· git-hooks/post-commit 等
+│                                # gen_convert_map.py · extract_ppt.py（PPT 编码解析）·
+│                                # build_jianpu_font.py（合并印刷简谱字体+字形度量）·
+│                                # score_selftest.py（全库曲谱输出自测）· extract_score_nonstd.py（非标版式简谱补录）·
+│                                # git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
 └── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/，总纲见 docs/README.md）
 ```

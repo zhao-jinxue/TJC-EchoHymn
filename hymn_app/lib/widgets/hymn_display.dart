@@ -450,9 +450,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 if (_scorePages.isEmpty) {
+                  // 无曲谱数据时回退显示该首「简谱」整页图（全库当前仅第 349 首：
+                  // 官网素材是非标版式件，主爬虫管线抽不到，见 tools/extract_score_nonstd.py）
+                  if (!_scoreLoading) {
+                    return _buildScore(hymn.numberedPngPath,
+                        isEmpty: '暂无曲谱数据');
+                  }
                   return Center(
                     child: Text(
-                      _scoreLoading ? '曲谱加载中…' : '暂无曲谱数据',
+                      '曲谱加载中…',
                       style: TextStyle(
                           fontSize: 14, color: AppColors.textTertiary),
                     ),
