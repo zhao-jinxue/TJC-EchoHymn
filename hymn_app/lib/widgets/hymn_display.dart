@@ -8,7 +8,6 @@ import 'package:flutter/services.dart' show HardwareKeyboard;
 
 import '../app.dart';
 import '../models/hymn.dart';
-import '../models/hymn_ppt.dart';
 import '../models/hymn_score.dart';
 import '../services/audio_service.dart';
 import '../services/app_paths.dart';
@@ -16,7 +15,6 @@ import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
 import '../theme/app_fonts.dart';
-import 'ppt_score_view.dart';
 import 'score_lyric_view.dart';
 
 /// 歌词显示模式
@@ -84,9 +82,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 曲谱装载中（占位显示用）
   bool _scoreLoading = false;
 
-  /// PPT 官方编码曲谱（任务 6；非 null 时「曲谱」模式优先用它渲染）
-  PptDoc? _pptDoc;
-
   StreamSubscription? _statusSub;
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<Duration>? _durSub;
@@ -138,10 +133,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 当前诗歌的页数（歌词/曲谱歌词模式各自的分页单位都是「节」）
   int _pageCount(Hymn? hymn) {
     if (hymn == null) return 0;
-    if (_mode == DisplayMode.scoreLyric) {
-      final pptN = _pptDoc?.slides.length ?? 0;
-      return pptN > 0 ? pptN : _scorePages.length;
-    }
+    if (_mode == DisplayMode.scoreLyric) return _scorePages.length;
     return hymn.lyricPages.length;
   }
 
@@ -153,13 +145,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
     if (_scoreLoading) return;
     _scoreLoading = true;
     _scorePages = const [];
-    _pptDoc = null;
     final repo = widget.repo;
     final number = hymn.hymnNumber;
     final chorus = hymn.chorus;
     Future.microtask(() {
       List<ScorePage> pages;
-      PptDoc? ppt;
       try {
         pages = repo?.loadScorePages(number, chorus: chorus) ?? const [];
       } catch (e) {
@@ -167,19 +157,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
             detail: '诗歌: $number\n异常: $e');
         pages = const [];
       }
-      try {
-        ppt = repo?.loadPptDoc(number);
-      } catch (e) {
-        LogService.instance.error(LogTag.error, '装载 PPT 曲谱数据失败',
-            detail: '诗歌: $number\n异常: $e');
-        ppt = null;
-      }
       if (!mounted) return;
       setState(() {
         _scoreLoading = false;
         _scoreLoadedFor = number;
         _scorePages = pages;
-        _pptDoc = ppt;
         _page = 0;
         _applyAutoPage();
       });
@@ -457,11 +439,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   /// 「曲谱+歌词」同步视图（简谱记号 + 逐字对齐歌词，按节翻页）
   ///
-  /// 数据源优先级：**PPT 官方编码曲谱**（`hymn_ppt*`，任务 6，内嵌简谱字体
-  /// 直接渲染编码串）→ 缺失时回退 PDF 解码曲谱（`hymn_score_*`）。
+  /// 对位真值来自 PDF 管线（`hymn_score_char.note_index`，与印刷 PDF 逐字一致）；
+  /// PPT 官方编码（`hymn_ppt*`）已入库备查，其字体 glyph 目前不用于本视图。
   Widget _buildScoreLyric(Hymn hymn) {
-    final pptSlides = _pptDoc?.slides ?? const <PptSlide>[];
-    final nPages = pptSlides.isNotEmpty ? pptSlides.length : _scorePages.length;
     return Container(
       color: AppColors.lyricsBg,
       child: Stack(
@@ -469,20 +449,13 @@ class _HymnDisplayState extends State<HymnDisplay> {
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                if (nPages == 0) {
+                if (_scorePages.isEmpty) {
                   return Center(
                     child: Text(
                       _scoreLoading ? '曲谱加载中…' : '暂无曲谱数据',
                       style: TextStyle(
                           fontSize: 14, color: AppColors.textTertiary),
                     ),
-                  );
-                }
-                if (pptSlides.isNotEmpty) {
-                  return PptScorePageView(
-                    hymn: hymn,
-                    slide: pptSlides[_page.clamp(0, pptSlides.length - 1)],
-                    constraints: constraints,
                   );
                 }
                 return ScoreLyricPageView(
@@ -494,12 +467,12 @@ class _HymnDisplayState extends State<HymnDisplay> {
             ),
           ),
           Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
-          if (nPages > 1)
+          if (_scorePages.length > 1)
             Positioned(
               left: 0,
               right: 0,
               bottom: 6,
-              child: _buildPageNav(nPages),
+              child: _buildPageNav(_scorePages.length),
             ),
         ],
       ),

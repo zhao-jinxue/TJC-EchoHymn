@@ -147,6 +147,8 @@ class ScoreLyricPageView extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: lyricSize,
                                   height: 1.15,
+                                  fontFamily: 'EchoKai',
+                                  fontFamilyFallback: const ['KaiTi', 'EchoSans'],
                                   color: line.isChorus
                                       ? AppColors.primary
                                       : AppColors.textSecondary,

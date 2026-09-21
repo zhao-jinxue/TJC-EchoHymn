@@ -42,12 +42,7 @@ flutter:
           weight: 500
         - asset: assets/fonts/NotoSansSC-Bold.ttf
           weight: 700
-    # 简谱编码字体（PPT 官方管线同源，11KB）：94 码位 = 数字/预组合字形/零宽修饰符/
-    # 小节线/延音线/反复记号；编码串直接渲染即得标准简谱（见 docs 任务 6）
-    - family: JianPu
-      fonts:
-        - asset: assets/fonts/jianpu.ttf
-    # 歌词字体（PPT 同源 = 標楷體 DFKai-SB，系统未装时靠内嵌保证一致）
+    # 歌词字体（印刷 PDF 与官方 PPT 同源 = 標楷體 DFKai-SB；系统未装时靠内嵌保证一致）
     - family: EchoKai
       fonts:
         - asset: assets/fonts/lyric_kai.ttf
