@@ -95,6 +95,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
       (m) => m.name == widget.initialMode,
       orElse: () => DisplayMode.lyrics,
     );
+    // 2026-09-21（用户定稿）：「曲谱（曲谱+歌词）」模式从 UI 撤下——若历史 state.json
+    // 里保存的是它，回落到「歌词」，避免出现「当前模式没有对应按钮」的状态。
+    // 视图代码与数据均保留（恢复按钮即可再启用，见下方 _modeBtn 处注释）。
+    if (_mode == DisplayMode.scoreLyric) _mode = DisplayMode.lyrics;
     _statusSub = widget.audio.statusStream.listen((s) {
       if (!mounted) return;
       setState(() {});
@@ -264,9 +268,12 @@ class _HymnDisplayState extends State<HymnDisplay> {
           const SizedBox(width: 8),
           _buildVoiceButton(hymn),
           const Spacer(),
+          // 2026-09-21（用户定稿）：「曲谱（曲谱+歌词）」按钮从 UI 撤下——
+          // `DisplayMode.scoreLyric`、`_buildScoreLyric` / `ScoreLyricPageView` 与库内
+          // `hymn_score*` 数据全部保留；需要恢复时把下面两行的注释放开即可。
+          // _modeBtn('曲谱', DisplayMode.scoreLyric, Icons.queue_music),
+          // const SizedBox(width: 4),
           _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
-          const SizedBox(width: 4),
-          _modeBtn('曲谱', DisplayMode.scoreLyric, Icons.queue_music),
           const SizedBox(width: 4),
           _modeBtn('简谱', DisplayMode.numbered, Icons.music_note),
           const SizedBox(width: 4),
@@ -536,9 +543,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
         (constraints.maxHeight - padTop - padBottom).clamp(100.0, 4000.0);
     final availW = constraints.maxWidth - padX * 2;
 
-    // 总行数：标题 + 节标签 + 本页歌词行
+    // 总行数：标题 + 本页歌词行
     // （2026-09-21 二轮反馈：「第 N 首」标题已删除——标题栏已有该信息）
-    final lineCount = 2 + page.lineCount;
+    // （2026-09-21 五轮反馈：「第 N 节」标签也已删除——底部翻页条已给出节号）
+    final lineCount = 1 + page.lineCount;
     final maxByH = lyricMaxFontByHeight(availH, lineCount);
     final maxByW = lyricMaxFontByWidth(availW, page.maxDisplayWidth);
 
@@ -554,7 +562,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
     size = size + 4.0 > maxByW ? maxByW : size + 4.0;
     final bodySize = size.clamp(12.0, 100.0);
     final titleSize = (bodySize * 1.4).clamp(16.0, 40.0);
-    final labelSize = (bodySize * 0.7).clamp(11.0, 18.0);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
@@ -578,15 +585,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              '第${page.stanzaIndex + 1}节',
-              style: TextStyle(
-                fontSize: labelSize,
-                color: AppColors.textTertiary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
             for (final line in page.verseLines)
               Text(
                 conv.toSimplified(line),

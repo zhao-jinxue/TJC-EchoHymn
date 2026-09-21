@@ -223,6 +223,14 @@
 4. **"UI 未更新"排查范式**：本机 Flutter Windows 的 Dart AOT 代码在 **`data\app.so`**（非 exe 内嵌；C++ 无改动时 exe 不重链、时间戳不变，勿误判构建失效）；用户反馈"改动没生效"时先核对**运行实例启动时间 vs app.so 构建时间**——运行中进程持有启动时的代码，无热替换，rebuild 后必须重启
 5. **state.json 单队列原则 + 原子建单**：所有写入必须经 `AppStateService.shared`（双实例 = 双 `_writeChain` 并发写同一 `.tmp`，rename 冲突的 catch 分支"先删主文件再改名"可致状态整体丢失）；新建歌单改**单次 INSERT** 落库（消除"先建空再补成员"双写中间态）；另记本机 Flutter 教训：`ImageStream` 无公开 `dispose`、`NetworkImage/FileImage` 条件表达式 LUB 退化为 `Object`（if/else 分支赋值规避）
 
+### 2026-09-19 ~ 21 会话追加决策（曲谱管线定稿 · 曲谱模式撤下 · 歌词页去节标签 · 库内 473 首）
+
+1. **曲谱视图 = 字体原生渲染（定稿）**：印刷 PDF 内嵌 `MMP2005` 字形本身就是预合成装饰（`4ef0`=5̲、`4e4d`=低音5、`5e66~5e6e`=连音弧），而库内 `code_seq` 正是这套码位 → **同字体渲染同码位串 = 印刷记号**，不再自绘几何；字体跨 475 份 PDF 合并子集后内置（`assets/fonts/jianpu_mmp2005.ttf`，family `EchoJianpu`）；子集 advance 被压平 → 用字形**墨迹度量**（`lib/data/jianpu_metrics.dart`）排版；版面常量实测得「槽距 = 1.0 S、歌词 = 0.50 S、连音弧不占槽位」。
+2. **印刷 PDF = 位图 + 隐藏文本层**：谱面 27 张 image / 0 条矢量，文本层 advance 被压平为 0.25em → **内容比对用文本层码位（L0）、版式比对用栅格像素与字形模板（L2）**，不得用文本层坐标；据此建立 `tools/score_selftest.py`（L0/L1/L2 三层）与 `docs/Windows/SCORE_SELFTEST.md`。
+3. **UI 决策（第五轮反馈）**：「曲谱（曲谱+歌词）」模式**从 UI 撤下**（按钮以注释保留、历史 `state.json` 的 `displayMode` 回落「歌词」），**视图代码与数据全保留**；「歌词」页删除「第 N 节」标签（底部翻页条已给出节号），行数预算 2→1（字号略增）。
+4. **数据侧**：第 349 首「奇妙的耶穌」（官网 id 354）经取证为非标版式件（A5 单声部、Type3 轮廓、无 MMP2005）→ 曾机器补录，随后按用户要求**整首移出本库**（诗歌行 + 曲谱行 + 素材目录 + 补录器），`tjc_hymn` / `hymn_score` 均为 **473**。
+5. **素材可恢复性教训**：`data/Hymn_Downloads/**` 不在 git 跟踪内（仅 `checksums.json` 入库）；曾发生某目录素材被外部进程静默清空，靠 `release/` 历史包逐字节恢复 + `checksums.json` sha256 校验补齐 —— **素材更新后需保留 `release/` 快照或另做离线备份**。
+
 ---
 
 ## 四、剩余/遗留任务清单

@@ -39,7 +39,7 @@
   - 语义色槽 27 色（含 8 个分区极浅底色 + 未选中控件底色/描边）；标题栏调色盘按钮即时换肤并持久化；暗夜墨同步 DWM 深色标题栏
 - 🔠 **4 级字号**：×1.0 / ×1.3 / ×1.6 / ×1.9，整棵 UI 树（含弹窗/菜单/Toast）等比缩放；左栏宽随系数扩展，右栏固定 600（内容可滚动）
 - 🔤 **内置字体 EchoSans**（Noto Sans SC 子集，OFL 许可，真 400/500/700 字面）：不依赖目标机字体，无雅黑环境表现一致
-- 🎼 **「曲谱+歌词」字体原生渲染**：用印刷 PDF 内嵌简谱字体（`EchoJianpu`，随 App 内置、无需安装）
+- 🎼 **「曲谱+歌词」字体原生渲染**：用印刷 PDF 内嵌简谱字体（`EchoJianpu`，随 App 内置、无需安装）（**该模式的界面入口已于 2026-09-21 撤下，视图代码与数据保留，见 `docs/Windows/UI_CONFIRMATION.md` §5.20**）
   直接绘制库内 `code_seq` 码位——**时值线、低/高音点、附点、小节线、连音弧全部由字形自带**；
   字体由 `tools/build_jianpu_font.py` 跨 475 份 PDF 合并子集而成（覆盖 code_seq 全部 80 个码位）
 - 📖 **应用内用户手册**：软件介绍 / 操作说明（▶ 小节 → • 二级 → – 三级分层）/ 快捷键与滚轮表（12 行）/ 启动显示设置；`?` 或 `F1` 打开、`Esc`/✕ 关闭、启动自动弹出可关
@@ -108,8 +108,8 @@ EchoHymn/
 │                                #    prepare_staging.py / make_payload.py（主体+素材双载荷 AES-256）、
 │                                #    payload_manifest.txt、ChineseSimplified.isl（官方翻译固化）、app_icon.ico、output/（双产物）
 ├── tools/                       # publish_windows.ps1（自动发布）· build_installer.ps1（一键双产物+SHA256）·
-│                                # gen_convert_map.py · extract_ppt.py（PPT 编码解析）·
-│                                # build_jianpu_font.py（合并印刷简谱字体+字形度量）·
+│                                # scan_db_refs.py（素材清单 payload_manifest.txt）· gen_convert_map.py ·
+│                                # extract_ppt.py（PPT 编码解析）· build_jianpu_font.py（合并印刷简谱字体+字形度量）·
 │                                # score_selftest.py（全库曲谱输出自测）· git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
 └── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/，总纲见 docs/README.md）
