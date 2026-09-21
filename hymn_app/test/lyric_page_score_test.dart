@@ -119,25 +119,61 @@ void main() {
       expect(normalizeScoreSym('5'), '5');
     });
 
-    test('2026-09-19 视觉校准码位：4e5e=高音1、4e5f=低音2、5d29/5d2e=升降号、531c=3', () {
-      // 与库内 hymn_codepoint_map（source=ocr-vision-20260919）同源
+    test('2026-09-21 码本重建：音级/八度/时值线全部来自 PDF 字形几何', () {
+      // 纯音级
+      expect(decodeScoreElements('4e52 4e57', const {}), ['1', '?']);
+      expect(decodeScoreElements('5d4c', const {}), ['0']);
+      // 低八度（数字下方点）
+      expect(decodeScoreElements('4e4d', const {}), ['5,']);
+      expect(decodeScoreElements('4e48', const {}), ['3,']);
+      // 高八度（数字上方点）
       expect(decodeScoreElements('4e5e', const {}), ['1^']);
-      expect(decodeScoreElements('4e5f', const {}), ['2,']);
-      expect(decodeScoreElements('5d29 4e58', const {}), ['#', '4']);
-      expect(decodeScoreElements('5d2e 4e5d', const {}), ['b', '7']);
+      expect(decodeScoreElements('4e5f', const {}), ['2^']);
+      expect(decodeScoreElements('4e69', const {}), ['3^']);
+      // 时值线：一条 `_`、两条 `=`
+      expect(decodeScoreElements('4ee4', const {}), ['1_']);
+      expect(decodeScoreElements('4ef0', const {}), ['5_']);
+      expect(decodeScoreElements('4f59', const {}), ['1=']);
+      expect(decodeScoreElements('5d49', const {}), ['_']);
+      expect(decodeScoreElements('5dd5', const {}), ['=']);
+      expect(decodeScoreElements('5d3a', const {}), ['=']);
+      // 低八度 + 两条时值线（如第 1 首 4 声部低音行）
+      expect(decodeScoreElements('4f52', const {}), ['1,=']);
+      // 附点 / 附点+线 / 升降号 / 小节线
+      expect(decodeScoreElements('5d3d', const {}), ['.']);
+      expect(decodeScoreElements('5d3f', const {}), ['._']);
+      expect(decodeScoreElements('5d26 4e58', const {}), ['#', '4']);
+      expect(decodeScoreElements('5d27 4e5d', const {}), ['b', '7']);
       expect(decodeScoreElements('531c', const {}), ['3']);
-      // 第 1 首第 2 谱行：女高「5 5 5 5 1̇ - 7 5 …」高音1 不再是 ?
-      expect(decodeScoreElements('4e59 4e59 4e59 4e59 4e5e 5d1f', const {}),
-          ['5', '5', '5', '5', '1^', '-']);
+      expect(decodeScoreElements('602d', const {}), ['|']);
     });
 
-    test('2026-09-20 全库扩量码位：4ef6/4e73=高音4、4f62=高音3（组合字形归一）', () {
-      // PDF 字形目视定案：数字+高音点+时值短线，短线在本记号体系不表征
-      expect(decodeScoreElements('4ef6', const {}), ['4^']);
-      expect(decodeScoreElements('4e73', const {}), ['4^']);
-      expect(decodeScoreElements('4f62', const {}), ['3^']);
-      // 第 240 首 L15 现场：…4̇… 解码不再产生 ?
-      expect(decodeScoreElements('4e5c 4ef6 4e5d', const {}), ['6', '4^', '7']);
+    test('2026-09-21 回归：第 1 首第 2 谱行（用户反馈「时值线/低音点丢失」）', () {
+      // 库内 code_seq：5. 5̲ 5 5| 1̇ - 7 5| 2 5 6. 5̲| 5 - - -|
+      const codeSeq = '4e59+5d3d 4ef0 4e59 4e59+602d 4e5e 5d1f 4e5d 4e59+602d '
+          '4e53 4e59 4e5c+5d3d 4ef0+602d 4e59 5d1f 5d1f 5d1f+602d';
+      expect(decodeScoreElements(codeSeq, const {}), [
+        '5.', '5_', '5', '5|', '1^', '-', '7', '5|',
+        '2', '5', '6.', '5_|', '5', '-', '-', '-|',
+      ]);
+    });
+
+    test('2026-09-21 回归：第 2 首第 2 谱行（八分/十六分时值线成对）', () {
+      // 6. 7̲| 1̇ 7̲ 6̲| 5 5̲ 6̲| 5 3| 6 -| 5 6̲ 4̲| 3 2| 1 -|
+      const codeSeq = '4e5c+5d3d 4ef2+602d 4e5e 4ef2 4ef1+602d 4e59 4ef0 4ef1+602d '
+          '4e59 4e56+602d 4e5c 5d1f+602d 4e59 4ef1 4ee9+602d 4e56 4e53+602d '
+          '4e52 5d1f+602d';
+      expect(decodeScoreElements(codeSeq, const {}), [
+        '6.', '7_|', '1^', '7_', '6_|', '5', '5_', '6_|', '5', '3|',
+        '6', '-|', '5', '6_', '4_|', '3', '2|', '1', '-|',
+      ]);
+    });
+
+    test('连音线/弧线字形占列但不显示（不破坏逐字对位，也不产生假音符）', () {
+      expect(decodeScoreElements('5e61', const {}), ['']);
+      expect(decodeScoreElements('5e67 5e66', const {}), ['', '']);
+      expect(decodeScoreElements('4e52+5e6b', const {}), ['1']);
+      expect(decodeScoreElements('4e59+5e6b', const {}), ['5']);
     });
 
     test('高音/低音记号显示宽度为半角 2 列内（不破坏不换行约束）', () {
@@ -150,11 +186,6 @@ void main() {
       expect(decodeScoreElements('4e59+5d3d 5d1f', const {}), ['5.', '-']);
       expect(decodeScoreElements('4e59+5d3d+602d 4e52', const {}), ['5.|', '1']);
       expect(decodeScoreElements('4e56+5d49', const {}), ['3_']);
-      expect(decodeScoreElements('4e52+5e6b', const {}), ['1=']);
-      // 组合字形（数字+时值线一体）单码位
-      expect(decodeScoreElements('5e67 5e66', const {}), ['1_', '6_']);
-      // 小节线码位
-      expect(decodeScoreElements('602d', const {}), ['|']);
       // 多码位元素中未知码位跳过（不产生 ?，避免污染音符）
       expect(decodeScoreElements('4e59+ffff', const {}), ['5']);
     });

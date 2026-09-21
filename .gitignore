@@ -57,6 +57,9 @@ data/Hymn_Downloads/step7_progress.json
 # SQLite 临时日志（db 运行时的 journal 不应入库）
 *.db-journal
 
+# 本地验收截图（临时取证用，不入库）
+_shots/
+
 # 发布产物（每次 commit 自动重新生成）
 release/
 

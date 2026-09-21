@@ -189,7 +189,10 @@ class LyricPage {
       ? chorus.split('\n').where((l) => l.trim().isNotEmpty).toList()
       : const [];
 
-  /// 本页总行数（字号铺满算法用：正歌行 + 副歌行 + 副歌分隔空行）
+  /// 本页总行数（字号铺满算法用：正歌行 + 副歌行 + 副歌间隔留白）
+  ///
+  /// 2026-09-21：歌词页已删除「副歌」标题行，副歌仅以颜色区分；
+  /// 此处仍按 1 行折算副歌前后的间隔留白（宁小不大，避免字号溢出）。
   int get lineCount =>
       verseLines.length + chorusLines.length + (hasChorus ? 1 : 0);
 

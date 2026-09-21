@@ -597,16 +597,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 ),
               ),
             if (page.hasChorus) ...[
-              const SizedBox(height: 16),
-              Text(
-                '副歌',
-                style: TextStyle(
-                  fontSize: labelSize,
-                  color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 18),
               for (final line in page.chorusLines)
                 Text(
                   conv.toSimplified(line),

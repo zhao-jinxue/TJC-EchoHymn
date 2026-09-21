@@ -134,27 +134,14 @@ class ScoreLyricPageView extends StatelessWidget {
                     child: Row(
                       children: [
                         for (var i = 0; i < n; i++)
-                          SizedBox(
+                          _LyricCell(
+                            text: ChineseConvertService.instance
+                                .toSimplified(cells[i] ?? ''),
                             width: cellW,
-                            child: Center(
-                              child: Text(
-                                ChineseConvertService.instance
-                                    .toSimplified(cells[i] ?? ''),
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.visible,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: lyricSize,
-                                  height: 1.15,
-                                  fontFamily: 'EchoKai',
-                                  fontFamilyFallback: const ['KaiTi', 'EchoSans'],
-                                  color: line.isChorus
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
+                            size: lyricSize,
+                            color: line.isChorus
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                           ),
                       ],
                     ),
@@ -166,6 +153,133 @@ class ScoreLyricPageView extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// 歌词单元：**音节居中于本列**，标点作小字号侧标紧随其右（可溢出列宽）
+///
+/// 2026-09-21（用户反馈修正）：此前标点并入前字后「整串居中」，
+/// 导致音节偏离音符列中心（例：「上﹑」整体居中 → 「上」左移半格）。
+/// 现在标点不参与居中、不占列位，只贴在音节右侧。
+class _LyricCell extends StatelessWidget {
+  const _LyricCell({
+    required this.text,
+    required this.width,
+    required this.size,
+    required this.color,
+  });
+
+  final String text;
+  final double width;
+  final double size;
+  final Color color;
+
+  /// 非「汉字/字母/数字/空格」均视为标点（随前字显示）
+  static bool _isMark(int r) =>
+      !(r >= 0x4e00 && r <= 0x9fff) && // CJK 基本区
+      !(r >= 0x3400 && r <= 0x4dbf) && // CJK 扩展 A
+      !(r >= 0xf900 && r <= 0xfaff) && // 兼容汉字
+      !(r >= 0x20000 && r <= 0x2fa1f) && // 扩展 B+
+      !(r >= 0x30 && r <= 0x39) &&
+      !(r >= 0x41 && r <= 0x5a) &&
+      !(r >= 0x61 && r <= 0x7a) &&
+      r != 0x20;
+
+  /// ASCII / 异体标点 → 印刷体全角标点（与印刷本一致）
+  static const _norm = {
+    0x2c: '，',
+    0x2e: '。',
+    0x3b: '；',
+    0x3a: '：',
+    0x21: '！',
+    0x3f: '？',
+    0xfe51: '、',
+    0xfe10: '、',
+    0xfe11: '、',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final runes = text.runes.toList();
+    var i = 0;
+    while (i < runes.length && !_isMark(runes[i])) {
+      i++;
+    }
+    final base = String.fromCharCodes(runes.take(i));
+    final buf = StringBuffer();
+    for (var k = i; k < runes.length; k++) {
+      buf.write(_norm[runes[k]] ?? String.fromCharCode(runes[k]));
+    }
+    final marks = buf.toString();
+    final baseStyle = TextStyle(
+      fontSize: size,
+      height: 1.15,
+      fontFamily: 'EchoKai',
+      fontFamilyFallback: const ['KaiTi', 'EchoSans'],
+      color: color,
+    );
+    final height = size * 1.2;
+    if (marks.isEmpty || base.isEmpty) {
+      return SizedBox(
+        width: width,
+        height: height,
+        child: Center(
+          child: Text(
+            base.isEmpty ? marks : base,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+            style: baseStyle,
+          ),
+        ),
+      );
+    }
+    final bw = _measure(base, baseStyle);
+    final markSize = size * (marks.length > 1 ? 0.52 : 0.62);
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: Center(
+              child: Text(
+                base,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+                textAlign: TextAlign.center,
+                style: baseStyle,
+              ),
+            ),
+          ),
+          Positioned(
+            left: width / 2 + bw / 2 - size * 0.05,
+            top: 0,
+            bottom: 0,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                marks,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+                style: baseStyle.copyWith(fontSize: markSize),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static double _measure(String s, TextStyle st) {
+    final tp = TextPainter(
+        text: TextSpan(text: s, style: st), textDirection: TextDirection.ltr)
+      ..layout();
+    return tp.width;
   }
 }
 
@@ -252,43 +366,43 @@ class _SymPainter extends CustomPainter {
     final tx = (sz.width - tp.width) / 2;
     final ty = (sz.height - tp.height) / 2 + size * 0.10;
     tp.paint(canvas, Offset(tx, ty));
-    final textTop = ty;
-    final textBottom = ty + tp.height;
-    final cx = sz.width / 2;
+
+    // 全部装饰以「数字基线」为锚：数字视觉高 ≈ 0.72em（cap 高），中线 = 基线 - 0.36em
+    final baseline = ty + tp.computeDistanceToActualBaseline(TextBaseline.alphabetic);
+    final digitTop = baseline - size * 0.72;
+    final digitMidY = baseline - size * 0.36;
+    final cx = tx + tp.width / 2;
     final paint = Paint()..color = color;
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = size * 0.06;
 
     // 高音点：数字正上方居中
     if (d.high) {
-      canvas.drawCircle(
-          Offset(cx, textTop - size * 0.17), size * 0.075, paint);
+      canvas.drawCircle(Offset(cx, digitTop - size * 0.17), size * 0.075, paint);
     }
-    // 时值下划线：数字下方 1~3 条
+    // 时值下划线：数字下方 1~3 条（贴基线，避免与低音点冲突）
     for (var i = 0; i < d.ulines; i++) {
-      final y = textBottom + size * (0.14 + i * 0.13);
-      canvas.drawLine(Offset(tx, y), Offset(tx + tp.width, y),
-          Paint()
-            ..color = color
-            ..strokeWidth = size * 0.06);
+      final y = baseline + size * (0.13 + i * 0.12);
+      canvas.drawLine(Offset(tx, y), Offset(tx + tp.width, y), linePaint);
     }
     // 低音点：数字正下方居中（在时值线之下）
     if (d.low) {
       canvas.drawCircle(
-          Offset(cx, textBottom + size * (0.20 + d.ulines * 0.13)),
+          Offset(cx, baseline + size * (0.30 + d.ulines * 0.12)),
           size * 0.075,
           paint);
     }
-    // 附点：数字右侧中上部
+    // 附点：数字右侧、**垂直居中**（与数字中线齐平，2026-09-21 按用户反馈修正）
     if (d.dot) {
       canvas.drawCircle(
-          Offset(tx + tp.width + size * 0.17, textTop + tp.height * 0.42),
-          size * 0.065,
-          paint);
+          Offset(tx + tp.width + size * 0.17, digitMidY), size * 0.068, paint);
     }
     // 小节线：列右缘竖线
     if (d.bar) {
       canvas.drawLine(
-          Offset(sz.width - size * 0.06, textTop - size * 0.22),
-          Offset(sz.width - size * 0.06, textBottom + size * 0.26),
+          Offset(sz.width - size * 0.06, digitTop - size * 0.10),
+          Offset(sz.width - size * 0.06, baseline + size * 0.26),
           Paint()
             ..color = color
             ..strokeWidth = size * 0.05);
