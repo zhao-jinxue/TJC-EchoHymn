@@ -406,12 +406,14 @@ class SqliteRepository {
       var elements = decodeScoreElements(codeSeq, map);
       // 旧数据无 code_seq 时退化为逐字符（与爬虫侧 decode_elements 同兜底）
       if (elements.isEmpty) elements = notes.split('');
+      final tokens = codeSeq.trim().isEmpty ? const <String>[] : codeSeq.trim().split(RegExp(r'\s+'));
       final lyrics = lyricsByLine[ln];
       if (lyrics == null || lyrics.isEmpty) continue; // 无词乐句（间奏）不占页
       lines.add(ScoreLineRow(
         lineNo: ln,
         phraseNo: (r['phrase_no'] as int?) ?? 0,
         elements: elements,
+        tokens: tokens.length == elements.length ? tokens : const [],
         chars: charsByLine[ln] ?? const [],
         lyrics: lyrics,
         isChorus: chorusLines.contains(ln),

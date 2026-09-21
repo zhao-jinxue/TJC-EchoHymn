@@ -155,6 +155,7 @@ class ScoreLineRow {
     required this.chars,
     required this.lyrics,
     required this.isChorus,
+    this.tokens = const [],
   });
 
   final int lineNo;
@@ -162,8 +163,14 @@ class ScoreLineRow {
   /// 乐句号（同乐句的谱行视觉归组）
   final int phraseNo;
 
-  /// 元素记号序列（与 `code_seq` 等长）
+  /// 元素记号序列（与 [tokens] 等长）
   final List<String> elements;
+
+  /// 原始码位 token 序列（`code_seq` 空格切分；元素可含 '+连接的 1~4 个码位）
+  ///
+  /// 2026-09-21：曲谱视图改为**字体原生渲染**——直接用 token 码位配 [kJianpuFontFamily]
+  /// 绘制（装饰由字形自带），[elements] 保留供测试/兜底文案使用。
+  final List<String> tokens;
 
   /// 第 1 节逐字对位
   final List<ScoreChar> chars;

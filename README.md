@@ -39,6 +39,9 @@
   - 语义色槽 27 色（含 8 个分区极浅底色 + 未选中控件底色/描边）；标题栏调色盘按钮即时换肤并持久化；暗夜墨同步 DWM 深色标题栏
 - 🔠 **4 级字号**：×1.0 / ×1.3 / ×1.6 / ×1.9，整棵 UI 树（含弹窗/菜单/Toast）等比缩放；左栏宽随系数扩展，右栏固定 600（内容可滚动）
 - 🔤 **内置字体 EchoSans**（Noto Sans SC 子集，OFL 许可，真 400/500/700 字面）：不依赖目标机字体，无雅黑环境表现一致
+- 🎼 **「曲谱+歌词」字体原生渲染**：用印刷 PDF 内嵌简谱字体（`EchoJianpu`，随 App 内置、无需安装）
+  直接绘制库内 `code_seq` 码位——**时值线、低/高音点、附点、小节线、连音弧全部由字形自带**；
+  字体由 `tools/build_jianpu_font.py` 跨 475 份 PDF 合并子集而成（覆盖 code_seq 全部 80 个码位）
 - 📖 **应用内用户手册**：软件介绍 / 操作说明（▶ 小节 → • 二级 → – 三级分层）/ 快捷键与滚轮表（12 行）/ 启动显示设置；`?` 或 `F1` 打开、`Esc`/✕ 关闭、启动自动弹出可关
 
 ### 数据与可靠性
@@ -96,7 +99,7 @@ EchoHymn/
 │   │   │                                   # app_fonts（FontSizeLevel 4 级 + FontScaleController + AppFonts）
 │   │   └── data/chinese_convert_map.dart   # 繁→简 1052 / 简→繁 1025 映射（tools/gen_convert_map.py 生成）
 │   ├── windows/runner/                     # C++ 宿主：去系统标题栏、单实例、850×890 客户区、窗口通道
-│   ├── assets/{data,fonts}/                # hymns.json；EchoSans 字体子集
+│   ├── assets/{data,fonts}/                # hymns.json；内置字体 EchoSans / EchoKai / EchoJianpu
 │   ├── android/ · ohos/                    # Android 目录就绪 / 鸿蒙占位（均未开发）
 │   ├── native/                             # ⚠️ C++ hymn_engine 历史可选组件（当前不经 dart:ffi 调用）
 │   └── test/                               # 单元测试 18 用例 + v120~v151 实机测试/回归清单
@@ -105,7 +108,8 @@ EchoHymn/
 │                                #    prepare_staging.py / make_payload.py（主体+素材双载荷 AES-256）、
 │                                #    payload_manifest.txt、ChineseSimplified.isl（官方翻译固化）、app_icon.ico、output/（双产物）
 ├── tools/                       # publish_windows.ps1（自动发布）· build_installer.ps1（一键双产物+SHA256）·
-│                                # scan_db_refs.py（素材清单）· gen_convert_map.py · git-hooks/post-commit 等
+│                                # scan_db_refs.py（素材清单）· gen_convert_map.py ·
+│                                # build_jianpu_font.py（合并印刷简谱字体+字形度量）· git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
 └── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/，总纲见 docs/README.md）
 ```
@@ -180,7 +184,7 @@ flutter build windows --release   # 期望构建成功
 | 搜索 | `HymnSearchService`（Dart 层歌名 + 歌词全扫，繁简双向映射） |
 | 主题 / 字号 | `AppPalette` 语义色槽（27 色 / 5 套预设）+ `ThemeController`；`FontSizeLevel` + `FontScaleController`（均 `ValueNotifier` 驱动整树重建或缩放） |
 | 简繁转换 | 纯 Dart 字符映射表 `lib/data/chinese_convert_map.dart`（弃用 OpenCC FFI） |
-| 字体 | 内置 EchoSans（Noto Sans SC 子集，OFL） |
+| 字体 | 内置 EchoSans（Noto Sans SC 子集，OFL）· EchoKai（標楷體，曲谱歌词）· EchoJianpu（印刷简谱字体，曲谱记号原生渲染） |
 | 持久化 / 日志 | 自研 `AppStateService`（全进程唯一串行队列 + 原子写）/ `LogService`（轮转 + 全局异常捕获），无 `shared_preferences` 依赖 |
 | 打包 | VC 运行库 CMake 就近安装；Inno Setup 6 + py7zr AES-256 双载荷 |
 | 已移除依赖 | just_audio / just_audio_windows / audio_session / rxdart / shared_preferences / flutter_opencc_ffi |

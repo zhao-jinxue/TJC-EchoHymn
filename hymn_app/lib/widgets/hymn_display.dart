@@ -530,8 +530,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
         (constraints.maxHeight - padTop - padBottom).clamp(100.0, 4000.0);
     final availW = constraints.maxWidth - padX * 2;
 
-    // 总行数：标题 + 「第 N 首」 + 节标签 + 本页歌词行
-    final lineCount = 3 + page.lineCount;
+    // 总行数：标题 + 节标签 + 本页歌词行
+    // （2026-09-21 二轮反馈：「第 N 首」标题已删除——标题栏已有该信息）
+    final lineCount = 2 + page.lineCount;
     final maxByH = lyricMaxFontByHeight(availH, lineCount);
     final maxByW = lyricMaxFontByWidth(availW, page.maxDisplayWidth);
 
@@ -569,12 +570,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '第 ${hymn.hymnNumber} 首',
-              style:
-                  TextStyle(fontSize: labelSize, color: AppColors.textTertiary),
             ),
             const SizedBox(height: 20),
             Text(

@@ -46,3 +46,9 @@ flutter:
     - family: EchoKai
       fonts:
         - asset: assets/fonts/lyric_kai.ttf
+    # 简谱记谱字体（印刷 PDF 内嵌 MMP2005 跨文件合并子集，见 tools/build_jianpu_font.py）：
+    # 字形自带时值线/低·高音点/附点/小节线/连音弧 → 曲谱视图原生渲染，无需自绘几何。
+    - family: EchoJianpu
+      fonts:
+        - asset: assets/fonts/jianpu_mmp2005.ttf
+

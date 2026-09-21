@@ -1,7 +1,9 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:echo_hymn/models/hymn.dart';
 import 'package:echo_hymn/models/hymn_score.dart';
+import 'package:echo_hymn/models/jianpu_layout.dart';
 
 /// 构造一首最小诗歌（只填分页相关字段）
 Hymn _hymn({
@@ -319,6 +321,77 @@ void main() {
         ),
       ]);
       expect(pages.single.maxElements, 5);
+    });
+  });
+
+  group('字体原生渲染（2026-09-21 二轮：记谱字体 + 字形度量）', () {
+    /// 第 1 首第 1 谱行 code_seq（与库内一致：1 1 3 3| 5 - 5 -| 6 - 6 6| 5 - 3 -|）
+    const codeSeq = '4e52 4e52 4e56 4e56+602d 4e59 5d1f 4e59 5d1f+602d '
+        '4e5c 5d1f 4e5c 4e5c+602d 4e59 5d1f 4e56 5d1f+602d';
+
+    List<JianpuElement> elems(String seq) =>
+        [for (final t in seq.split(' ')) JianpuElement(t, '')];
+
+    test('字体资源在位（合并子集，SFNT 头 + 体积下限）', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final data = await rootBundle.load('assets/fonts/jianpu_mmp2005.ttf');
+      expect(data.lengthInBytes, greaterThan(40000));
+      expect(data.getUint32(0), 0x00010000); // TrueType magic
+    });
+
+    test('行内每个码位都在度量表内（缺字形会导致 tofu / 静默丢失）', () {
+      for (final e in elems(codeSeq)) {
+        expect(e.isKnown, isTrue, reason: '缺度量：${e.token}');
+      }
+    });
+
+    test('装饰来自字形本身：下划线/低音点更低，高音点更高', () {
+      final plain5 = JianpuElement('4e59', '5'); // 纯 5
+      final under1 = JianpuElement('4eda', '1_'); // 1 + 时值线
+      final low5 = JianpuElement('4e4d', '5,'); // 低音 5
+      final high1 = JianpuElement('4e5e', '1^'); // 高音 1
+      expect(under1.yMin, lessThan(plain5.yMin)); // 下划线在数字之下
+      expect(low5.yMin, lessThan(plain5.yMin)); // 低音点更低
+      expect(high1.yMax, greaterThan(plain5.yMax)); // 高音点更高
+      expect(under1.inkWidth, greaterThan(JianpuElement('4e52', '1').inkWidth));
+    });
+
+    test('小节线 = 细高竖线（602d/6032/6047），按行带裁剪；601d 为短竖线', () {
+      for (final cp in ['602d', '6032', '6047']) {
+        final e = JianpuElement(cp, '|');
+        expect(e.hasBarline, isTrue, reason: '$cp 应识别为小节线');
+        expect(e.yMax - e.yMin, greaterThan(1.0)); // 字形跨整个谱系高度 → 需裁剪
+      }
+      // 601d 同为「|」但只高 0.46em（单行短竖线）→ 无需裁剪
+      final short = JianpuElement('601d', '|');
+      expect(short.isKnown, isTrue);
+      expect(short.hasBarline, isFalse);
+      expect(short.yMax - short.yMin, lessThan(0.6));
+      // 延音线（短横）与附点不是小节线
+      expect(JianpuElement('5d1f', '-').hasBarline, isFalse);
+      expect(JianpuElement('5d3d', '.').hasBarline, isFalse);
+    });
+
+    test('连音弧 = 纯装饰字形（解码空串）→ 不占槽位、宽度随字形 1.7~3.7em', () {
+      final arc = JianpuElement('5e6e', '');
+      expect(arc.isOverlay, isTrue);
+      expect(arc.inkWidth, greaterThan(3.0));
+      expect(arc.isKnown, isTrue); // 有字形（不是缺字），只是不显示为记号
+      // 同族窄弧同样识别为覆盖元素（与库内码本口径一致）
+      for (final cp in ['5e66', '5e67', '5e68', '5e9a', '5df4', '5e28']) {
+        expect(JianpuElement(cp, '').isOverlay, isTrue, reason: cp);
+      }
+    });
+
+    test('页面行盒：上界取高音点、下界取时值线（em 相对记谱字号）', () {
+      final m = JianpuPageMetrics.of(elems(codeSeq) + [
+        JianpuElement('4e5e', '1^'), // 高音点
+        JianpuElement('4eda', '1_'), // 时值线
+        JianpuElement('602d', '|'), // 小节线：不参与行盒
+      ]);
+      expect(m.yTop, closeTo(0.6992, 0.001));
+      expect(m.yBot, closeTo(0.0967, 0.001));
+      expect(m.band, closeTo(0.6025, 0.002));
     });
   });
 }
