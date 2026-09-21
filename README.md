@@ -4,7 +4,7 @@
 歌词·简谱·五线谱三模式显示、钢琴版·人声版音频播放，配套 Inno Setup 加密安装包对外分发。
 
 > **当前版本**：**v1.5.2**（tag `v1.5.2`，2026-09-05）——版本号单源 = `hymn_app/pubspec.yaml`
-> **内容规模**：474 首诗歌 · 45 条二级分类 · 钢琴版/人声版音频 · 简谱与五线谱谱图 · 诗歌源考
+> **内容规模**：473 首诗歌 · 45 条二级分类 · 钢琴版/人声版音频 · 简谱与五线谱谱图 · 诗歌源考
 > **目标平台**：Windows（✅ 已开发 + 提交自动发布）· Android（📂 目录就绪，未开发）· OpenHarmony 鸿蒙（📁 占位）· ~~Web~~（❌ 2026-08-16 移除）
 > **许可**：个人学习参考免费，商业使用需授权 —— 见 [LICENSE](LICENSE)
 
@@ -14,7 +14,7 @@
 
 ### 浏览与搜索
 
-- 📜 **左栏三栏目**：`诗歌列表`（按编号分页展示 474 首）/ `默认歌单`（数据库分类一级 → 二级浏览）/ `个人歌单`（新建·改名·删除·加歌，单表 `playlist_hymn`）
+- 📜 **左栏三栏目**：`诗歌列表`（按编号分页展示 473 首）/ `默认歌单`（数据库分类一级 → 二级浏览）/ `个人歌单`（新建·改名·删除·加歌，单表 `playlist_hymn`）
 - 🔢 **编号即时定位**：搜索框输入数字 → 翻页 + 滚动 + 高亮定位（不自动播放）
 - 🔎 **歌名 + 歌词统一模糊搜索**：中文关键字回车 → 三列结果弹窗（编号 / 诗歌名称 / 歌词，640×560）
   - 歌名关键字**红色加粗**；歌词关键字**主题色加粗**并从命中节开窗显示（`…` 前缀）；双命中同行并存
@@ -103,15 +103,14 @@ EchoHymn/
 │   ├── android/ · ohos/                    # Android 目录就绪 / 鸿蒙占位（均未开发）
 │   ├── native/                             # ⚠️ C++ hymn_engine 历史可选组件（当前不经 dart:ffi 调用）
 │   └── test/                               # 单元测试 18 用例 + v120~v151 实机测试/回归清单
-├── data/                        # tjc_hymn.db（474 首 / 45 分类 / 个人歌单）+ Hymn_Downloads（约 3GB 音频与谱图素材）
+├── data/                        # tjc_hymn.db（473 首 / 45 分类 / 个人歌单）+ Hymn_Downloads（约 3GB 音频与谱图素材）
 ├── installer/                   # 📦 Inno Setup 工程：echohymn.iss（三页向导+誓言+两段解包）、
 │                                #    prepare_staging.py / make_payload.py（主体+素材双载荷 AES-256）、
 │                                #    payload_manifest.txt、ChineseSimplified.isl（官方翻译固化）、app_icon.ico、output/（双产物）
 ├── tools/                       # publish_windows.ps1（自动发布）· build_installer.ps1（一键双产物+SHA256）·
 │                                # gen_convert_map.py · extract_ppt.py（PPT 编码解析）·
 │                                # build_jianpu_font.py（合并印刷简谱字体+字形度量）·
-│                                # score_selftest.py（全库曲谱输出自测）· extract_score_nonstd.py（非标版式简谱补录）·
-│                                # git-hooks/post-commit 等
+│                                # score_selftest.py（全库曲谱输出自测）· git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
 └── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/，总纲见 docs/README.md）
 ```
@@ -172,7 +171,7 @@ flutter build windows --release   # 期望构建成功
 | --- | --- |
 | `exe` 同级 `state.json` | `leftTab` / `subcategory` / `playlistName` / `hymnNumber` / `audioVersion` / `displayMode` / `playlistIndex` / `showLeft` / `showRight` / `appTheme` / `fontSizeLevel` / `manualOnStart`；缺失或损坏回退默认；首次自动从旧 `%APPDATA%` 的 shared_preferences 迁移 |
 | `exe` 同级 `logs/` | 按天文本日志（UTF-8 BOM，保留 7 份）：库加载 / UI / 交互 / 歌单 / 播放 / 异常 |
-| `data/tjc_hymn.db` | `tjc_hymn`（474 首：歌词十节、五线谱/简谱路径、`audio_versions` JSON、`source_info` 源考）· `hymn_category`（一级 14 → 二级 45）· `playlist_hymn`（个人歌单，`id/name/hymns(JSON)/created_at/updated_at`） |
+| `data/tjc_hymn.db` | `tjc_hymn`（473 首：歌词十节、五线谱/简谱路径、`audio_versions` JSON、`source_info` 源考）· `hymn_category`（一级 14 → 二级 45）· `playlist_hymn`（个人歌单，`id/name/hymns(JSON)/created_at/updated_at`） |
 | `data/Hymn_Downloads/` | 音频（鋼琴版 m4a / 人聲版 mp3）、`简谱`/`五线谱` 的 png 与 pdf、每首一个 `checksums.json` |
 
 ## 🔧 技术栈

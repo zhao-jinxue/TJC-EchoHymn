@@ -80,7 +80,7 @@
 - **操作**：**全局快捷键**（v1.3.0）：空格/Ctrl+P 播放暂停、Ctrl+→ 或 Alt+→ 下一首、Ctrl+← 或 Alt+← 上一首、Ctrl+↑/↓ 音量、Ctrl+M 静音、F1 用户手册、通用媒体键；根 `Focus` 包裹 `MaterialApp`，任意焦点（含弹窗）事件冒泡统一处理；输入框聚焦时空格放行输入；**谱面滚轮两条规则（v1.5.2）**：滚轮=滚动、Ctrl+滚轮=缩放
 - **谱面显示（v1.5.2）**：`_ScoreImageView` 宽度驱动缩放——最小宽=初始 contain 宽 / 最大宽=歌词区当前显示宽（`LayoutBuilder` 实时，随窗口/字号跟随），高度按图片宽高比同步，超高出常显滚动条；换歌自动复位缩放与滚动位置
 - **用户手册**：标题栏「？」按钮或 F1 打开（软件介绍 / 操作说明 / 快捷键说明），Esc 或 ✕ 关闭；**操作说明三级结构（v1.5.2）**：▶小节标题 → • 二级圆点 → – 三级短横（`GuideLine{text, subs}`，不同情况分层拆开）；快捷键表 12 行（键盘 + Esc + 滚轮）
-- **数据**：SQLite `tjc_hymn.db`（474 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
+- **数据**：SQLite `tjc_hymn.db`（473 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
 - **简繁转换**：**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`，由 `tools/gen_convert_map.py` 从数据库全量字符生成：繁→简 1052 / 简→繁 1025）；**弃用 OpenCC FFI**（本机 opencc.dll 与 UI 线程不兼容，导致白屏/崩溃）
 - **音频播放**：`audioplayers` 6.8.1 → Windows Media Foundation；`DeviceFileSource(abs)` 直读中文路径
 - **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列防并发损坏；全进程唯一写入口 `AppStateService.shared`——v1.5.2 根治双实例双队列并发竞态**；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**/**配色 appTheme**/**字号 fontSizeLevel**）

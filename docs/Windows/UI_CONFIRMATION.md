@@ -14,7 +14,7 @@
 
 | 表 | 内容 | 关键字段 |
 | --- | --- | --- |
-| `tjc_hymn` | 474 首诗歌 | hymn_number, title(繁体), lyricist, composer, source_info(源考), verse_1~10, staff_*（五线谱）, numbered_*（简谱）, audio_versions(JSON: 鋼琴版/人聲版), audio_version_list(JSON) |
+| `tjc_hymn` | 473 首诗歌 | hymn_number, title(繁体), lyricist, composer, source_info(源考), verse_1~10, staff_*（五线谱）, numbered_*（简谱）, audio_versions(JSON: 鋼琴版/人聲版), audio_version_list(JSON) |
 | `hymn_category` | 45 条分类 | **两级**：category(一级 14 类) → subcategory(二级 45 个)，hymns(JSON) |
 | `playlist_hymn` | 个人歌单 | id / name / hymns(JSON) / created_at / updated_at |
 
@@ -372,6 +372,12 @@
 **验证**：`flutter analyze` 无问题；`flutter test` **53/53** 通过；补录结果与印样**逐元素核对一致**
 （4 个谱行的小节线 5/4/4/5 位置、时值线单/双、附点、八度点归属全部命中）；用内置字体渲染抽取结果与 PDF 原页
 并排比对（`_shots/verify349.png`）。
+
+> **2026-09-21 追加（用户定稿）**：第 349 首「奇妙的耶穌」**整首移出本库**——删除 `tjc_hymn` 1 行 +
+> `hymn_score`/`_line`/`_char`/`_lyric` 共 94 行，删除素材目录 `data/Hymn_Downloads/354_349奇妙的耶穌/`（6 文件），
+> 并为该首编写的补录器 `tools/extract_score_nonstd.py` 一并删除（git 历史可追回）。
+> **保留**：第 2 条 UI 兜底（无曲谱数据 → 回退整页简谱，对任何抽取失败的首都有效）与 `score_selftest` 的
+> `nonstd_pdf` 白名单机制；上方取证结论与过程作为技术记录保留。
 
 ## ✅ 最终确认
 

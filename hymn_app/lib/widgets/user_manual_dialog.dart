@@ -121,7 +121,7 @@ const List<({String title, List<GuideLine> lines})> _guideSections = [
   (
     title: '左侧栏（三个栏目）',
     lines: [
-      GuideLine('「诗歌列表」：按编号分页浏览全部 474 首诗歌，每页 35 首，底部可翻页。'),
+      GuideLine('「诗歌列表」：按编号分页浏览全部 473 首诗歌，每页 35 首，底部可翻页。'),
       GuideLine('「默认歌单」：按分类目录两级展开浏览，点击诗歌播放。'),
       GuideLine('「个人歌单」：可新建 / 编辑 / 删除自己的歌单，点歌单名展示并整单播放。'),
       GuideLine('正在播放的诗歌在列表中高亮，切歌时自动滚动跟随。'),
@@ -284,7 +284,7 @@ class UserManualDialog extends StatelessWidget {
                       const _SectionTitle('软件介绍'),
                       const _SectionBody(
                         'EchoHymn · 聆听赞美诗是一款本地运行的赞美诗歌应用：'
-                        '收录《赞美诗歌》（增订本）474 首，可离线播放钢琴版 / 人声版音频，'
+                        '收录《赞美诗歌》（增订本）473 首，可离线播放钢琴版 / 人声版音频，'
                         '查看歌词、简谱与五线谱。内置默认歌单分类与个人歌单管理，'
                         '自动记忆上次播放的诗歌、版本与界面状态（状态存于 exe 同级 state.json，便携可迁移）。',
                       ),

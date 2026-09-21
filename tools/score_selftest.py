@@ -143,8 +143,7 @@ def l0_hymn(con, hymn):
     bands = trace_bands(pdf)
     res['bands'] = len(bands)
     if not bands:
-        # 非标版式件（无 MMP2005 文本层，如第 349 首的 Type3 版上传件）→
-        # 由 tools/extract_score_nonstd.py 另行补录；L0 不做码位比对（白名单）
+        # 非标版式件（无 MMP2005 文本层）→ 不做码位比对，记入白名单（不参与统计）
         res['rows'].append({'line': 0, 'verdict': 'nonstd_pdf'})
         return res
     for r in load_rows(con, {hymn}):
