@@ -171,7 +171,7 @@ flutter build windows --release   # 期望构建成功
 | --- | --- |
 | `exe` 同级 `state.json` | `leftTab` / `subcategory` / `playlistName` / `hymnNumber` / `audioVersion` / `displayMode` / `playlistIndex` / `showLeft` / `showRight` / `appTheme` / `fontSizeLevel` / `manualOnStart`；缺失或损坏回退默认；首次自动从旧 `%APPDATA%` 的 shared_preferences 迁移 |
 | `exe` 同级 `logs/` | 按天文本日志（UTF-8 BOM，保留 7 份）：库加载 / UI / 交互 / 歌单 / 播放 / 异常 |
-| `data/tjc_hymn.db` | `tjc_hymn`（473 首：歌词十节、五线谱/简谱路径、`audio_versions` JSON、`source_info` 源考）· `hymn_category`（一级 14 → 二级 45）· `playlist_hymn`（个人歌单，`id/name/hymns(JSON)/created_at/updated_at`） |
+| `data/tjc_hymn.db` | `tjc_hymn`（473 首：歌词十节、五线谱/简谱路径、`audio_versions` JSON、`source_info` 源考）· `hymn_category`（一级 13 → 二级 47，`category`/`subcategory`/`hymns(JSON)`）· `playlist_hymn`（个人歌单，`id/name/hymns(JSON)/created_at/updated_at`） |
 | `data/Hymn_Downloads/` | 音频（鋼琴版 m4a / 人聲版 mp3）、`简谱`/`五线谱` 的 png 与 pdf、每首一个 `checksums.json` |
 
 ## 🔧 技术栈
