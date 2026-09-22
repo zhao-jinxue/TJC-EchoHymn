@@ -58,6 +58,7 @@
 | `88d396e`（v1.5.2 功能，2026-09-05） | **谱面图片宽度驱动缩放 + 滚轮语义定稿 + 手册三级分层**：`_ScoreImageView` 替换 `InteractiveViewer`（默认 maxScale=2.5 令纵向长图两侧空白无法利用）——最小宽=初始 contain 显示宽、**最大宽=歌词区当前显示宽**（`LayoutBuilder` 实时取值，缩放上限随窗口/字号自动跟随），高度按宽高比同步，超高出常显纵向滚动条，切歌自动复位缩放+滚动位置；**滚轮两条固定规则（用户定稿）**：Ctrl+滚轮=缩放、滚轮=滚动（双响应根治：`PointerSignalResolver` 先注册者赢 + 认领 Listener 置于滚动内容内部）；手册升级「▶小节 + • 二级圆点 + – 三级短横」三级结构（`GuideLine` 模型，全文 9 处多情况混排拆分）；快捷键表 7→12 行（补 Esc 关闭手册 + 滚轮操作）；附带排查定案："手册未更新"=旧进程（Windows Dart 代码在 `data\app.so` 非 exe，rebuild 后必须重启） |
 | `e22d8b4`（v1.5.2 稳健性，2026-09-05） | **全局 Bug 诊断修复 P1×1 + P2×4**：① `state.json` 双写队列竞态根治（HomeScreen 改用 `AppStateService.shared`，全进程唯一串行写链，消除并发 rename 冲突误删主文件/字段丢失更新）；② 谱面 http 判定统一 `startsWith`；③ 换谱面滚动复位；④ dispose 注销窗口 MethodCallHandler；⑤ `createPlaylist` 单次 INSERT 原子建单（级联 dialog）；回滚检查点 tag `pre-bugfix-2026-09-05`；**报告存档 `docs/Windows/BUGFIX_REPORT_2026-09-05.md`** |
 | `v1.5.2`（**tag**，2026-09-05） | 🎉 **v1.5.2 验收完成**：谱面缩放交互与手册三级结构经用户实机逐项确认；含 4 个提交（feat 1 + fix 1 + docs 2）；pubspec 升 1.5.2（版本单源） |
+| `v1.6.0`（**tag**，2026-09-21） | 🎉 **v1.6.0 发布**：曲谱视图「字体原生渲染」定稿（内置 `EchoJianpu` 印刷简谱字体 + 字形墨迹度量排版，装饰全部来自字形）+ 全库曲谱自测工具（`tools/score_selftest.py` + `docs/Windows/SCORE_SELFTEST.md`）；「曲谱+歌词」模式**从 UI 撤下**（视图代码与数据保留）+ 歌词页去「第 N 节」标签；第 349 首整首移出（库内 **473 首**）；`tools/scan_db_refs.py` 从 git 历史恢复并新增**手工保留项**机制（清单 3014→3018 行）；pubspec 升 1.6.0 |
 
 **关键文件**：
 

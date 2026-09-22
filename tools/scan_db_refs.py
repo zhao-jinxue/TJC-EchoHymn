@@ -14,6 +14,14 @@ ROOT = r"E:\EchoHymn"
 DB = os.path.join(ROOT, "data", "tjc_hymn.db")
 DL = os.path.join(ROOT, "data", "Hymn_Downloads")
 
+# ── 手工保留项（DB 未引用、但需随安装包分发的素材）────────────────────────────
+# 清单默认只收「被数据库引用」的素材；下列目录前缀（相对 data/、正斜杠、大小写不敏感）
+# 会显式保留，用于历史遗留但用户要求继续随包分发的素材。
+#   354_349救主正在等候/ = 官网旧版「349」诗歌的素材（该曲目已不在库内，2026-09-21 用户要求保留）
+MANUAL_KEEP = [
+    "data/hymn_downloads/354_349救主正在等候",
+]
+
 con = sqlite3.connect(DB)
 cur = con.cursor()
 tables = [r[0] for r in cur.execute("SELECT name FROM sqlite_master WHERE type='table'")]
@@ -48,14 +56,19 @@ for root, ds, fs in os.walk(DL):
             pass
 
 ref_norm = {norm_ref(r) for r in refs}
+manual = [p.replace("\\", "/").lower() for p in MANUAL_KEEP]
 G = 1024 ** 3
-matched = {k: v for k, v in files.items() if k in ref_norm}
+matched = {k: v for k, v in files.items()
+           if k in ref_norm or any(k.startswith(m) for m in manual)}
+kept_manual = {k: v for k, v in matched.items() if k not in ref_norm}
 unref = {k: v for k, v in files.items() if k not in matched}
 miss = sorted(ref_norm - set(files.keys()))
 
 print(f"\n== 总体统计 ==")
 print(f"磁盘文件总数: {len(files)}  总大小: {sum(files.values())/G:.2f} GB")
-print(f"被DB引用     : {len(matched)}  {sum(matched.values())/G:.2f} GB")
+print(f"被DB引用     : {len(matched) - len(kept_manual)}  "
+      f"{(sum(matched.values()) - sum(kept_manual.values()))/G:.2f} GB")
+print(f"手工保留     : {len(kept_manual)}  {sum(kept_manual.values())/G:.2f} GB  {MANUAL_KEEP}")
 print(f"未被引用     : {len(unref)}  {sum(unref.values())/G:.2f} GB")
 
 # 输出打包清单（相对 data/ 的路径，供构建脚本复制）

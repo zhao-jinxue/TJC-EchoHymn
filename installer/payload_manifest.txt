@@ -754,8 +754,10 @@ hymn_downloads\122_121我獻何物給耶穌\121_简谱.png
 hymn_downloads\122_121我獻何物給耶穌\121_鋼琴版.m4a
 hymn_downloads\123_122彼此相愛\122_五线谱.pdf
 hymn_downloads\123_122彼此相愛\122_五线谱.png
+hymn_downloads\123_122彼此相愛\122_人聲版.mp3
 hymn_downloads\123_122彼此相愛\122_简谱.pdf
 hymn_downloads\123_122彼此相愛\122_简谱.png
+hymn_downloads\123_122彼此相愛\122_鋼琴版.m4a
 hymn_downloads\124_123聖徒送行\123_五线谱.pdf
 hymn_downloads\124_123聖徒送行\123_五线谱.png
 hymn_downloads\124_123聖徒送行\123_人聲版.mp3
@@ -1237,6 +1239,7 @@ hymn_downloads\203_200思慕天鄉\200_简谱.png
 hymn_downloads\203_200思慕天鄉\200_鋼琴版.m4a
 hymn_downloads\204_201永遠的榮耀\201_五线谱.pdf
 hymn_downloads\204_201永遠的榮耀\201_五线谱.png
+hymn_downloads\204_201永遠的榮耀\201_人聲版.m4a
 hymn_downloads\204_201永遠的榮耀\201_简谱.pdf
 hymn_downloads\204_201永遠的榮耀\201_简谱.png
 hymn_downloads\204_201永遠的榮耀\201_鋼琴版.m4a
@@ -2195,6 +2198,7 @@ hymn_downloads\354_349救主正在等候\349_四部合唱版.m4a
 hymn_downloads\354_349救主正在等候\349_简谱.pdf
 hymn_downloads\354_349救主正在等候\349_简谱.png
 hymn_downloads\354_349救主正在等候\349_鋼琴版.m4a
+hymn_downloads\354_349救主正在等候\checksums.json
 hymn_downloads\355_350主比生命更寶貴\350_五线谱.pdf
 hymn_downloads\355_350主比生命更寶貴\350_五线谱.png
 hymn_downloads\355_350主比生命更寶貴\350_人聲版.mp3
