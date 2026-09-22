@@ -14,16 +14,19 @@ App 侧 `HymnCategory.fromDbRow` 读的正是这三列，缺失导致「默认�
 * 参照库：`git show <ref-rev>:data/tjc_hymn.db`（默认 1899e44，含完整 45 条：
   一级 13 类 + 二级 45 个 + 完整 hymns 清单），用于取「一级 ↔ 二级」归属关系
   与清单交叉校验。
-* 清单重建：`tjc_hymn.api_raw`（473/473 首均含 `category_id` / `no` / `name`），
-  按分类分组 + 按编号排序 —— 即**用今天的库重建今天的清单**，比照搬老库更准。
+* 清单重建：`data/Hymn_Downloads/api_cache/page_*.json`（48 页，站方分类快照；
+  实测其分类计数与库内 `hymn_count` 完全一致、0 处差异），按编号排序写入。
+* 编号形态：保留站方原样字符串，含 `51_a` / `51_b` 这类甲乙变体编号；写库时
+  纯数字编号写整数（沿用老库格式），变体编号写字符串 —— App 侧
+  `hymn_ref.dart` 两种都读得懂（读取端统一归一化为字符串）。
 * 繁→简：复用 App 的逐字映射 `hymn_app/lib/data/chinese_convert_map.dart`
   （`kToSimplifiedByChar`），与界面显示完全一致。
 
 安全设计
 --------
 * 纯**增加**列（ALTER TABLE ADD COLUMN），不改/不删任何既有列与既有数据；
-* 默认 `--dry-run`，只打印报告；`--apply` 才写库，且单事务提交；
-* 写前自动把当前库另存一份到 `data/_backup/`（带时间戳），随时可回退。
+* 默认预演，只打印报告；`--apply` 才写库，且单事务提交；
+* 写前自动把当前库另存一份到 `%TEMP%\echohymn_backup\`（带时间戳），随时可回退。
 
 用法
 ----
@@ -130,13 +133,11 @@ def read_ref(path):
 
 
 def load_cache_lists(table, valid_numbers):
-    """从 api_cache 列表页构建 {category_id: [(编号, 简体名)]}（与库内 hymn_count 同源）。
+    """从 api_cache 列表页构建 {category_id: [(编号字符串, 简体名)]}（与库内 hymn_count 同源）。
 
     列表页为站方分类快照，实测与 `hymn_category.hymn_count` 完全一致。
-    注意：App 的 `HymnCategory.fromDbRow` 要求 hymns 值为**整数**
-    （`(v as num).toInt()`），而站方存在 `51_a` / `51_b` 这类甲乙变体编号，
-    无法用整数表达 —— 与恢复前的历史行为一致：这类编号不进清单（会在报告里列出），
-    对应诗歌仍可在「诗歌列表」中浏览。
+    编号保留原样字符串（含 `51_a` / `124_b` 这类甲乙变体编号）—— App 侧
+    `HymnCategory.fromDbRow` 已支持字符串编号（`hymn_ref.dart`）。
 
     返回 (分组, 用到的缓存文件, [(编号, 原因), ...])。
     """
@@ -153,15 +154,19 @@ def load_cache_lists(table, valid_numbers):
             if cid is None or no is None:
                 continue
             key = str(no)
-            if re.fullmatch(r'\d+', key) and key in valid_numbers:
-                groups.setdefault(int(cid), []).append((int(key), t2s(nm, table)))
-            elif key in valid_numbers:
-                skipped.append((key, '非整数编号，hymns 无法表达'))
-            else:
-                skipped.append((key, '本库无此编号（如已移出/变体）'))
+            if key not in valid_numbers:
+                skipped.append((key, '本库无此编号（如已移出）'))
+                continue
+            groups.setdefault(int(cid), []).append((key, t2s(nm, table)))
     for cid in groups:
-        groups[cid].sort(key=lambda x: x[0])
+        groups[cid].sort(key=_number_sort_key)
     return groups, files, skipped
+
+
+def _number_sort_key(item):
+    """编号排序：数字部分升序，变体后缀（_a/_b）排在数字之后。"""
+    m = re.match(r'(\d+)(.*)$', item[0])
+    return (int(m.group(1)), m.group(2)) if m else (10 ** 9, item[0])
 
 
 def build_hymn_lists(con, table):
@@ -208,10 +213,11 @@ def report(plan, ref_lists, old_counts, warn):
     log('  %-9s %-11s %5s  %s' % ('一级', '二级', '首数', '与库内 hymn_count / 参照库对比'))
     log('  ' + '-' * 82)
     for cid, cat, sub, lst, why in plan:
-        nums = {int(n) for n, _t in lst if str(n).strip().isdigit()}
+        nums = {int(n) for n, _t in lst if n.isdigit()}
+        variants = [n for n, _t in lst if not n.isdigit()]
         note = []
-        if cid in old_counts and old_counts[cid] != len(nums):
-            note.append('hymn_count %s→%d' % (old_counts[cid], len(nums)))
+        if cid in old_counts and old_counts[cid] != len(lst):
+            note.append('hymn_count %s→%d' % (old_counts[cid], len(lst)))
         if sub in ref_lists:
             add, rm = sorted(nums - ref_lists[sub]), sorted(ref_lists[sub] - nums)
             if add:
@@ -220,7 +226,9 @@ def report(plan, ref_lists, old_counts, warn):
                 note.append('较参照库 -%s' % rm)
         elif why.startswith('[注意]'):
             note.append(why)
-        log('  %-9s %-11s %5d  %s' % (cat, sub, len(nums), ' '.join(note)))
+        if variants:
+            note.append('含甲乙变体编号 %s' % variants)
+        log('  %-9s %-11s %5d  %s' % (cat, sub, len(lst), ' '.join(note)))
     one_level = len({p[1] for p in plan})
     log('  ' + '-' * 82)
     log('  合计：一级 %d 类 / 二级 %d 个 / 清单覆盖 %d 首'
@@ -242,7 +250,9 @@ def ensure_columns(con):
 
 def apply_plan(con, plan):
     for cid, cat, sub, lst, _why in plan:
-        payload = json.dumps([{t: n} for n, t in lst], ensure_ascii=False)
+        # 纯数字编号写整数（沿用老库格式），甲乙变体编号写字符串
+        payload = json.dumps([{t: (int(n) if n.isdigit() else n)} for n, t in lst],
+                             ensure_ascii=False)
         con.execute('UPDATE hymn_category SET category=?, subcategory=?, hymns=?, hymn_count=? '
                     'WHERE id=?', (cat, sub, payload, len(lst), cid))
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../models/hymn.dart';
+import '../models/hymn_ref.dart';
 import '../models/playlist.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
@@ -45,8 +46,8 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
   /// 歌单名称（弹窗关闭前暂存在内存，提交时才写库）
   String _playlistName = '';
 
-  /// 暂存的歌单成员 [{标题, 编号}]
-  final List<MapEntry<String, int>> _addedHymns = [];
+  /// 暂存的歌单成员 [{标题, 编号}]（编号为字符串，支持 51_a 这类变体编号）
+  final List<HymnRef> _addedHymns = [];
 
   bool get _isEdit => widget.existing != null;
 
@@ -196,7 +197,7 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                               leading: SizedBox(
                                 width: 40,
                                 child: Text(
-                                  '${entry.value}',
+                                  entry.value,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -290,8 +291,13 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
       builder: (ctx) => HymnPickDialog(results: results),
     );
     if (selected == null || !mounted) return;
-    // 不允许重复添加（按编号判重）
-    final number = int.tryParse(selected.hymnNumber) ?? selected.id;
+    // 不允许重复添加（按编号判重）；编号直接用诗歌的 hymn_number 字符串，
+    // 这样 51_a / 124_b 这类甲乙变体编号也能原样保存与还原
+    final number = selected.hymnNumber;
+    if (number.isEmpty) {
+      _showToast('该诗歌缺少编号，无法加入歌单');
+      return;
+    }
     final exists = _addedHymns.any((e) => e.value == number);
     if (exists) {
       _showToast('该诗歌已在歌单中');

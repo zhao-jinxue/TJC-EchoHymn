@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'hymn_ref.dart';
 
 /// 个人歌单模型（对应数据库 playlist_hymn 单表）
 ///
@@ -14,8 +14,8 @@ class Playlist {
   final String createdAt;
   final String updatedAt;
 
-  /// 诗歌列表 [{标题: 编号}]
-  final List<MapEntry<String, int>> hymns;
+  /// 诗歌清单 `[{标题: 编号}]`；编号为字符串，兼容 `51_a` 这类甲乙变体编号
+  final List<HymnRef> hymns;
 
   const Playlist({
     required this.id,
@@ -31,30 +31,15 @@ class Playlist {
   factory Playlist.fromDbRow(Map<String, Object?> row) {
     String str(String key) => (row[key] as String?) ?? '';
 
-    final hymns = <MapEntry<String, int>>[];
-    try {
-      final decoded = jsonDecode(str('hymns'));
-      if (decoded is List) {
-        for (final item in decoded) {
-          if (item is Map<String, dynamic>) {
-            item.forEach((k, v) => hymns.add(MapEntry(k, (v as num).toInt())));
-          }
-        }
-      }
-    } catch (_) {}
-
     return Playlist(
       id: (row['id'] as int?) ?? 0,
       name: str('name'),
       createdAt: str('created_at'),
       updatedAt: str('updated_at'),
-      hymns: hymns,
+      hymns: parseHymnRefs(str('hymns')),
     );
   }
 
   /// 将 hymns 序列化为 JSON 字符串（[{标题: 编号}]）
-  static String hymnsToJson(List<MapEntry<String, int>> hymns) {
-    return jsonEncode(
-        hymns.map((e) => {e.key: e.value}).toList(growable: false));
-  }
+  static String hymnsToJson(List<HymnRef> hymns) => hymnRefsToJson(hymns);
 }

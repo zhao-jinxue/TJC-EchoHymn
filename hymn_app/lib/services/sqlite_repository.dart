@@ -4,6 +4,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../models/hymn.dart';
 import '../models/hymn_category.dart';
+import '../models/hymn_ref.dart';
 import '../models/hymn_score.dart';
 import '../models/playlist.dart';
 import 'app_paths.dart';
@@ -252,7 +253,7 @@ class SqliteRepository {
 
   /// 创建歌单（名称+成员**单次 INSERT 原子落库**，杜绝"先建空表再补成员"
   /// 双写中断留下半创建歌单的中间态），返回新 id
-  int createPlaylist(String name, [List<MapEntry<String, int>> hymns = const []]) {
+  int createPlaylist(String name, [List<HymnRef> hymns = kEmptyHymnRefs]) {
     final now = DateTime.now().toIso8601String();
     final json = Playlist.hymnsToJson(hymns);
     _db.execute(
@@ -272,7 +273,7 @@ class SqliteRepository {
   void updatePlaylist(
     int id,
     String name,
-    List<MapEntry<String, int>> hymns,
+    List<HymnRef> hymns,
   ) {
     final now = DateTime.now().toIso8601String();
     final json = Playlist.hymnsToJson(hymns);

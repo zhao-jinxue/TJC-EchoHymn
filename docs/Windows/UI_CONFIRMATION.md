@@ -15,7 +15,7 @@
 | 表 | 内容 | 关键字段 |
 | --- | --- | --- |
 | `tjc_hymn` | 473 首诗歌 | hymn_number, title(繁体), lyricist, composer, source_info(源考), verse_1~10, staff_*（五线谱）, numbered_*（简谱）, audio_versions(JSON: 鋼琴版/人聲版), audio_version_list(JSON) |
-| `hymn_category` | 47 条分类 | **两级**：category(一级 13 类) → subcategory(二级 47 个)，hymns(JSON 诗歌清单) |
+| `hymn_category` | 47 条分类 | **两级**：category(一级 13 类) → subcategory(二级 47 个)，hymns(JSON 诗歌清单；编号为字符串，含 `51_a` 这类甲乙变体编号) |
 | `playlist_hymn` | 个人歌单 | id / name / hymns(JSON) / created_at / updated_at |
 
 ---
