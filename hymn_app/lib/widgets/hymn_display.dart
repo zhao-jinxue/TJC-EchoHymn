@@ -565,15 +565,18 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
-      // 内容垂直铺满——不足显示区高度时用 spaceBetween 均匀分布
-      // （标题贴顶、结尾贴底），避免「底部大片空白」；超出时正常滚动
+      // 2026-09-22（用户反馈）：内容整体**垂直居中**。
+      // 此前用 spaceBetween 把内容摊开铺满（标题贴顶、末行贴底），
+      // 结果标题与歌词之间被拉出巨大空隙、整块内容偏上，用户要求居中；
+      // 这里保留 minHeight（滚动与居中两不误）并把主轴改为 center——
+      // 内容不足显示区时整块居中，超过时正常滚动（顶部不会被裁）。
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minHeight: (constraints.maxHeight - padTop - padBottom)
               .clamp(0.0, double.infinity),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
