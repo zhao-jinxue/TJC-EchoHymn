@@ -4,7 +4,7 @@
 ; 编译入口: tools/build_installer.ps1（勿手工编译，需版本注入与载荷预生成）
 ; ============================================================
 #ifndef AppVersion
-  #define AppVersion "1.6.1"
+  #define AppVersion "1.6.2"
 #endif
 #ifndef Comp
   #define Comp "lzma2/max"
@@ -44,6 +44,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=output
 OutputBaseFilename=EchoHymn_Setup_v{#AppVersion}
+; 2026-09-22: 安装包 exe 的「文件版本」此前为空——Inno 的 VersionInfoVersion 需 4 段式，
+; 而 AppVersion 是 3 段（1.6.2），缺省未设置导致资源里无 FileVersion；这里补 .0 使其显示 1.6.2.0。
+VersionInfoVersion={#AppVersion}.0
 SetupIconFile=app_icon.ico
 Compression={#Comp}
 SolidCompression=yes

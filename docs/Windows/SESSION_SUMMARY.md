@@ -62,6 +62,8 @@
 
 | `v1.6.1`（**tag**，2026-09-22） | 🎉 **v1.6.1 发布**：**默认歌单数据复原 + 甲乙变体编号纳入歌单**（本轮 3 个提交：`b871e03` 数据复原 / `de6f1b9` 编号放宽 / 版本收尾）——`hymn_category` 误删的 `category`(一级)/`subcategory`(二级)/`hymns`(清单) 三列由新增的 `tools/restore_hymn_category.py` **纯增列复原**（归属取自 git 老库 `1899e44`、清单用 `api_cache` 列表页重建、繁简复用 App 自带映射），一级 13 类 → 二级 47 个、清单 **473 首 100% 覆盖**；歌单成员编号**放宽为字符串**（新增 `lib/models/hymn_ref.dart`，读取端兼容旧库整数，写入统一字符串），`51_a`/`124_b` 等 **10 个甲乙变体编号**可在默认歌单与个人歌单中浏览·加入·还原，并修复「添加成员时变体编号退化成 hymn id」旧缺陷；`flutter analyze` 无问题 · `flutter test` **57/57** · release 构建通过；pubspec 升 1.6.1；**本批提交与 tag 已推送 origin** |
 
+| `v1.6.2`（**tag**，2026-09-22） | 🎉 **v1.6.2 发布**：**歌词页内容整块垂直居中**——`_buildLyricPage` 主轴 `spaceBetween` → `center`（行数少的页面此前「标题贴顶、歌词贴底、整块偏上」；现整块居中，保留 `minHeight` 保证内容多时正常滚动且顶部不裁；水平方向原本已居中）；实机截图新旧对比（第 26 首，1453×725）：标题→歌词间隙 **158 → 65 px**、内容块 198..611 → 268..540、上下留白 92 / 107 px（差 15 px≈7%）；`flutter analyze` 无问题 · `flutter test` **57/57**；`.iss` 补 `VersionInfoVersion`（修复安装包 exe「文件版本」为空）；重打安装包 `EchoHymn_Setup_v1.6.2.exe` + `EchoHymn_Data_v1.6.2.7z`；pubspec 升 1.6.2 |
+
 **关键文件**：
 
 - 面板：`hymn_app/lib/widgets/panels/{left_panel_base, hymn_list_panel, default_playlists_panel, my_playlists_panel}.dart`
