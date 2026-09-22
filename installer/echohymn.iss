@@ -4,7 +4,7 @@
 ; 编译入口: tools/build_installer.ps1（勿手工编译，需版本注入与载荷预生成）
 ; ============================================================
 #ifndef AppVersion
-  #define AppVersion "1.6.0"
+  #define AppVersion "1.6.1"
 #endif
 #ifndef Comp
   #define Comp "lzma2/max"

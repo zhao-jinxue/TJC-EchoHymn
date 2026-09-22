@@ -60,6 +60,8 @@
 | `v1.5.2`（**tag**，2026-09-05） | 🎉 **v1.5.2 验收完成**：谱面缩放交互与手册三级结构经用户实机逐项确认；含 4 个提交（feat 1 + fix 1 + docs 2）；pubspec 升 1.5.2（版本单源） |
 | `v1.6.0`（**tag**，2026-09-21） | 🎉 **v1.6.0 发布**：曲谱视图「字体原生渲染」定稿（内置 `EchoJianpu` 印刷简谱字体 + 字形墨迹度量排版，装饰全部来自字形）+ 全库曲谱自测工具（`tools/score_selftest.py` + `docs/Windows/SCORE_SELFTEST.md`）；「曲谱+歌词」模式**从 UI 撤下**（视图代码与数据保留）+ 歌词页去「第 N 节」标签；第 349 首整首移出（库内 **473 首**）；`tools/scan_db_refs.py` 从 git 历史恢复并新增**手工保留项**机制（清单 3014→3018 行）；pubspec 升 1.6.0 |
 
+| `v1.6.1`（**tag**，2026-09-22） | 🎉 **v1.6.1 发布**：**默认歌单数据复原 + 甲乙变体编号纳入歌单**（本轮 3 个提交：`b871e03` 数据复原 / `de6f1b9` 编号放宽 / 版本收尾）——`hymn_category` 误删的 `category`(一级)/`subcategory`(二级)/`hymns`(清单) 三列由新增的 `tools/restore_hymn_category.py` **纯增列复原**（归属取自 git 老库 `1899e44`、清单用 `api_cache` 列表页重建、繁简复用 App 自带映射），一级 13 类 → 二级 47 个、清单 **473 首 100% 覆盖**；歌单成员编号**放宽为字符串**（新增 `lib/models/hymn_ref.dart`，读取端兼容旧库整数，写入统一字符串），`51_a`/`124_b` 等 **10 个甲乙变体编号**可在默认歌单与个人歌单中浏览·加入·还原，并修复「添加成员时变体编号退化成 hymn id」旧缺陷；`flutter analyze` 无问题 · `flutter test` **57/57** · release 构建通过；pubspec 升 1.6.1；**本批提交与 tag 已推送 origin** |
+
 **关键文件**：
 
 - 面板：`hymn_app/lib/widgets/panels/{left_panel_base, hymn_list_panel, default_playlists_panel, my_playlists_panel}.dart`
