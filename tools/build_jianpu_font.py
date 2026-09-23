@@ -36,16 +36,35 @@ APPLY = '--apply' in sys.argv
 
 
 def used_codepoints():
-    """库内主旋律谱行 code_seq 用到的全部码位（十进制）"""
-    con = sqlite3.connect(DB)
-    raw = [r[0] for r in con.execute(
-        "SELECT code_seq FROM hymn_score_line WHERE is_primary=1")]
-    out = set()
-    for seq in raw:
-        for tok in seq.split():
-            for cp in tok.split('+'):
-                out.add(int(cp, 16))
-    return out, len(raw)
+    """需要保留的码位（十进制）。
+
+    2026-09-22 谱面数据源切换（`hymn_score*` 已删除）后的兜底口径：
+    **直接以当前内置字体自身的 cmap 为准**（字体已是跨 PDF 合并子集，
+    再去按用量裁剪没有收益）；若老库仍在，则沿用 code_seq 用量口径。
+    """
+    if os.path.exists(DB):
+        con = sqlite3.connect(DB)
+        try:
+            rows = con.execute(
+                'SELECT name FROM sqlite_master WHERE type=? AND name=?',
+                ('table', 'hymn_score_line')).fetchall()
+            if rows:
+                raw = [r[0] for r in con.execute(
+                    'SELECT code_seq FROM hymn_score_line WHERE is_primary=1')]
+                out = set()
+                for seq in raw:
+                    for tok in seq.split():
+                        for cp in tok.split('+'):
+                            out.add(int(cp, 16))
+                if out:
+                    return out, len(raw)
+        finally:
+            con.close()
+    if os.path.exists(FONT_OUT):
+        font = TTFont(FONT_OUT)
+        cps = {cp for cp in font.getBestCmap()}
+        return cps, 0
+    raise SystemExit('既无 hymn_score_line 也无内置字体，无法确定码位集合')
 
 
 def subsets_of(pdf):

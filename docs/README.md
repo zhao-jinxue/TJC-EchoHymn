@@ -61,6 +61,7 @@ docs/
 | 文档 | 用途 |
 | --- | --- |
 | [CLINE_CONTEXT_MINIMIZE.md](knowledge/CLINE_CONTEXT_MINIMIZE.md) | 🛠 Cline 新会话上下文最小化策略（规则分层、按需读取、会话日志机制） |
+| [TJC_APK_JIANPU_RENDER.md](knowledge/TJC_APK_JIANPU_RENDER.md) | 🔍 第三方 TJC 赞美诗 Android APK 逆向复原：简谱/歌词/五线谱三视图渲染机制、CSV 网格「同列=同拍点」同步模型、符号字典（含 `E`=延长记号的判定链）、对 EchoHymn 曲谱渲染的对照与借鉴 |
 
 ### 会话档案（`sessions/`，独立流程）
 

@@ -8,17 +8,22 @@ import 'package:flutter/services.dart' show HardwareKeyboard;
 
 import '../app.dart';
 import '../models/hymn.dart';
-import '../models/hymn_score.dart';
+import '../models/jianpu_grid.dart';
 import '../services/audio_service.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
 import '../theme/app_fonts.dart';
-import 'score_lyric_view.dart';
+import 'jianpu_grid_view.dart';
 
 /// 歌词显示模式
-enum DisplayMode { lyrics, scoreLyric, numbered, staff }
+///
+/// `score` = 曲谱：整页网格（谱 + **全部节**歌词并列，印刷本/APK 的形态）；
+/// `jianpu` = 简谱：同数据源但**一页一节**（过滤歌词行 + 翻页条 + 跟随播放切节）；
+/// 二者数据均来自 `jianpu_*` 三表（APK 谱面 CSV 网格，列 = 拍点）。
+/// 旧名 `numbered`（简谱扫描图）与 `scoreLyric`（旧 PDF 管线曲谱）在初始化时归一化。
+enum DisplayMode { lyrics, score, jianpu, staff }
 
 /// 主内容区：版本切换 + 歌词/谱面 + 播放控制
 class HymnDisplay extends StatefulWidget {
@@ -39,7 +44,7 @@ class HymnDisplay extends StatefulWidget {
   /// 手/自动翻页切换回调（供上层持久化）
   final ValueChanged<bool>? onAutoPagingChanged;
 
-  /// 数据仓库（读 `hymn_score_*` 表渲染「曲谱+歌词」同步视图；可为 null=该模式不可用）
+  /// 数据仓库（读 `jianpu_*` 三表渲染简谱网格视图；可为 null=该模式不可用）
   final SqliteRepository? repo;
 
   const HymnDisplay({
@@ -73,14 +78,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 上一次分页归属的「诗歌 + 音频版本」键，变化即复位到第 1 页
   String? _pageKey;
 
-  /// 「曲谱+歌词」模式的当前页数据（按诗歌异步装载，避免 UI 线程同步查库）
-  List<ScorePage> _scorePages = const [];
+  /// 简谱网格数据（按诗歌异步装载，避免 UI 线程同步查库）
+  JianpuScore _jianpu = JianpuScore.empty;
 
-  /// 曲谱数据装载归属的诗歌编号
+  /// 简谱数据装载归属的诗歌编号
   String? _scoreLoadedFor;
 
-  /// 曲谱装载中（占位显示用）
-  bool _scoreLoading = false;
+  /// 简谱装载中（占位显示用）
+  bool _jianpuLoading = false;
 
   StreamSubscription? _statusSub;
   StreamSubscription<Duration>? _posSub;
@@ -91,14 +96,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
     super.initState();
     LogService.instance.info(LogTag.ui, '主内容区 HymnDisplay 初始化');
     _auto = widget.initialAutoPaging ?? true;
-    _mode = DisplayMode.values.firstWhere(
-      (m) => m.name == widget.initialMode,
-      orElse: () => DisplayMode.lyrics,
-    );
-    // 2026-09-21（用户定稿）：「曲谱（曲谱+歌词）」模式从 UI 撤下——若历史 state.json
-    // 里保存的是它，回落到「歌词」，避免出现「当前模式没有对应按钮」的状态。
-    // 视图代码与数据均保留（恢复按钮即可再启用，见下方 _modeBtn 处注释）。
-    if (_mode == DisplayMode.scoreLyric) _mode = DisplayMode.lyrics;
+    // 模式归一化：历史 state.json 可能存旧名 ——
+    // `scoreLyric`（旧 PDF 管线曲谱）→ `score`（新网格整页曲谱）；
+    // `numbered`（旧简谱扫描图）→ `jianpu`（新网格一页一节）；未知值 → 「歌词」。
+    _mode = switch (widget.initialMode) {
+      'score' || 'scoreLyric' => DisplayMode.score,
+      'jianpu' || 'numbered' => DisplayMode.jianpu,
+      'staff' => DisplayMode.staff,
+      _ => DisplayMode.lyrics,
+    };
     _statusSub = widget.audio.statusStream.listen((s) {
       if (!mounted) return;
       setState(() {});
@@ -132,42 +138,42 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   String get currentModeName => _mode.name;
 
-  // ============ 分页（歌词 / 曲谱歌词共用） ============
+  // ============ 分页（歌词模式按节翻页；简谱网格同页展示全部节） ============
 
-  /// 当前诗歌的页数（歌词/曲谱歌词模式各自的分页单位都是「节」）
+  /// 当前诗歌的页数（歌词/简谱模式 = 节数；曲谱/五线谱 = 整页 1 页）
   int _pageCount(Hymn? hymn) {
     if (hymn == null) return 0;
-    if (_mode == DisplayMode.scoreLyric) return _scorePages.length;
+    if (_mode == DisplayMode.jianpu) {
+      return _jianpu.stanzaCount > 1 ? _jianpu.stanzaCount : 1;
+    }
+    if (_mode == DisplayMode.score) return 1;
     return hymn.lyricPages.length;
   }
 
-  /// 异步装载「曲谱+歌词」数据（一诗歌一次；查库在 microtask 中执行，
-  /// 单首仅数十行记录，不阻塞 UI）
-  void _ensureScorePages(Hymn? hymn) {
-    if (hymn == null || _mode != DisplayMode.scoreLyric) return;
+  /// 异步装载简谱网格（一首一次；单首数百行记录，microtask 中查库不阻塞 UI）
+  void _ensureJianpu(Hymn? hymn) {
+    if (hymn == null) return;
+    if (_mode != DisplayMode.jianpu && _mode != DisplayMode.score) return;
     if (_scoreLoadedFor == hymn.hymnNumber) return;
-    if (_scoreLoading) return;
-    _scoreLoading = true;
-    _scorePages = const [];
+    if (_jianpuLoading) return;
+    _jianpuLoading = true;
+    _jianpu = JianpuScore.empty;
     final repo = widget.repo;
     final number = hymn.hymnNumber;
-    final chorus = hymn.chorus;
     Future.microtask(() {
-      List<ScorePage> pages;
+      JianpuScore score;
       try {
-        pages = repo?.loadScorePages(number, chorus: chorus) ?? const [];
+        score = repo?.loadJianpuScore(number) ?? JianpuScore.empty;
       } catch (e) {
-        LogService.instance.error(LogTag.error, '装载曲谱数据失败',
+        LogService.instance.error(LogTag.error, '装载简谱网格失败',
             detail: '诗歌: $number\n异常: $e');
-        pages = const [];
+        score = JianpuScore.empty;
       }
       if (!mounted) return;
       setState(() {
-        _scoreLoading = false;
+        _jianpuLoading = false;
         _scoreLoadedFor = number;
-        _scorePages = pages;
-        _page = 0;
-        _applyAutoPage();
+        _jianpu = score;
       });
     });
   }
@@ -234,7 +240,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   Widget build(BuildContext context) {
     final hymn = widget.audio.currentHymn;
     _resetPageIfNeeded(hymn);
-    _ensureScorePages(hymn);
+    _ensureJianpu(hymn);
     return Container(
       color: AppColors.pageBg,
       child: Column(
@@ -268,14 +274,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
           const SizedBox(width: 8),
           _buildVoiceButton(hymn),
           const Spacer(),
-          // 2026-09-21（用户定稿）：「曲谱（曲谱+歌词）」按钮从 UI 撤下——
-          // `DisplayMode.scoreLyric`、`_buildScoreLyric` / `ScoreLyricPageView` 与库内
-          // `hymn_score*` 数据全部保留；需要恢复时把下面两行的注释放开即可。
-          // _modeBtn('曲谱', DisplayMode.scoreLyric, Icons.queue_music),
-          // const SizedBox(width: 4),
           _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
           const SizedBox(width: 4),
-          _modeBtn('简谱', DisplayMode.numbered, Icons.music_note),
+          _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
+          const SizedBox(width: 4),
+          _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
           const SizedBox(width: 4),
           _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
         ],
@@ -435,20 +438,31 @@ class _HymnDisplayState extends State<HymnDisplay> {
     switch (_mode) {
       case DisplayMode.lyrics:
         return _buildLyrics(hymn);
-      case DisplayMode.scoreLyric:
-        return _buildScoreLyric(hymn);
-      case DisplayMode.numbered:
-        return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
+      case DisplayMode.score:
+        return _buildScoreWhole(hymn);
+      case DisplayMode.jianpu:
+        return _buildJianpu(hymn);
       case DisplayMode.staff:
         return _buildScore(hymn.staffPngPath, isEmpty: '暂无五线谱');
     }
   }
 
-  /// 「曲谱+歌词」同步视图（简谱记号 + 逐字对齐歌词，按节翻页）
+  /// 「曲谱」：整页网格（谱 + **全部节**歌词并列，印刷本/APK 形态；不分节、无翻页条）
+  Widget _buildScoreWhole(Hymn hymn) =>
+      _buildJianpuView(hymn, perStanzaMode: false);
+
+  /// 「简谱」：一页一节（过滤歌词行 + 翻页条 + 跟随播放切节）
+  Widget _buildJianpu(Hymn hymn) => _buildJianpuView(hymn, perStanzaMode: true);
+
+  /// 网格视图公共实现（数据源 `jianpu_*` 三表，列 = 拍点）
   ///
-  /// 对位真值来自 PDF 管线（`hymn_score_char.note_index`，与印刷 PDF 逐字一致）；
-  /// PPT 官方编码（`hymn_ppt*`）已入库备查，其字体 glyph 目前不用于本视图。
-  Widget _buildScoreLyric(Hymn hymn) {
+  /// **无网格数据时回退**显示该首「简谱」整页扫描图（老库、未收录、数据异常时不留空白）。
+  /// [perStanzaMode] = true 且节数 > 1 时：`jianpu_row.stanza_no` 过滤歌词行
+  /// （谱行被该块各节共用，不随节变化 —— 全库无「一块一节」结构），并叠加
+  /// 「上一节/下一节 + 手自切换」控件；自动模式复用 `autoPageIndexFor` 跟随播放进度。
+  Widget _buildJianpuView(Hymn hymn, {required bool perStanzaMode}) {
+    final stanzas = _jianpu.stanzaCount;
+    final perStanza = perStanzaMode && stanzas > 1;
     return Container(
       color: AppColors.lyricsBg,
       child: Stack(
@@ -456,36 +470,35 @@ class _HymnDisplayState extends State<HymnDisplay> {
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                if (_scorePages.isEmpty) {
-                  // 无曲谱数据时回退显示该首「简谱」整页图（避免空白占位；
-                  // 例如官网素材为非标版式、主爬虫管线抽不到曲谱的诗歌）
-                  if (!_scoreLoading) {
+                if (_jianpu.isEmpty) {
+                  if (!_jianpuLoading) {
                     return _buildScore(hymn.numberedPngPath,
-                        isEmpty: '暂无曲谱数据');
+                        isEmpty: '暂无简谱');
                   }
                   return Center(
                     child: Text(
-                      '曲谱加载中…',
-                      style: TextStyle(
-                          fontSize: 14, color: AppColors.textTertiary),
+                      '简谱加载中…',
+                      style:
+                          TextStyle(fontSize: 14, color: AppColors.textTertiary),
                     ),
                   );
                 }
-                return ScoreLyricPageView(
-                  hymn: hymn,
-                  page: _scorePages[_page.clamp(0, _scorePages.length - 1)],
+                return JianpuGridView(
+                  score: _jianpu,
                   constraints: constraints,
+                  stanza: perStanza ? _page + 1 : null,
                 );
               },
             ),
           ),
-          Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
-          if (_scorePages.length > 1)
+          if (perStanza)
+            Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
+          if (perStanza)
             Positioned(
               left: 0,
               right: 0,
               bottom: 6,
-              child: _buildPageNav(_scorePages.length),
+              child: _buildPageNav(stanzas),
             ),
         ],
       ),

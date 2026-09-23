@@ -327,3 +327,35 @@ flutter build windows --release
 # 手动触发 Windows 发布（可选）
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1
 # 结果与日志: release\auto-release.log
+
+---
+
+### 2026-09-22 会话追加决策（谱面数据源切换：APK CSV 网格）
+
+- **数据源整体替换**：谱面不再来自印刷 PDF 抽取管线。
+  `hymn_score` / `hymn_score_line` / `hymn_score_lyric` / `hymn_score_char` /
+  `hymn_codepoint_map` **五张表已删除**；新表 `jianpu_score`(474) / `jianpu_row`(21819) /
+  `jianpu_cell`(321703) 由 `tools/import_apk_csv.py` 从第三方 TJC 赞美诗 APK 的
+  `assets/NNN.csv` 谱面网格导入（**列 = 拍点**）。
+- **渲染方式**：「简谱」按钮由「扫描图」改为**网格渲染**（`JianpuGridView`）：
+  EchoHymn 主题配色 + 印刷记谱字体数字 + 自绘记号/小节线；无网格数据时回退扫描图。
+  旧的 `ScoreLyricPageView` / `hymn_score.dart` 已删除。
+- **库体积**：8.5 MB → **26.7 MB**（含 21.8k 行 + 321.7k 格；发布包随之增大 ~18 MB）。
+- **自测基线**：`tools/jianpu_csv_selftest.py`（L0 DB↔CSV 逐格零差异 / L1 列对齐 /
+  L2 可读网格 / L3 实机快照 30/30 一致）；App 侧 `flutter analyze` 0 issues、
+  `flutter test` **39 passed**（含版式 golden：`test/goldens/jianpu_009.png`）。
+  详见 `docs/Windows/SCORE_SELFTEST.md`、`docs/knowledge/TJC_APK_JIANPU_RENDER.md` §10。
+- **坑（务必记住）**：印刷记谱字体 `EchoJianpu` 的数字字形在 **CJK 码位**
+  （`0x4e52`=`1`…`0x4e5d`=`7`、`0x5d4c`=`0`、`0x5d1f`=增时线、`0x5d3d`=附点），
+  渲染必须 `String.fromCharCode(...)` 取字形，`Text('1')` 会静默不可见。
+- **按节显示（2026-09-22 追加）**：「简谱」支持**一页 = 一节**
+  （`JianpuGridView(stanza: k)` 过滤歌词行 + 底部翻页条 + 自动跟随播放切节）。
+  **数据事实**：全库无「一块一节」结构（一段旋律承载多节歌词）→ 切节只减少歌词行，
+  **谱面内容不随节变化**；节号标签 `(k)` 只在每首第 1 个乐句块出现。
+- **模式集（2026-09-22 定稿，v1.7.0）**：版本栏四按钮 `歌词 / 曲谱 / 简谱 / 五线谱` ——
+  `曲谱` = 整页网格（谱 + 全部节歌词并列，印刷本形态）；`简谱` = 一页一节（默认）；
+  历史 state.json 的 `scoreLyric`→`score`、`numbered`→`jianpu` 归一化；
+  用户手册「显示模式」与 UI_CONFIRMATION §5.21 已同步。
+- **遗留**：「简谱」视图未做播放同步高亮；记号全部自绘
+  （未用字体组合字形）；3 份 CSV 源数据自身块内行宽差异（`163`/`197`/`297`）。
+

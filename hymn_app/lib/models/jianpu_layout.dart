@@ -1,20 +1,20 @@
-/// 简谱曲谱「字体原生渲染」的排版模型（2026-09-21 二轮方案）
+/// 简谱「印刷记谱字体」接入（`assets/fonts/jianpu_mmp2005.ttf`，family `EchoJianpu`）
 ///
-/// 背景（取证结论，见 `docs/Windows/UI_CONFIRMATION.md` §5.18）：
-/// - 印刷 PDF 的乐谱是**位图**，其上文本层的 advance 被压平成 0.25em（不可排版）；
-/// - 但**字体字形本身是预合成装饰**——`5̲`(4ef0)、`低音5`(4e4d)、`连音弧`(5e66~5e6e, 宽 1.7~3.7em)
-///   各自都是单个字形。因此「库内 `code_seq` 码位序列 + 该字体」原生渲染即等于印刷记号：
-///   时值线、低/高音点、附点、小节线、连音弧全部由字形自带，**不再自绘几何**。
-/// - advance 不可用 → 用 [kJianpuGlyphMetrics]（字形墨迹宽 + 上下界，em）排布：
-///   槽距 = 记谱字号（印刷实测 24.9pt / 24.6pt ≈ 1.0），歌词字号 = 0.5×记谱字号。
+/// 用途（2026-09-22 简谱网格视图改版后）：**只用于音符数字字形** ——
+/// 该字体来自印刷 PDF 内嵌的 MMP2005（跨文件合并子集），数字本身就是印刷体；
+/// 时值线 / 低·高音点 / 延长记号 / 小节线由视图自绘（数据侧这些记号在独立行/列，
+/// 见 `lib/models/jianpu_grid.dart` 与 `docs/knowledge/TJC_APK_JIANPU_RENDER.md`）。
+///
+/// 度量表 `lib/data/jianpu_metrics.dart` 由 `tools/build_jianpu_font.py` 生成
+/// （值 = [墨迹宽, xMin, yMin, yMax]，单位 em，相对 upm=2048；advance 已被压平不可用）。
 library;
 
 import '../data/jianpu_metrics.dart';
 
-/// 记谱字体族名（`assets/fonts/jianpu_mmp2005.ttf`：印刷 PDF 内嵌 MMP2005 跨文件合并子集）
+/// 记谱字体族名
 const String kJianpuFontFamily = 'EchoJianpu';
 
-/// 单个字形（一个码位）的度量与类别
+/// 单个字形（一个码位）的度量
 class JianpuGlyph {
   const JianpuGlyph(this.codepoint, this.inkWidth, this.xMin, this.yMin,
       this.yMax, this.barline);
@@ -29,79 +29,53 @@ class JianpuGlyph {
   final double yMin;
   final double yMax;
 
-  /// 小节线（细高竖线）——字形本身跨越整个谱系高度，绘制时按行带裁剪
+  /// 细高竖线字形（印刷小节线）
   final bool barline;
 
-  /// 由度量表构建；码位不在表内 → `glyphs` 为空、按「空列」处理
+  /// 由度量表构建；码位不在表内 → null（按「空字形」处理）
   static JianpuGlyph? of(int cp) {
     final m = kJianpuGlyphMetrics[cp.toRadixString(16).padLeft(4, '0')];
     if (m == null) return null;
     final tall = m[3] - m[2] >= 1.0;
     return JianpuGlyph(cp, m[0], m[1], m[2], m[3], tall && m[0] <= 0.30);
   }
-}
 
-/// 一个谱元素 = 一个 `code_seq` token（可含 '+连接的 1~4 个码位）及其字形与解码记号
-class JianpuElement {
-  JianpuElement(this.token, this.sym)
-      : glyphs = [
-          for (final cp in token.split('+'))
-            if (int.tryParse(cp, radix: 16) case final v?)
-              if (JianpuGlyph.of(v) case final g?) g,
-        ];
-
-  /// 原始码位串（如 `4e59+5d3d`）
-  final String token;
-
-  /// 库内码本解码结果（空串 = 纯装饰字形：连音弧/延长记号等）
-  final String sym;
-
-  final List<JianpuGlyph> glyphs;
-
-  /// 纯装饰（不占列位、覆盖绘制在音符之上）
-  bool get isOverlay => sym.isEmpty;
-
-  /// 小节线（按行带裁剪绘制）
-  bool get hasBarline => glyphs.any((g) => g.barline);
-
-  /// 元素墨迹总宽（em；含多码位）
-  double get inkWidth => glyphs.fold(0.0, (s, g) => s + g.inkWidth);
-
-  /// 元素墨迹上/下界（em）
-  double get yMax =>
-      glyphs.isEmpty ? 0 : glyphs.map((g) => g.yMax).reduce((a, b) => a > b ? a : b);
-
-  double get yMin =>
-      glyphs.isEmpty ? 0 : glyphs.map((g) => g.yMin).reduce((a, b) => a < b ? a : b);
-
-  /// 未知码位（字体/度量表缺失）→ 渲染时跳过，不产生假记号
-  bool get isKnown => glyphs.isNotEmpty;
-}
-
-/// 页面级行盒度量：全页字形墨迹上下界（em，**排除小节线**——line 由行带裁剪决定）
-class JianpuPageMetrics {
-  const JianpuPageMetrics(this.yTop, this.yBot);
-  final double yTop;
-  final double yBot;
-
-  /// 音符行带高度（em）
-  double get band => yTop - yBot;
-
-  static JianpuPageMetrics of(Iterable<JianpuElement> elems) {
-    var top = 0.0;
-    var bot = 0.0;
-    var first = true;
-    for (final e in elems) {
-      if (e.hasBarline || !e.isKnown) continue;
-      if (first) {
-        top = e.yMax;
-        bot = e.yMin;
-        first = false;
-      } else {
-        if (e.yMax > top) top = e.yMax;
-        if (e.yMin < bot) bot = e.yMin;
-      }
-    }
-    return first ? const JianpuPageMetrics(0.61, 0.10) : JianpuPageMetrics(top, bot);
+  /// 按十六进制码位串（如 `4e59`）构建
+  static JianpuGlyph? ofHex(String hex) {
+    final cp = int.tryParse(hex, radix: 16);
+    return cp == null ? null : of(cp);
   }
 }
+
+/// 印刷简谱数字码位（`1`~`7`）
+const Map<int, int> kJianpuDigitCodepoints = {
+  1: 0x4e52,
+  2: 0x4e53,
+  3: 0x4e56,
+  4: 0x4e58,
+  5: 0x4e59,
+  6: 0x4e5c,
+  7: 0x4e5d,
+};
+
+/// 印刷简谱「带低八度点」数字码位（1~7）
+const Map<int, int> kJianpuLowDigitCodepoints = {
+  1: 0x4e45,
+  2: 0x4e47,
+  3: 0x4e48,
+  4: 0x4e4b,
+  5: 0x4e4d,
+  6: 0x4e4e,
+  7: 0x4e4f,
+};
+
+/// 印刷简谱「带一条减时线」数字码位（1~7）
+const Map<int, int> kJianpuBeam1DigitCodepoints = {
+  1: 0x4eda,
+  2: 0x4edc,
+  3: 0x4edd,
+  4: 0x4ede,
+  5: 0x4edf,
+  6: 0x4ee1,
+  7: 0x4ee3,
+};

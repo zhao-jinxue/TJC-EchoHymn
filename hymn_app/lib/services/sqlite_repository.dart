@@ -5,7 +5,7 @@ import 'package:sqlite3/sqlite3.dart';
 import '../models/hymn.dart';
 import '../models/hymn_category.dart';
 import '../models/hymn_ref.dart';
-import '../models/hymn_score.dart';
+import '../models/jianpu_grid.dart';
 import '../models/playlist.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
@@ -322,140 +322,94 @@ class SqliteRepository {
   /// sqlite3 的 Row 即实现 Map<String, Object?>，此处仅在需要时转为普通 Map
   Map<String, Object?> _rowToMap(Row row) => Map<String, Object?>.from(row);
 
-  // ---------- 简谱曲谱（hymn_score_* 表，任务 2「曲谱+歌词同步」显示用） ----------
+  // ---------- 简谱网格（jianpu_score / jianpu_row / jianpu_cell） ----------
+  //
+  // 数据来源（2026-09-22 定稿）：`tools/import_apk_csv.py` 把第三方 TJC 赞美诗 APK 的
+  // 474 份 `assets/NNN.csv` 谱面**网格**导入本库 —— 列 = 拍点，音符 / 记号 /
+  // 小节线 / 歌词音节同列对齐（详见 docs/knowledge/TJC_APK_JIANPU_RENDER.md）。
+  // 旧的 PDF 抽取管线（`hymn_score*` / `hymn_codepoint_map`）已停用且数据已删除。
 
-  /// 曲谱三表是否存在（老数据库可能没有 v9 表）
-  bool get hasScoreTables {
-    if (_scoreTablesChecked) return _hasScoreTables;
-    _scoreTablesChecked = true;
+  /// 简谱三表是否存在（老库/空库没有）
+  bool get hasJianpuTables {
+    if (_jianpuChecked) return _hasJianpu;
+    _jianpuChecked = true;
     try {
       final rows = _db.select(
           "SELECT name FROM sqlite_master WHERE type='table' AND name IN "
-          "('hymn_score_line','hymn_score_lyric','hymn_score_char')");
-      _hasScoreTables = rows.length == 3;
+          "('jianpu_score','jianpu_row','jianpu_cell')");
+      _hasJianpu = rows.length == 3;
     } catch (_) {
-      _hasScoreTables = false;
+      _hasJianpu = false;
     }
-    return _hasScoreTables;
+    return _hasJianpu;
   }
 
-  bool _scoreTablesChecked = false;
-  bool _hasScoreTables = false;
+  bool _jianpuChecked = false;
+  bool _hasJianpu = false;
 
-  /// 库内码位映射（`hymn_codepoint_map`，全量加载一次缓存；优先于 Dart 侧种子）
-  Map<String, String> codepointMap() {
-    if (_codepointMap != null) return _codepointMap!;
-    final out = <String, String>{};
-    try {
-      for (final r in _db.select('SELECT codepoint, sym FROM hymn_codepoint_map')) {
-        final cp = (r['codepoint'] as String?) ?? '';
-        final sym = (r['sym'] as String?) ?? '';
-        if (cp.isNotEmpty && sym.isNotEmpty) out[cp] = sym;
-      }
-    } catch (_) {}
-    _codepointMap = out;
-    return out;
-  }
-
-  Map<String, String>? _codepointMap;
-
-  /// 装载某首歌的曲谱分页（每节一页；副歌行每页重复）
+  /// 装载一首诗的简谱网格（无表/无数据 → [JianpuScore.empty]）
   ///
-  /// [chorus] 传 `tjc_hymn.chorus` 原文，用于副歌行判定（与爬虫侧
-  /// `show_score.chorus_line_nos` 同判据：只有第 1 节 **且** 与官网副歌某行吻合，
-  /// 双重判据避免把「其他节词缺失」的行误判为副歌）。
-  List<ScorePage> loadScorePages(String hymnNumber, {String chorus = ''}) {
-    if (!hasScoreTables) return const [];
-    final map = codepointMap();
+  /// 单元格按 `line_no` 分组、按列号稀疏存放；空单元格与「被小节线跨行覆盖」
+  /// 的占位格不入库（渲染层按 `barline` 的 `rowspan` 自行补画竖线）。
+  JianpuScore loadJianpuScore(String hymnNumber) {
+    if (!hasJianpuTables) return JianpuScore.empty;
 
-    // 逐字对位（按行分组，char_no 升序 = 字序）
-    final charsByLine = <int, List<ScoreChar>>{};
+    final cells = <int, Map<int, JianpuCell>>{};
     for (final r in _db.select(
-        'SELECT line_no, char_no, syllable, note_index FROM hymn_score_char '
-        'WHERE hymn_number = ? ORDER BY line_no, char_no',
+        'SELECT line_no, col, kind, sym, degree, accidental, dot_len, octave,'
+        ' dots, beams, fermata, rowspan, text FROM jianpu_cell'
+        ' WHERE hymn_number = ? ORDER BY line_no, col',
         [hymnNumber])) {
       final ln = (r['line_no'] as int?) ?? 0;
-      charsByLine
-          .putIfAbsent(ln, () => [])
-          .add(ScoreChar((r['char_no'] as int?) ?? 0,
-              (r['syllable'] as String?) ?? '', (r['note_index'] as int?) ?? -1));
+      final col = (r['col'] as int?) ?? 0;
+      cells.putIfAbsent(ln, () => {})[col] = JianpuCell(
+        col: col,
+        kind: cellKindOf((r['kind'] as String?) ?? ''),
+        sym: (r['sym'] as String?) ?? '',
+        degree: r['degree'] as int?,
+        accidental: r['accidental'] as String?,
+        dotLen: r['dot_len'] as int?,
+        octave: r['octave'] as int?,
+        dots: r['dots'] as int?,
+        beams: r['beams'] as int?,
+        fermata: r['fermata'] as int?,
+        rowspan: r['rowspan'] as int?,
+        text: r['text'] as String?,
+      );
     }
 
-    // 各节歌词（行 → 节 → 文本）
-    final lyricsByLine = <int, Map<int, String>>{};
+    final rows = <JianpuRow>[];
     for (final r in _db.select(
-        'SELECT line_no, stanza_no, text FROM hymn_score_lyric '
-        'WHERE hymn_number = ? ORDER BY line_no, stanza_no',
+        'SELECT line_no, block_no, kind, stanza_no, col_count FROM jianpu_row'
+        ' WHERE hymn_number = ? ORDER BY line_no',
         [hymnNumber])) {
       final ln = (r['line_no'] as int?) ?? 0;
-      lyricsByLine
-          .putIfAbsent(ln, () => {})[(r['stanza_no'] as int?) ?? 1] =
-          (r['text'] as String?) ?? '';
-    }
-
-    final chorusLines = _chorusLineNos(lyricsByLine, chorus);
-
-    final rows = _db.select(
-        'SELECT line_no, phrase_no, notes, code_seq FROM hymn_score_line '
-        'WHERE hymn_number = ? AND is_primary = 1 ORDER BY line_no',
-        [hymnNumber]);
-    final lines = <ScoreLineRow>[];
-    for (final r in rows) {
-      final ln = (r['line_no'] as int?) ?? 0;
-      final codeSeq = (r['code_seq'] as String?) ?? '';
-      final notes = (r['notes'] as String?) ?? '';
-      var elements = decodeScoreElements(codeSeq, map);
-      // 旧数据无 code_seq 时退化为逐字符（与爬虫侧 decode_elements 同兜底）
-      if (elements.isEmpty) elements = notes.split('');
-      final tokens = codeSeq.trim().isEmpty ? const <String>[] : codeSeq.trim().split(RegExp(r'\s+'));
-      final lyrics = lyricsByLine[ln];
-      if (lyrics == null || lyrics.isEmpty) continue; // 无词乐句（间奏）不占页
-      lines.add(ScoreLineRow(
+      rows.add(JianpuRow(
         lineNo: ln,
-        phraseNo: (r['phrase_no'] as int?) ?? 0,
-        elements: elements,
-        tokens: tokens.length == elements.length ? tokens : const [],
-        chars: charsByLine[ln] ?? const [],
-        lyrics: lyrics,
-        isChorus: chorusLines.contains(ln),
+        blockNo: (r['block_no'] as int?) ?? 0,
+        kind: rowKindOf((r['kind'] as String?) ?? ''),
+        colCount: (r['col_count'] as int?) ?? 0,
+        stanzaNo: r['stanza_no'] as int?,
+        cells: cells[ln] ?? const {},
       ));
     }
-    return buildScorePages(lines: lines);
+    if (rows.isEmpty) return JianpuScore.empty;
+
+    var source = '';
+    var stanzas = 0;
+    for (final r in _db.select(
+        'SELECT source, stanza_count FROM jianpu_score WHERE hymn_number = ?',
+        [hymnNumber])) {
+      source = (r['source'] as String?) ?? '';
+      stanzas = (r['stanza_count'] as int?) ?? 0;
+    }
+    return JianpuScore.build(
+      hymnNumber: hymnNumber,
+      source: source,
+      rows: rows,
+      stanzaCount: stanzas,
+    );
   }
-
-  // ---------- PPT 官方编码曲谱（hymn_ppt / hymn_ppt_line，任务 6） ----------
-  //
-  // 编码数据（`score_enc` 原始简谱编码串 + `lyric` 歌词原串，475 首/3032 页/12674 行）
-  // 与两款字体（简谱字体/標楷體）已入库与留档，供后续「字形专项」使用；
-  // 当前「曲谱」视图的对位真值仍取 PDF 管线（`hymn_score_char.note_index`），
-  // 因其与印刷 PDF 逐字一致（PPT 编码的行内空格基准与 PDF 音符位置不属同源，
-  // 2026-09-21 全库比对确认无法简单映射）。
-
-  /// 副歌行号集合（判据同爬虫侧 `show_score.chorus_line_nos`）
-  static Set<int> _chorusLineNos(Map<int, Map<int, String>> lyricsByLine, String chorus) {
-    if (chorus.trim().isEmpty) return const {};
-    final targets = <String>{
-      for (final ln in chorus.split('\n')) _normText(ln),
-    }..remove('');
-    if (targets.isEmpty) return const {};
-    final out = <int>{};
-    lyricsByLine.forEach((ln, stanzas) {
-      if (stanzas.length != 1 || !stanzas.containsKey(1)) return;
-      final t = _normText(stanzas[1]!);
-      if (t.isEmpty) return;
-      for (final c in targets) {
-        if (t == c || (t.length >= 6 && (t.contains(c) || c.contains(t)))) {
-          out.add(ln);
-          break;
-        }
-      }
-    });
-    return out;
-  }
-
-  /// 归一化：只留字母/数字（去标点与空白），供副歌逐行比对
-  static String _normText(String s) =>
-      s.replaceAll(RegExp(r'[^\p{L}\p{N}]', unicode: true), '');
 
   void dispose() {
     _db.dispose();
