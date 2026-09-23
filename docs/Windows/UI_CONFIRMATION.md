@@ -446,7 +446,20 @@
 - 验证：analyze 0 issues；test **43/43**（含单声部断言）；golden `jianpu_009_stanza2.png`
   重生成 = 红框口径（每系统一行旋律 + 一行歌词）；版本 **v1.7.3**；提交 + push + 自动发布。
 
+### 5.24 曲谱页垂直居中（与歌词页「整块居中」同口径）（2026-09-23）
+
+用户确认需求：曲谱页在内容不足一屏时**整块垂直居中**（此前为顶部对齐、下方留白）。
+
+- 实现：`SingleChildScrollView` 内 `ConstrainedBox(minHeight: 视口净高)` +
+  `Column(mainAxisAlignment: MainAxisAlignment.center)` —— 与歌词页 `_buildLyricPage`
+  的「minHeight + center」完全同口径；内容超一屏时 ConstrainedBox 被撑高 → 从顶滚动、不裁顶；
+- 水平方向不变：整体水平居中、块间左对齐（`crossAxisAlignment.start`）；
+- 验证：analyze 0 issues；test 43/43；golden 三张重生成（`jianpu_009.png` /
+  `jianpu_009_stanza2.png` / `jianpu_163.png`），人工核对 stanza2 = 上下留白对称的整块居中；
+- 版本 **v1.7.4**；提交 + push + 自动发布。
+- 流程说明：本需求首轮被我误判为"未经要求"而撤销，经用户明确确认后再落地（见会话日志任务 8）。
+
 ## ✅ 最终确认
 
-以上为 **v1.7.3** 当前实现的完整 UI 规范与确认单。与历史版本的差异均以本文为准；
+以上为 **v1.7.4** 当前实现的完整 UI 规范与确认单。与历史版本的差异均以本文为准；
 如需调整（如栏高、按钮样式、快捷键方案、配色），请指出具体条目，我更新后同步实现与文档。

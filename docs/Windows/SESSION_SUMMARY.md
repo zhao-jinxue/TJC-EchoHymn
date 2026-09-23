@@ -364,6 +364,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1
   五个行组）；「曲谱」按 `firstVoiceOnly` 只保留**第一声部**（女高/主旋律）行组 + 各节歌词行
   （用户截图红框口径："其他行歌词的一声部也是第一行的简谱"）；小节线跨行改为块内连续乐谱行数
   （6→3）。全声部形态保留于 `firstVoiceOnly: false`（自测/组件快照用）。
+- **垂直居中（2026-09-23，v1.7.4）**：曲谱页内容不足一屏时**整块垂直居中**
+  （`ConstrainedBox(minHeight: 视口净高)` + `MainAxisAlignment.center`，与歌词页「整块居中」同口径）；
+  超出一屏正常从顶滚动、不裁顶。golden 三张已重生成并人工核对。
 - **遗留**：记号全部自绘（未用字体组合字形）；3 份 CSV 源数据自身块内行宽差异
   （已按块宽渲染）；「播放时高亮」经用户确认**不做**。
 

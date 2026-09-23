@@ -117,10 +117,20 @@ class JianpuGridView extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
         // 允许内容溢出单元格（汉字 + 标点占 2 字宽），横向不裁剪、不挤列；
         // 各块宽度不同（按块宽渲染）→ Column 宽度取最宽块，块间左对齐
-        child: Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
+        child: ConstrainedBox(
+          // **垂直居中**（与歌词页「整块居中」同口径，2026-09-23 用户确认）：
+          // 内容不足一屏时整块垂直居中；超出一屏时 ConstrainedBox 被内容撑高
+          // → 正常从顶滚动、不裁顶
+          constraints: BoxConstraints(
+            minHeight: (constraints.maxHeight - padTop - padBottom)
+                .clamp(0.0, double.infinity),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
           ),
         ),
       ),
