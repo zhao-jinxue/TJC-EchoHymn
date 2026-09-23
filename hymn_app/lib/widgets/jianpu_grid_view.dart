@@ -68,27 +68,41 @@ class JianpuGridView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxCols = score.maxCols;
     final availW = (constraints.maxWidth - padX * 2).clamp(60.0, 100000.0);
     final availH =
         (constraints.maxHeight - padTop - padBottom).clamp(60.0, 100000.0);
 
-    // 槽宽先按「整行不换行」的宽度上限取，再按高度收缩：
-    // 内容少（例如按节显示）时字号放大铺满显示区；内容多则维持宽度上限、纵向滚动。
-    var slot = maxCols > 0 ? (availW / maxCols) : 24.0;
-    final totalEm = _contentEm;
-    if (totalEm > 0) {
-      final byH = availH / totalEm;
-      if (byH < slot) slot = byH;
+    // **按块宽渲染**：每个乐句块（CSV 的一次 <table>）用**自己的列数**铺满可用宽
+    // （列数少的块字号更大，与 APK 每表独立排布同构）；块内行宽差异属源数据自身
+    // 问题（163/197/297），按块内最大行宽（[JianpuBlock.colCount]）处理，
+    // 行宽不足的行右侧自然留空、不与其它行错位（同列仍同 x）。
+    final slots = <double>[
+      for (final block in score.blocks)
+        (availW / (block.colCount > 0 ? block.colCount : 1))
+            .clamp(minSlot, maxSlot),
+    ];
+    // 高度约束：总像素高超过可用高时整体等比收缩（保持块间字号比例），否则纵向滚动
+    var totalH = 0.0;
+    for (var bi = 0; bi < score.blocks.length; bi++) {
+      final block = score.blocks[bi];
+      if (bi > 0 && _hasVisible(block)) totalH += slots[bi] * blockGapEm;
+      for (final row in block.rows) {
+        if (_visible(row)) totalH += slots[bi] * _rowEm(row.kind);
+      }
     }
-    slot = slot.clamp(minSlot, maxSlot);
-    final m = _Metrics(slot: slot, gridW: slot * maxCols);
+    if (totalH > availH && totalH > 0) {
+      final k = availH / totalH;
+      for (var i = 0; i < slots.length; i++) {
+        slots[i] = (slots[i] * k).clamp(minSlot, maxSlot);
+      }
+    }
 
     final children = <Widget>[];
     for (var bi = 0; bi < score.blocks.length; bi++) {
       final block = score.blocks[bi];
+      final m = _Metrics(slot: slots[bi], gridW: slots[bi] * block.colCount);
       if (bi > 0 && _hasVisible(block)) {
-        children.add(SizedBox(height: slot * blockGapEm));
+        children.add(SizedBox(height: slots[bi] * blockGapEm));
       }
       final barCols = block.barColsByLine();
       for (final row in block.rows) {
@@ -101,14 +115,12 @@ class JianpuGridView extends StatelessWidget {
       color: AppColors.lyricsBg,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
-        // 允许内容溢出单元格（汉字 + 标点占 2 字宽），横向不裁剪、不挤列
+        // 允许内容溢出单元格（汉字 + 标点占 2 字宽），横向不裁剪、不挤列；
+        // 各块宽度不同（按块宽渲染）→ Column 宽度取最宽块，块间左对齐
         child: Center(
-          child: SizedBox(
-            width: m.gridW,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
           ),
         ),
       ),
@@ -135,19 +147,6 @@ class JianpuGridView extends StatelessWidget {
       row.stanzaNo == stanza;
 
   bool _hasVisible(JianpuBlock block) => block.rows.any(_visible);
-
-  /// 可见内容的总高度（em），用于「字号按高度收缩 / 铺满」的换算
-  double get _contentEm {
-    var em = 0.0;
-    for (var bi = 0; bi < score.blocks.length; bi++) {
-      final block = score.blocks[bi];
-      if (bi > 0 && _hasVisible(block)) em += blockGapEm;
-      for (final row in block.rows) {
-        if (_visible(row)) em += _rowEm(row.kind);
-      }
-    }
-    return em;
-  }
 
   Widget _buildRow(JianpuRow row, Set<int> barCols, _Metrics m) {
     final h = _rowHeight(row.kind, m);

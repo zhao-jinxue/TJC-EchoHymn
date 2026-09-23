@@ -130,4 +130,36 @@ void main() {
       matchesGoldenFile('goldens/jianpu_009_stanza2.png'),
     );
   });
+
+  testWidgets('第 163 首（源数据块内行宽差异）按块宽渲染快照', (tester) async {
+    tester.view.physicalSize = const Size(1040, 1500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final db = sqlite3.open('../data/tjc_hymn.db');
+    final score = _loadScore(db, '163');
+    db.dispose();
+    // 源数据事实：该首存在**块内**行宽不一致（20 / 37）→ 块宽取块内最大行宽
+    expect(
+        score.blocks
+            .any((b) => b.rows.map((r) => r.colCount).toSet().length > 1),
+        isTrue);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(useMaterial3: true, fontFamily: 'EchoSans'),
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF2F6FD),
+        body: JianpuGridView(
+          score: score,
+          constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 1500),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(JianpuGridView),
+      matchesGoldenFile('goldens/jianpu_163.png'),
+    );
+  });
 }

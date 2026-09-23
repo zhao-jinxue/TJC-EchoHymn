@@ -50,8 +50,8 @@ APK(assets/NNN.csv)  →  tools/import_apk_csv.py  →  data/tjc_hymn.db
 | 项 | 命令 | 基线 |
 | --- | --- | --- |
 | 静态分析 | `cd hymn_app && flutter analyze` | **No issues found** |
-| 单元/组件测试 | `cd hymn_app && flutter test` | **41 通过**（含实库网格断言、歌词音节列 == 音符列、渲染后同列同一 x、按节过滤） |
-| 版式快照 | `flutter test --update-goldens test/jianpu_golden_test.dart` | `test/goldens/jianpu_009.png`（整页）/ `jianpu_009_stanza2.png`（一页一节，人工核对用） |
+| 单元/组件测试 | `cd hymn_app && flutter test` | **42 通过**（含实库网格断言、歌词音节列 == 音符列、渲染后同列同一 x、按节过滤、块内行宽差异歌渲染） |
+| 版式快照 | `flutter test --update-goldens test/jianpu_golden_test.dart` | `jianpu_009.png`（整页=曲谱）/ `jianpu_009_stanza2.png`（一页一节=简谱）/ `jianpu_163.png`（块内行宽差异歌，按块宽渲染） |
 
 关键测试文件：`hymn_app/test/jianpu_grid_test.dart`、`hymn_app/test/jianpu_golden_test.dart`
 
@@ -63,6 +63,14 @@ APK(assets/NNN.csv)  →  tools/import_apk_csv.py  →  data/tjc_hymn.db
   即**一段旋律承载多节歌词** → 按节过滤只减少歌词行数，**谱面内容不随节变化**；
   切到某节时若某块缺该节歌词（副歌/叠句块只写一行词），该块只有谱行、无歌词（同印刷本）。
 - 节号标签 `(k)` 只在每首**第 1 个乐句块**里给出（其余块直接写音节）→ 断言/统计需按此口径。
+
+### 按块宽渲染（2026-09-23，v1.7.1）
+
+- 每个乐句块用**自己的列数**铺满可用宽（与 APK 每表独立排布同构；列数少的块字号更大）；
+- 块内行宽差异（`163`/`197`/`297`，源数据自身问题）按**块内最大行宽**（`JianpuBlock.colCount`）处理：
+  窄行右侧留空、同列仍同 x、不与其它行错位；
+- 总像素高超过可用高时**整体等比收缩**（保持块间字号比例），否则纵向滚动；
+- 「播放时高亮当前拍点/乐句」经用户确认**不做**（已从遗留清单移除）。
 
 > ⚠️ **字体码位坑**（2026-09-22 实测）：印刷记谱字体 `EchoJianpu` 的数字字形挂在
 > **CJK 码位**（`0x4e52` = `1` … `0x4e5d` = `7`；`0x5d4c` = `0`；`0x5d1f` = 增时线；
