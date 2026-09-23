@@ -351,7 +351,11 @@ class SqliteRepository {
   ///
   /// 单元格按 `line_no` 分组、按列号稀疏存放；空单元格与「被小节线跨行覆盖」
   /// 的占位格不入库（渲染层按 `barline` 的 `rowspan` 自行补画竖线）。
-  JianpuScore loadJianpuScore(String hymnNumber) {
+  ///
+  /// [firstVoiceOnly]：四部合唱谱（S,A,词,T,B）只取**第一声部**（女高/主旋律）
+  /// + 歌词行 —— 「曲谱」模式使用（用户 2026-09-23 红框口径）；
+  /// false = 全声部（组件快照/自测用）。
+  JianpuScore loadJianpuScore(String hymnNumber, {bool firstVoiceOnly = false}) {
     if (!hasJianpuTables) return JianpuScore.empty;
 
     final cells = <int, Map<int, JianpuCell>>{};
@@ -408,6 +412,7 @@ class SqliteRepository {
       source: source,
       rows: rows,
       stanzaCount: stanzas,
+      firstVoiceOnly: firstVoiceOnly,
     );
   }
 

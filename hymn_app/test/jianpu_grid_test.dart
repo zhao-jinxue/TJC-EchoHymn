@@ -18,7 +18,7 @@ File? _dbFile() {
 }
 
 /// 从库中构建一首的网格（与 `SqliteRepository.loadJianpuScore` 同口径）
-JianpuScore loadScore(Database db, String hymn) {
+JianpuScore loadScore(Database db, String hymn, {bool firstVoiceOnly = false}) {
   final rows = <JianpuRow>[];
   final cells = <int, Map<int, JianpuCell>>{};
   for (final r in db.select(
@@ -61,7 +61,11 @@ JianpuScore loadScore(Database db, String hymn) {
     ));
   }
   return JianpuScore.build(
-      hymnNumber: hymn, source: 'test', rows: rows, stanzaCount: stanzas);
+      hymnNumber: hymn,
+      source: 'test',
+      rows: rows,
+      stanzaCount: stanzas,
+      firstVoiceOnly: firstVoiceOnly);
 }
 
 void main() {
@@ -143,8 +147,8 @@ void main() {
       final barCols = score.blocks[0].barColsByLine();
       expect(barCols[0], {1});
       expect(barCols[1], {1});
-      expect(barCols[2], {1});
-      expect(barCols.containsKey(3), isFalse); // rowspan=3 覆盖 0/1/2 行
+      // 跨行 = 块内连续乐谱行数（本块 2 行），不跨块/不跨歌词行
+      expect(barCols.containsKey(2), isFalse);
     });
 
     test('空网格判定', () {
@@ -226,6 +230,48 @@ void main() {
       expect(sylCols.take(noteCols.length).toList(), noteCols);
       expect(lyric.cells[sylCols.first]!.displayText, '普');
       expect(sylCols.length >= noteCols.length, isTrue);
+    });
+
+    test('单声部（第一声部）：每块仅 1 组音符行 + 歌词行；小节线跨 3 行', () {
+      final db = sqlite3.open(dbFile!.path);
+      final all = loadScore(db, '9');
+      final sv = loadScore(db, '9', firstVoiceOnly: true);
+      db.dispose();
+
+      // 全声部：每块 4 个音符行（S,A,T,B 四部合唱谱）
+      expect(
+          all.blocks[0].rows.where((r) => r.kind == JianpuRowKind.note).length,
+          4);
+      // 单声部：每块 = 记号上+音符+记号下 + 3 行歌词
+      final b0 = sv.blocks[0];
+      expect(b0.rows.map((r) => r.kind).toList(), [
+        JianpuRowKind.markUp,
+        JianpuRowKind.note,
+        JianpuRowKind.markDown,
+        JianpuRowKind.lyric,
+        JianpuRowKind.lyric,
+        JianpuRowKind.lyric,
+      ]);
+      for (final b in sv.blocks) {
+        expect(b.rows.where((r) => r.kind == JianpuRowKind.note).length, 1);
+      }
+      // 小节线跨行随声部过滤缩短为 3（全声部为 6）
+      expect(all.blocks[0].bars.every((b) => b.span == 6), isTrue);
+      expect(b0.bars.isNotEmpty, isTrue);
+      expect(b0.bars.every((b) => b.span == 3), isTrue);
+      // 第一声部旋律与全声部的第一音符行一致（红框 = 第一行简谱）
+      expect(
+          b0.rows.firstWhere((r) => r.kind == JianpuRowKind.note).cells.values
+              .where((c) => c.kind == JianpuCellKind.note)
+              .map((c) => c.degree)
+              .toList(),
+          all.blocks[0].rows
+              .firstWhere((r) => r.kind == JianpuRowKind.note)
+              .cells
+              .values
+              .where((c) => c.kind == JianpuCellKind.note)
+              .map((c) => c.degree)
+              .toList());
     });
   }, skip: dbFile == null ? '缺 data/tjc_hymn.db' : null);
 

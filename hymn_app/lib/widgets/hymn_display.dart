@@ -162,7 +162,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
     Future.microtask(() {
       JianpuScore score;
       try {
-        score = repo?.loadJianpuScore(number) ?? JianpuScore.empty;
+        // 「曲谱」= 单声部（第一声部）网格：四部合唱谱只取女高/主旋律行 + 歌词行
+        score = repo?.loadJianpuScore(number, firstVoiceOnly: true) ??
+            JianpuScore.empty;
       } catch (e) {
         LogService.instance.error(LogTag.error, '装载简谱网格失败',
             detail: '诗歌: $number\n异常: $e');

@@ -14,7 +14,7 @@ import 'package:echo_hymn/widgets/jianpu_grid_view.dart';
 ///
 /// 说明：flutter_test 默认字体是"方块测试字体"，故这里显式加载内置字体
 /// （EchoJianpu 数字 / EchoKai 歌词 / EchoSans 界面），使快照与实机观感一致。
-JianpuScore _loadScore(Database db, String hymn) {
+JianpuScore _loadScore(Database db, String hymn, {bool firstVoiceOnly = false}) {
   final rows = <JianpuRow>[];
   final cells = <int, Map<int, JianpuCell>>{};
   for (final r in db.select(
@@ -57,7 +57,11 @@ JianpuScore _loadScore(Database db, String hymn) {
     ));
   }
   return JianpuScore.build(
-      hymnNumber: hymn, source: 'golden', rows: rows, stanzaCount: stanzas);
+      hymnNumber: hymn,
+      source: 'golden',
+      rows: rows,
+      stanzaCount: stanzas,
+      firstVoiceOnly: firstVoiceOnly);
 }
 
 void main() {
@@ -103,13 +107,13 @@ void main() {
     );
   });
 
-  testWidgets('第 9 首「一页 = 第 2 节」渲染快照', (tester) async {
+  testWidgets('第 9 首「曲谱 = 一页一节 · 单声部」渲染快照', (tester) async {
     tester.view.physicalSize = const Size(1040, 1120);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     final db = sqlite3.open('../data/tjc_hymn.db');
-    final score = _loadScore(db, '9');
+    final score = _loadScore(db, '9', firstVoiceOnly: true);
     db.dispose();
 
     await tester.pumpWidget(MaterialApp(

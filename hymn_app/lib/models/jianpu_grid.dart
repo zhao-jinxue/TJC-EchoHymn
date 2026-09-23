@@ -267,11 +267,17 @@ class JianpuScore {
   bool get isEmpty => blocks.isEmpty || blocks.every((b) => b.rows.isEmpty);
 
   /// 由仓库查询结果构建（行按 line_no 升序、单元格按列稀疏）
+  ///
+  /// [firstVoiceOnly] = true 时按「四部合唱谱只取第一声部」过滤：
+  /// 源数据每个乐句块 = 一个系统 = 女高/女低/歌词/男高/男低 五行组（S,A,词,T,B），
+  /// 过滤后每块只保留**第一个声部组**（记号上+音符+记号下）+ 全部歌词行 ——
+  /// 即用户红框口径：各节歌词共唱第一行旋律（2026-09-23 定稿）。
   factory JianpuScore.build({
     required String hymnNumber,
     required String source,
     required List<JianpuRow> rows,
     required int stanzaCount,
+    bool firstVoiceOnly = false,
   }) {
     final byBlock = <int, List<JianpuRow>>{};
     for (final r in rows) {
@@ -279,19 +285,27 @@ class JianpuScore {
     }
     final blocks = <JianpuBlock>[];
     for (final no in byBlock.keys.toList()..sort()) {
-      final rs = byBlock[no]!..sort((a, b) => a.lineNo.compareTo(b.lineNo));
+      var rs = byBlock[no]!..sort((a, b) => a.lineNo.compareTo(b.lineNo));
+      if (firstVoiceOnly) rs = _firstVoiceRows(rs);
       var width = 0;
       final bars = <JianpuBarSpan>[];
-      for (final r in rs) {
+      for (var i = 0; i < rs.length; i++) {
+        final r = rs[i];
         if (r.colCount > width) width = r.colCount;
         for (final c in r.cells.values) {
           if (c.kind == JianpuCellKind.barline) {
-            bars.add(JianpuBarSpan(c.col, r.lineNo, c.rowspan ?? 1));
+            // 小节线跨行 = 自本行起**连续的乐谱行**数：过滤声部后自动缩短为
+            // 一个声部组的高度（全声部形态下与源数据 rowspan 等价）
+            var span = 1;
+            for (var k = i + 1; k < rs.length && rs[k].isMusical; k++) {
+              span++;
+            }
+            bars.add(JianpuBarSpan(c.col, r.lineNo, span));
           }
         }
       }
-      blocks.add(JianpuBlock(
-          blockNo: no, rows: rs, colCount: width, bars: bars));
+      blocks.add(
+          JianpuBlock(blockNo: no, rows: rs, colCount: width, bars: bars));
     }
     return JianpuScore(
       hymnNumber: hymnNumber,
@@ -299,6 +313,39 @@ class JianpuScore {
       blocks: blocks,
       stanzaCount: stanzaCount,
     );
+  }
+
+  /// 四部合唱谱（S,A,词,T,B）只保留**第一声部**：每块第一个
+  /// 「记号上 + 音符 + 记号下」组 + 全部歌词/空行；其余声部行丢弃。
+  static List<JianpuRow> _firstVoiceRows(List<JianpuRow> rows) {
+    final out = <JianpuRow>[];
+    var seenNote = false;
+    var done = false;
+    for (final r in rows) {
+      if (!r.isMusical) {
+        out.add(r); // 歌词/空行始终保留
+        continue;
+      }
+      if (done) continue; // 第一声部组之后的声部行丢弃
+      switch (r.kind) {
+        case JianpuRowKind.markUp:
+          if (seenNote) {
+            done = true; // 音符后再现记号上 = 下一声部开始
+          } else {
+            out.add(r);
+          }
+        case JianpuRowKind.note:
+          out.add(r);
+          seenNote = true;
+        case JianpuRowKind.markDown:
+          out.add(r);
+          if (seenNote) done = true; // 记号下收尾 = 第一声部组结束
+        case JianpuRowKind.lyric:
+        case JianpuRowKind.blank:
+          out.add(r);
+      }
+    }
+    return out;
   }
 
   /// 全曲最大列数（渲染时统一列宽的基准）
