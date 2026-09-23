@@ -19,10 +19,11 @@ import 'jianpu_grid_view.dart';
 
 /// 歌词显示模式
 ///
-/// `score` = 曲谱：整页网格（谱 + **全部节**歌词并列，印刷本/APK 的形态）；
-/// `jianpu` = 简谱：同数据源但**一页一节**（过滤歌词行 + 翻页条 + 跟随播放切节）；
-/// 二者数据均来自 `jianpu_*` 三表（APK 谱面 CSV 网格，列 = 拍点）。
-/// 旧名 `numbered`（简谱扫描图）与 `scoreLyric`（旧 PDF 管线曲谱）在初始化时归一化。
+/// `score` = 曲谱：**一页一节**的简谱网格（单声部主旋律 + 该节一行歌词；
+///   数据源 `jianpu_*` 三表，APK 谱面 CSV 网格，列 = 拍点）；
+/// `jianpu` = 简谱：**简谱扫描图片**（印刷四声部谱，作为参考图；可缩放拖动）；
+/// `staff` = 五线谱扫描图片。
+/// 旧名归一化：`scoreLyric` → `score`、`numbered` → `jianpu`、未知 → `歌词`。
 enum DisplayMode { lyrics, score, jianpu, staff }
 
 /// 主内容区：版本切换 + 歌词/谱面 + 播放控制
@@ -140,20 +141,18 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   // ============ 分页（歌词模式按节翻页；简谱网格同页展示全部节） ============
 
-  /// 当前诗歌的页数（歌词/简谱模式 = 节数；曲谱/五线谱 = 整页 1 页）
+  /// 当前诗歌的页数（歌词/曲谱模式 = 节数；简谱/五线谱 = 整页，翻页条不显示）
   int _pageCount(Hymn? hymn) {
     if (hymn == null) return 0;
-    if (_mode == DisplayMode.jianpu) {
+    if (_mode == DisplayMode.score) {
       return _jianpu.stanzaCount > 1 ? _jianpu.stanzaCount : 1;
     }
-    if (_mode == DisplayMode.score) return 1;
     return hymn.lyricPages.length;
   }
 
   /// 异步装载简谱网格（一首一次；单首数百行记录，microtask 中查库不阻塞 UI）
   void _ensureJianpu(Hymn? hymn) {
-    if (hymn == null) return;
-    if (_mode != DisplayMode.jianpu && _mode != DisplayMode.score) return;
+    if (hymn == null || _mode != DisplayMode.score) return;
     if (_scoreLoadedFor == hymn.hymnNumber) return;
     if (_jianpuLoading) return;
     _jianpuLoading = true;
@@ -439,30 +438,24 @@ class _HymnDisplayState extends State<HymnDisplay> {
       case DisplayMode.lyrics:
         return _buildLyrics(hymn);
       case DisplayMode.score:
-        return _buildScoreWhole(hymn);
-      case DisplayMode.jianpu:
         return _buildJianpu(hymn);
+      case DisplayMode.jianpu:
+        return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
       case DisplayMode.staff:
         return _buildScore(hymn.staffPngPath, isEmpty: '暂无五线谱');
     }
   }
 
-  /// 「曲谱」：整页网格（谱 + **全部节**歌词并列，印刷本/APK 形态；不分节、无翻页条）
-  Widget _buildScoreWhole(Hymn hymn) =>
-      _buildJianpuView(hymn, perStanzaMode: false);
-
-  /// 「简谱」：一页一节（过滤歌词行 + 翻页条 + 跟随播放切节）
-  Widget _buildJianpu(Hymn hymn) => _buildJianpuView(hymn, perStanzaMode: true);
-
-  /// 网格视图公共实现（数据源 `jianpu_*` 三表，列 = 拍点）
+  /// 「曲谱」：一页一节的简谱网格（**单声部**主旋律 + 该节一行歌词）
   ///
-  /// **无网格数据时回退**显示该首「简谱」整页扫描图（老库、未收录、数据异常时不留空白）。
-  /// [perStanzaMode] = true 且节数 > 1 时：`jianpu_row.stanza_no` 过滤歌词行
-  /// （谱行被该块各节共用，不随节变化 —— 全库无「一块一节」结构），并叠加
-  /// 「上一节/下一节 + 手自切换」控件；自动模式复用 `autoPageIndexFor` 跟随播放进度。
-  Widget _buildJianpuView(Hymn hymn, {required bool perStanzaMode}) {
+  /// 数据源 `jianpu_*` 三表（列 = 拍点）；**无网格数据时回退**该首简谱扫描图
+  /// （老库、未收录、数据异常时不留空白）。
+  /// 谱面各节共用（全库无「一块一节」结构）→ 切节只切换歌词行；
+  /// 节数 > 1 时叠加「上一节/下一节 + 手自切换」控件，自动模式复用
+  /// `autoPageIndexFor` 跟随播放进度。
+  Widget _buildJianpu(Hymn hymn) {
     final stanzas = _jianpu.stanzaCount;
-    final perStanza = perStanzaMode && stanzas > 1;
+    final perStanza = stanzas > 1;
     return Container(
       color: AppColors.lyricsBg,
       child: Stack(
