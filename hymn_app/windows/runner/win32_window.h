@@ -3,6 +3,8 @@
 
 #include <windows.h>
 
+#include <shellapi.h>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -72,6 +74,12 @@ class Win32Window {
   // 系统浅色边框带（#F1F3F9，当系统浅色模式时 DWM 默认浅边框）。
   void SetAppearance(bool is_dark, COLORREF border_color);
 
+  // 系统托盘（v1.8.0）：隐藏窗口到托盘 / 从托盘恢复显示。
+  // 托盘图标左键单击或双击恢复窗口；右键菜单提供「显示主窗口 / 退出」。
+  // 隐藏期间引擎与音频继续运行（播放不中断）。
+  void HideToTray();
+  void ShowFromTray();
+
  protected:
   // Processes and route salient window messages for mouse handling,
   // size change and DPI. Delegates handling of these to member overloads that
@@ -106,6 +114,16 @@ class Win32Window {
 
   // Update the window frame's theme to match the system theme.
   static void UpdateTheme(HWND const window);
+
+  // 托盘图标回调消息（WndProc → MessageHandler 路由到 OnTrayMessage）
+  static const UINT kTrayCallbackMessage = WM_APP + 0x33;
+  void TrayAddOrModify();
+  void TrayDelete();
+  LRESULT OnTrayMessage(WPARAM wparam, LPARAM lparam) noexcept;
+
+  NOTIFYICONDATAW tray_nid_ = {};
+  bool tray_created_ = false;
+  bool tray_hidden_ = false;
 
   bool quit_on_close_ = false;
 

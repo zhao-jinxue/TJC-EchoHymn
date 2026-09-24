@@ -160,6 +160,13 @@ bool FlutterWindow::OnCreate() {
           // 自定义标题栏关闭按钮（走 WM_CLOSE 正常关闭流程，状态落盘）
           ::PostMessage(this->GetHandle(), WM_CLOSE, 0, 0);
           result->Success();
+        } else if (method == "hideToTray") {
+          // 关闭按钮选择「进入系统托盘」：隐藏窗口（播放不中断），托盘图标可恢复/退出
+          this->HideToTray();
+          result->Success();
+        } else if (method == "showFromTray") {
+          this->ShowFromTray();
+          result->Success();
         } else if (method == "startWindowDrag") {
           // 让系统进入标题栏拖拽循环：窗口跟随鼠标移动；
           // 最大化状态下拖拽会自动还原为浮动窗口（系统默认行为）。

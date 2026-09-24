@@ -208,6 +208,16 @@ const List<({String title, List<GuideLine> lines})> _guideSections = [
       GuideLine('显示播放进度（播放位置 / 总时长 · 百分比）。'),
     ],
   ),
+  (
+    title: '关闭与系统托盘',
+    lines: [
+      GuideLine('首次点击标题栏关闭按钮时弹窗询问：「直接关闭」或「进入系统托盘」；'
+          '选择后自动记住，之后点击关闭按钮直接执行该选择，不再重复询问。'),
+      GuideLine('进入系统托盘：窗口隐藏到托盘（音频继续播放）；'
+          '双击托盘图标恢复窗口，右键托盘图标可选「显示主窗口」或「退出」。'),
+      GuideLine('重选：本手册底部「重选关闭行为」按钮可重新选择并立即生效。'),
+    ],
+  ),
 ];
 
 /// 用户手册弹窗（标题栏「？」按钮 / F1 / 启动自动弹出）
@@ -216,20 +226,26 @@ const List<({String title, List<GuideLine> lines})> _guideSections = [
 /// 底部提供「启动时显示本手册」勾选框（ManualPrefs 持久化）。
 /// Esc / 右上角 ✕ / 点击遮罩关闭；重复触发不叠加。
 class UserManualDialog extends StatelessWidget {
-  const UserManualDialog({super.key});
+  const UserManualDialog({super.key, this.onRechooseCloseAction});
+
+  /// 「重选关闭行为」回调（v1.8.0）：弹出选择框（直接关闭 / 进入系统托盘），
+  /// 选择写入 state.json `closeAction` 并立即生效；null = 不显示重选按钮。
+  final VoidCallback? onRechooseCloseAction;
 
   /// 是否已打开（防止 F1 / ？重复点击叠加多个手册弹窗，H11）
   static bool _isOpen = false;
 
   /// 弹出用户手册（已打开时忽略，避免叠加）
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context,
+      {VoidCallback? onRechooseCloseAction}) {
     if (_isOpen) return Future.value();
     _isOpen = true;
     try {
       return showDialog<void>(
         context: context,
         barrierDismissible: true,
-        builder: (_) => const UserManualDialog(),
+        builder: (_) =>
+            UserManualDialog(onRechooseCloseAction: onRechooseCloseAction),
       ).whenComplete(() => _isOpen = false);
     } catch (_) {
       // 弹窗打开异常时复位标志，避免卡死无法再次打开
@@ -341,8 +357,9 @@ class UserManualDialog extends StatelessWidget {
                   ),
                 ),
               ),
-              // ---- 底部固定区：启动时显示本手册开关（ManualPrefs 持久化） ----
+              // ---- 底部固定区：重选关闭行为 + 启动时显示本手册开关 ----
               Divider(height: 1, color: AppColors.divider),
+              _buildCloseActionOption(),
               _buildStartupOption(),
             ],
           ),
@@ -442,6 +459,43 @@ class UserManualDialog extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  /// 弹窗底部固定区：「重选关闭行为」按钮（v1.8.0）
+  ///
+  /// 点击后弹出选择框（直接关闭 / 进入系统托盘），选择写入 state.json
+  /// `closeAction` 并立即生效；之后点击标题栏关闭按钮直接执行该选择。
+  Widget _buildCloseActionOption() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          OutlinedButton.icon(
+            onPressed: onRechooseCloseAction,
+            icon: const Icon(Icons.settings_backup_restore, size: 15),
+            label: const Text('重选关闭行为'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: BorderSide(color: AppColors.controlBorder),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              textStyle: const TextStyle(fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '重新选择点击关闭按钮时「直接关闭」或「进入系统托盘」',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.4,
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

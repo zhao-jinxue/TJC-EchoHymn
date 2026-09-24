@@ -88,6 +88,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 歌词翻页模式（true=自动跟随播放进度 / false=手动按钮翻页）
   bool _lyricAutoMode = true;
 
+  /// 关闭按钮行为：''=未选择（首次点击关闭时弹窗询问）、'exit'=直接关闭、
+  /// 'tray'=最小化到系统托盘；持久化于 state.json `closeAction`（v1.8.0）
+  String _closeAction = '';
+
   // 恢复锚点（传给左栏面板自动恢复）
   AppState? _anchor;
 
@@ -178,6 +182,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _showRight = state.showRight;
         // 恢复"启动时显示用户手册"偏好（手册弹窗底部勾选框控制）
         ManualPrefs.instance.restoreFrom(state.manualOnStart);
+        // 恢复关闭按钮行为偏好（''=首次点击时弹窗询问）
+        _closeAction = state.closeAction;
       });
       // 恢复侧栏状态后同步窗口宽度
       _syncWindowSize();
@@ -233,7 +239,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             LogService.instance.info(LogTag.ui, '启动自动弹出用户手册');
-            UserManualDialog.show(context);
+            UserManualDialog.show(context,
+                onRechooseCloseAction: _rechooseCloseAction);
           }
         });
       }
@@ -312,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       fontSizeLevel: FontScaleController.instance.current.id,
       manualOnStart: ManualPrefs.instance.showOnStart,
       lyricAutoMode: _lyricAutoMode,
+      closeAction: _closeAction,
     );
   }
 
@@ -483,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   icon: Icons.close,
                   tooltip: '关闭',
                   danger: true,
-                  onTap: _closeWindow,
+                  onTap: _requestClose,
                 ),
               ],
             ),
@@ -603,7 +611,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 打开用户手册弹窗
   void _showManual() {
     LogService.instance.info(LogTag.action, '打开用户手册');
-    UserManualDialog.show(context);
+    UserManualDialog.show(context,
+        onRechooseCloseAction: _rechooseCloseAction);
   }
 
   /// 打开换肤菜单：在调色盘按钮下方弹出 5 套配色列表
@@ -782,6 +791,80 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await _windowChannel.invokeMethod<void>('close');
     } catch (_) {
       // 非 Windows 平台无此通道，忽略
+    }
+  }
+
+  /// 关闭按钮入口（v1.8.0）：首次点击弹窗询问「直接关闭 / 进入系统托盘」，
+  /// 选择写入 state.json 后立即执行；之后点击直接按已保存的选择执行，不再询问。
+  Future<void> _requestClose() async {
+    if (_closeAction.isEmpty) {
+      final choice = await _askCloseAction();
+      if (choice == null) return; // 取消：什么都不做
+      setState(() => _closeAction = choice);
+      await _saveState();
+    }
+    if (_closeAction == 'tray') {
+      await _hideToTray();
+    } else {
+      await _closeWindow();
+    }
+  }
+
+  /// 弹窗询问关闭行为；返回 'exit' / 'tray' / null（取消）
+  Future<String?> _askCloseAction() {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: Text('关闭 EchoHymn',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: Text(
+          '请选择点击关闭按钮时的行为（选择后自动记住，下次直接执行；'
+          '可在用户手册中重新选择）：',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('exit'),
+            child: const Text('直接关闭'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('tray'),
+            child: const Text('进入系统托盘'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 最小化到系统托盘：窗口隐藏、播放不中断；托盘图标双击恢复、右键菜单可退出
+  Future<void> _hideToTray() async {
+    LogService.instance.info(LogTag.action, '关闭按钮：进入系统托盘');
+    try {
+      await _windowChannel.invokeMethod<void>('hideToTray');
+    } catch (_) {
+      // 非 Windows 平台无托盘通道：退化为直接关闭
+      await _closeWindow();
+    }
+  }
+
+  /// 用户手册「重选关闭行为」：重新弹窗选择并立即生效（v1.8.0）
+  Future<void> _rechooseCloseAction() async {
+    final choice = await _askCloseAction();
+    if (choice == null) return;
+    setState(() => _closeAction = choice);
+    await _saveState();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(choice == 'tray'
+            ? '已设置：点击关闭按钮时进入系统托盘'
+            : '已设置：点击关闭按钮时直接关闭'),
+        duration: const Duration(seconds: 2),
+      ));
     }
   }
 

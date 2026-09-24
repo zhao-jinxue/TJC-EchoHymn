@@ -42,6 +42,7 @@ class AppStateService {
     String fontSizeLevel = '',
     bool manualOnStart = true,
     bool lyricAutoMode = true,
+    String closeAction = '',
   }) {
     final data = <String, Object>{
       'leftTab': leftTab,
@@ -57,6 +58,7 @@ class AppStateService {
       'fontSizeLevel': fontSizeLevel,
       'manualOnStart': manualOnStart,
       'lyricAutoMode': lyricAutoMode,
+      'closeAction': closeAction,
     };
     // 排队执行，串行写入，且异常不影响后续写入
     _writeChain = _writeChain.then((_) => _doWrite(data)).catchError((_) {});
@@ -136,6 +138,7 @@ class AppStateService {
         fontSizeLevel: (json['fontSizeLevel'] as String?) ?? '',
         manualOnStart: (json['manualOnStart'] as bool?) ?? true,
         lyricAutoMode: (json['lyricAutoMode'] as bool?) ?? true,
+        closeAction: (json['closeAction'] as String?) ?? '',
       );
     } catch (_) {
       return _defaultState;
@@ -182,6 +185,10 @@ class AppState {
   /// 歌词翻页模式：true=自动（跟随播放进度），false=手动（按钮翻页）
   final bool lyricAutoMode;
 
+  /// 关闭按钮行为：''=未选择（首次点击关闭时弹窗询问）、
+  /// 'exit'=直接关闭、'tray'=最小化到系统托盘（v1.8.0）
+  final String closeAction;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -196,5 +203,6 @@ class AppState {
     this.fontSizeLevel = '',
     this.manualOnStart = true,
     this.lyricAutoMode = true,
+    this.closeAction = '',
   });
 }

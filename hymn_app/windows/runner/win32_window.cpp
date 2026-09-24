@@ -226,7 +226,12 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
     }
 
+    case kTrayCallbackMessage:
+      // 托盘图标事件（左键恢复窗口 / 右键菜单）
+      return OnTrayMessage(wparam, lparam);
+
     case WM_DESTROY:
+      TrayDelete();
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {
@@ -397,4 +402,80 @@ void Win32Window::UpdateTheme(HWND const window) {
     DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE,
                           &enable_dark_mode, sizeof(enable_dark_mode));
   }
+}
+
+// ---------- 系统托盘（v1.8.0） ----------
+// 关闭按钮选择「进入系统托盘」时隐藏主窗口（引擎与音频继续运行）；
+// 托盘图标左键单击/双击恢复窗口，右键菜单提供「显示主窗口 / 退出」。
+
+void Win32Window::HideToTray() {
+  if (window_handle_ == nullptr) return;
+  TrayAddOrModify();
+  ::ShowWindow(window_handle_, SW_HIDE);
+  tray_hidden_ = true;
+}
+
+void Win32Window::ShowFromTray() {
+  if (window_handle_ == nullptr) return;
+  ::ShowWindow(window_handle_, SW_SHOW);
+  ::SetForegroundWindow(window_handle_);
+  tray_hidden_ = false;
+}
+
+void Win32Window::TrayAddOrModify() {
+  if (window_handle_ == nullptr) return;
+  if (!tray_created_) {
+    ZeroMemory(&tray_nid_, sizeof(tray_nid_));
+    tray_nid_.cbSize = sizeof(tray_nid_);
+    tray_nid_.hWnd = window_handle_;
+    tray_nid_.uID = 1;
+    tray_nid_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+    tray_nid_.uCallbackMessage = kTrayCallbackMessage;
+    tray_nid_.hIcon = ::LoadIconW(::GetModuleHandleW(nullptr),
+                                  MAKEINTRESOURCEW(IDI_APP_ICON));
+    wcscpy_s(tray_nid_.szTip, L"EchoHymn · 聆听赞美诗");
+    tray_created_ = true;
+    ::Shell_NotifyIconW(NIM_ADD, &tray_nid_);
+  } else {
+    ::Shell_NotifyIconW(NIM_MODIFY, &tray_nid_);
+  }
+}
+
+void Win32Window::TrayDelete() {
+  if (tray_created_) {
+    ::Shell_NotifyIconW(NIM_DELETE, &tray_nid_);
+    tray_created_ = false;
+  }
+}
+
+LRESULT Win32Window::OnTrayMessage(WPARAM /*wparam*/, LPARAM lparam) noexcept {
+  switch (LOWORD(lparam)) {
+    case WM_LBUTTONUP:
+    case WM_LBUTTONDBLCLK:
+      ShowFromTray();
+      return 0;
+    case WM_RBUTTONUP: {
+      HMENU menu = ::CreatePopupMenu();
+      ::AppendMenuW(menu, MF_STRING, 1, L"显示主窗口");
+      ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+      ::AppendMenuW(menu, MF_STRING, 2, L"退出");
+      POINT pt{};
+      ::GetCursorPos(&pt);
+      // TrackPopupMenu 要求前台窗口，否则菜单不自动消失
+      ::SetForegroundWindow(window_handle_);
+      const UINT cmd =
+          ::TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
+                           pt.x, pt.y, 0, window_handle_, nullptr);
+      ::DestroyMenu(menu);
+      if (cmd == 1) {
+        ShowFromTray();
+      } else if (cmd == 2) {
+        // 托盘菜单「退出」= 真正退出（绕过关闭按钮的托盘偏好）
+        TrayDelete();
+        ::PostMessageW(window_handle_, WM_CLOSE, 0, 0);
+      }
+      return 0;
+    }
+  }
+  return 0;
 }

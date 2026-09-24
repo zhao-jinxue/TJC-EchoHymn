@@ -367,6 +367,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1
 - **垂直居中（2026-09-23，v1.7.4）**：曲谱页内容不足一屏时**整块垂直居中**
   （`ConstrainedBox(minHeight: 视口净高)` + `MainAxisAlignment.center`，与歌词页「整块居中」同口径）；
   超出一屏正常从顶滚动、不裁顶。golden 三张已重生成并人工核对。
+- **关闭行为与系统托盘（2026-09-24，v1.8.0）**：首次点关闭按钮弹窗询问
+  「直接关闭 / 进入系统托盘」，选择写入 state.json `closeAction` 并记住，之后直接执行；
+  托盘期间音频继续播放，托盘图标左键恢复、右键菜单可退出；用户手册新增该小节 +
+  底部「重选关闭行为」按钮。原生侧 Shell_NotifyIconW 实现（无新增插件依赖）。
 - **遗留**：记号全部自绘（未用字体组合字形）；3 份 CSV 源数据自身块内行宽差异
   （已按块宽渲染）；「播放时高亮」经用户确认**不做**。
 

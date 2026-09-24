@@ -459,7 +459,22 @@
 - 版本 **v1.7.4**；提交 + push + 自动发布。
 - 流程说明：本需求首轮被我误判为"未经要求"而撤销，经用户明确确认后再落地（见会话日志任务 8）。
 
+### 5.25 关闭行为选择与系统托盘（v1.8.0）
+
+- 首次点击标题栏关闭按钮：弹窗询问「直接关闭 / 进入系统托盘 / 取消」；选择写入
+  state.json `closeAction`（''=未选择 / 'exit'=直接关闭 / 'tray'=进托盘）并立即执行；
+  之后点击关闭按钮**直接执行已保存选择**，不再重复询问；
+- 进入系统托盘：窗口隐藏、音频继续播放；托盘图标左键单击/双击恢复窗口；
+  右键菜单「显示主窗口 / 退出」（退出 = 真正退出，绕过托盘偏好）；
+- 用户手册：新增「关闭与系统托盘」小节；手册底部新增「重选关闭行为」按钮
+  （重新弹窗选择、写入 state.json 并立即生效）；
+- 实现：Dart 侧 `home_screen._requestClose / _askCloseAction / _hideToTray /
+  _rechooseCloseAction` + `AppState.closeAction`（saveAll/load 全链路）；
+  原生侧 `Win32Window::HideToTray / ShowFromTray / OnTrayMessage`（Shell_NotifyIconW）+
+  MethodChannel `echo_hymn/window` 新增 `hideToTray` / `showFromTray`；
+- 验证：analyze 0 issues；test 43/43；Windows Debug 构建通过（托盘 C++ 代码编译）。
+
 ## ✅ 最终确认
 
-以上为 **v1.7.4** 当前实现的完整 UI 规范与确认单。与历史版本的差异均以本文为准；
+以上为 **v1.8.0** 当前实现的完整 UI 规范与确认单。与历史版本的差异均以本文为准；
 如需调整（如栏高、按钮样式、快捷键方案、配色），请指出具体条目，我更新后同步实现与文档。
