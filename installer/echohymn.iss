@@ -51,6 +51,9 @@ SetupIconFile=app_icon.ico
 Compression={#Comp}
 SolidCompression=yes
 WizardStyle=modern
+; CloseApplications 只覆盖安装程序自身 [Files]/[InstallDelete] 条目（走 Restart Manager）；
+; 主程序与素材由 ExtractArchive 直接释放，不在其感知范围 → 运行中的实例改由 [Code] 显式
+; 检测并结束（不采用 AppMutex：其官方交互允许「确定继续」，仍会留下残留文件）
 CloseApplications=yes
 ArchiveExtraction=enhanced
 
@@ -257,7 +260,107 @@ procedure ForceCopy(Src, Dst: string);
 begin
   ForceDirectories(ExtractFileDir(Dst));
   DeleteFile(Dst);
-  FileCopy(Src, Dst, False);
+  CopyFile(Src, Dst, False);
+end;
+
+{ ── 运行中实例处理（2026-09-24 修复：程序在运行时卸载/升级导致文件残留）──
+  背景：`CloseApplications=yes` 只覆盖安装程序自身 [Files] / [InstallDelete] 条目（走 Windows
+  Restart Manager），而本安装包的主程序与素材都由 ExtractArchive 直接释放、卸载时由 DelTree
+  整树删除——两种情况都不在 Restart Manager 感知范围内。若 EchoHymn 正在运行（含最小化到
+  系统托盘：窗口隐藏但进程仍在），echo_hymn.exe 与进程当前目录被占用 → DelTree 静默失败
+  → 安装目录残留；且 Inno 仍会删除 unins000.exe 与注册表卸载项，用户再也无法通过
+  「设置 → 应用」清理。故安装前（PrepareToInstall）与卸载前（InitializeUninstall）都显式
+  检测并结束进程，删除后再复核结果。 }
+
+const
+  EH_EXE = 'echo_hymn.exe';
+  EH_MUTEX = 'EchoHymn_SingleInstanceMutex';  { 与 hymn_app/windows/runner/main.cpp 一致 }
+  EH_WINDOW = 'echo_hymn';
+
+function EHAppRunning: Boolean;
+begin
+  { 双通道判定：单实例互斥体（可靠）+ 窗口标题（兜底） }
+  Result := CheckForMutexes(EH_MUTEX) or (FindWindowByWindowName(EH_WINDOW) <> 0);
+end;
+
+function EHCloseApp: Boolean;
+var
+  ResultCode: Integer;
+begin
+  { /F 强制结束：软件可能处于托盘隐藏状态，或首次关闭会弹出「直接关闭 / 进入系统托盘」
+    询问框，平滑关闭（不带 /F）会被这两个分支阻断而无法结束进程；/T 连带结束子进程。 }
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM ' + EH_EXE, '',
+       SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(600);
+  Result := not EHAppRunning;
+end;
+
+{ 确保运行中的实例已关闭。Silent=True（/SILENT、/VERYSILENT 或静默卸载）不弹窗、直接结束；
+  返回 False 表示不应继续（用户选择取消，或进程无法结束）。 }
+function EHEnsureAppClosed(Silent: Boolean): Boolean;
+begin
+  Result := True;
+  if not EHAppRunning then Exit;
+  if not Silent then
+    if MsgBox('检测到 EchoHymn 正在运行（可能已最小化到系统托盘）。' + #13#10 + #13#10 +
+      '请先关闭它；或点击「是」由本程序立即结束该进程并继续。' + #13#10 +
+      '（个人歌单与设置保存在 state.json 中，不受影响；未保存的播放进度不保留。）',
+      mbConfirmation, MB_YESNO) = IDNO then
+    begin
+      Result := False;
+      Exit;
+    end;
+  if not EHCloseApp then
+  begin
+    Result := False;
+    if not Silent then
+      MsgBox('无法结束正在运行的 EchoHymn 进程，操作已中止。' + #13#10 +
+        '请在任务管理器中结束 echo_hymn.exe（含托盘图标）后重试。',
+        mbCriticalError, MB_OK);
+  end;
+end;
+
+{ 整树删除 + 占用重试（进程刚退出时文件句柄/目录句柄可能尚未释放）}
+function EHDeleteTree(const Dir: String): Boolean;
+var
+  I: Integer;
+begin
+  Result := DelTree(Dir, True, True, True);
+  I := 0;
+  while (not Result) and (I < 5) do
+  begin
+    Sleep(500);
+    if EHAppRunning then EHCloseApp;
+    Result := DelTree(Dir, True, True, True);
+    I := I + 1;
+  end;
+end;
+
+{ 列出残留条目（最多 Max 条），供删除失败时向用户指明清理对象 }
+function EHResidueList(const Dir: String; Max: Integer): String;
+var
+  SR: TFindRec;
+  N: Integer;
+begin
+  Result := '';
+  N := 0;
+  if FindFirst(Dir + '\*', SR) then
+  try
+    repeat
+      if (SR.Name <> '.') and (SR.Name <> '..') then
+      begin
+        Result := Result + '  ' + SR.Name + #13#10;
+        N := N + 1;
+        if N >= Max then
+        begin
+          Result := Result + '  …' + #13#10;
+          Break;
+        end;
+      end;
+    until not FindNext(SR);
+  finally
+    FindClose(SR);
+  end;
 end;
 
 procedure InitializeWizard;
@@ -358,6 +461,15 @@ begin
   Result := True;
 end;
 
+{ 升级安装前的占用检查：主程序与素材由 ExtractArchive 直接释放，CloseApplications 覆盖不到，
+  运行中会因文件占用而释放失败。返回非空字符串 → 安装中止并显示该提示。 }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if not EHEnsureAppClosed(WizardSilent) then
+    Result := '检测到 EchoHymn 正在运行，安装已取消。请先关闭软件（含系统托盘图标）后重试。';
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   DbPath, BakPath, DataArc: string;
@@ -412,6 +524,14 @@ end;
 function InitializeUninstall(): Boolean;
 begin
   Result := True;
+  { 卸载前必须先结束运行中的实例：否则 echo_hymn.exe 与进程当前工作目录被占用，
+    整树删除失败留下残留文件，而 Inno 仍会删掉 unins000.exe 与注册表卸载项，
+    用户将失去「设置 → 应用」里的卸载入口。返回 False = 干净中止（不动任何文件）。 }
+  if not EHEnsureAppClosed(UninstallSilent) then
+  begin
+    Result := False;
+    Exit;
+  end;
   if UninstallSilent then
     KeepUserData := True
   else
@@ -420,7 +540,7 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  App, KeepDir, P: string;
+  App, KeepDir, P, L: string;
   SR: TFindRec;
 begin
   if CurUninstallStep = usUninstall then
@@ -446,7 +566,20 @@ begin
       end;
     end;
     { 载荷解包的文件不在安装日志中，由 Inno 逐条删除会残留——直接整树清理 }
-    DelTree(App, True, True, True);
+    { 用户可能在向导期间又重新启动了软件；删除失败（文件/目录仍被占用）时重试并复核结果，
+      绝不静默留下半截目录 —— 否则注册表卸载项与 unins000.exe 已删除，用户无从再卸 }
+    if EHAppRunning then EHCloseApp;
+    if not EHDeleteTree(App) then
+    begin
+      L := EHResidueList(App, 8);
+      if L = '' then
+        L := '  （目录已不存在）' + #13#10;
+      if not UninstallSilent then
+        MsgBox('卸载未能删除全部文件（仍被占用）。' + #13#10 + #13#10 +
+          '残留位置：' + App + #13#10 + '残留内容：' + #13#10 + L + #13#10 +
+          '请在关闭 EchoHymn（含任务栏托盘图标）后手动删除上述目录。',
+          mbError, MB_OK);
+    end;
   end
   else if (CurUninstallStep = usPostUninstall) and KeepUserData then
   begin

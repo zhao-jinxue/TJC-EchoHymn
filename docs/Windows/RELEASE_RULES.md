@@ -31,8 +31,8 @@
 | 14 | **支持静默安装与安装日志** | `/SILENT` `/VERYSILENT` `/NORESTART` `/DIR=` `/TASKS=` `/LOG=`；静默属发布者/批量部署通道：**跳过誓言交互校验，环境检查仍生效**（规则 5 的唯一豁免通道，须知情使用） |
 | 15 | **版本号单源注入** | `hymn_app/pubspec.yaml` `version` → 构建脚本解析 → ISCC `/DAppVersion` → 安装包文件名/产品版本/注册表 DisplayVersion；禁止手工散落维护版本号（2026-09 曾发生 pubspec 落后两个大版本） |
 | 16 | **发布附 SHA256 校验值** | 构建自动产出 `EchoHymn_Setup_v<版本>.exe.sha256` 与 `EchoHymn_Data_v<版本>.7z.sha256` 两份；对外分发时必须连同校验值一并提供（用户可验证下载完整性，防篡改/防损坏） |
-| 17 | **失败处理与回滚** | 解包异常捕获 → 明确报错并中止安装（提示核对 SHA256）；`CloseApplications=yes` 安装前处理占用文件的运行实例；卸载检测到运行程序给出中文提示（`UninstallAppRunningError`）；磁盘满等 IO 错误由向导原生报错弹窗承载 |
-| 18 | **构建全程脚本化、可重复** | `tools/build_installer.ps1` 一键完成（版本→release 定位→语言文件→双暂存区 staging/staging_data→主/素材双加密载荷→ISCC 编译→双 SHA256），支持 `-SkipStaging/-SkipPayload` 增量；安装包**不并入** post-commit 自动发布（素材压缩耗时长，保持手动触发）；构建产物（payload.7z/EchoHymn_Data_v*.7z/staging//staging_data//output/）一律 .gitignore 排除 |
+| 17 | **失败处理与回滚** | 解包异常捕获 → 明确报错并中止安装（提示核对 SHA256）；**运行中实例的占用必须由 `[Code]` 显式处理**（2026-09-24 修复）：`CloseApplications=yes` 只覆盖安装程序自身 `[Files]`/`[InstallDelete]`（Windows Restart Manager），主程序/素材由 `ExtractArchive` 释放、卸载由 `DelTree` 整树删除，均不在其感知范围——安装前 `PrepareToInstall`、卸载前 `InitializeUninstall` 双通道检测（互斥体 `EchoHymn_SingleInstanceMutex` + 窗口标题）→ 中文提示确认后 `taskkill /F /T` 结束进程（含托盘隐藏实例；静默模式免交互直结束）；卸载删除后**复核目录并报告残留**（绝不静默留下半截目录：否则 `unins000.exe` 与注册表项已删，用户无从再卸）。**不采用 `AppMutex`**：其官方交互允许「确定继续」，仍会留残留。磁盘满等 IO 错误由向导原生报错弹窗承载 |
+| 18 | **构建全程脚本化、可重复** | `tools/build_installer.ps1` 一键完成（版本→release 定位→语言文件→双暂存区 staging/staging_data→主/素材双加密载荷→ISCC 编译→双 SHA256），支持 `-SkipStaging/-SkipPayload` 增量与 **`-IssOnly`**（仅重编译安装程序：复用既有主载荷 + `output/` 素材载荷，改 `.iss` 后秒级迭代）；安装包**不并入** post-commit 自动发布（素材压缩耗时长，保持手动触发）；构建产物（payload.7z/EchoHymn_Data_v*.7z/staging//staging_data//output/）一律 .gitignore 排除 |
 
 ---
 
@@ -40,7 +40,12 @@
 
 1. 静默装到非默认目录 → 文件数/目录结构与 staging+staging_data 之和一致（含 `tjc_hymn.db`、`flutter_assets`、`icudtl.dat`、`Hymn_Downloads`）；
 2. **普通（非提权）权限启动程序**，确认 `state.json` 与 `logs/` 成功写入（规则 12 终极证明）；
-3. 静默卸载 → 程序文件全清、个人数据保留、注册表项自清；
+3. 静默卸载 → 程序文件全清、个人数据保留、注册表项自清；**并且：程序运行中（含托盘隐藏）卸载同样必须清干净**——
+   已脚本化为 `tools/verify_installer.ps1`（`-Baseline <修复前安装包>` 可跑 A/B 对照）。2026-09-24 实测基线（本机 D 盘测试目录，静默装 → 拉起程序 → 运行中静默卸）：
+   | 阶段 | 结果 | 证据 |
+   | --- | --- | --- |
+   | A 修复前 | **残留 5 个程序文件**（bug 复现） | 卸载后进程仍在（实例数 1）；残留 `echo_hymn.exe`、`flutter_windows.dll`、`msvcp140.dll`、`sqlite3.dll`、`vcruntime140*.dll`、`audioplayers_windows_plugin.dll`、`sqlite3_flutter_libs_plugin.dll`（合计 13 条目），耗时 135 s |
+   | B 修复后 | **程序文件零残留**（仅按设计保留个人数据） | 卸载后进程被结束（实例数 0）；`echo_hymn.exe`/`unins000.exe`/`data\app.so`/`flutter_windows.dll`/`flutter_assets` 均不存在，仅剩 `data\tjc_hymn.db`、`state.json`、`logs\`，耗时 77 s |
 4. 三页向导人工走查：环境 ✘ 阻断 / 素材文件缺失 ✘ 阻断与指引 / 誓言错字拦截与不可复制（含右键粘贴回滚） / 无 D 盘回退；
 5. `release/auto-release.log` 核对（提交触发）+ 安装包与素材包两份 `.sha256` 留档。
 

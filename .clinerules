@@ -11,7 +11,8 @@
 2. 读 `docs/Windows/UI_CONFIRMATION.md` 的「最终定稿」各节（可按需读全文）
 3. 执行 `git log --oneline -15` 查看提交历史
 
-> docs 目录按平台归档（2026-09-13）：`docs/Windows/` · `docs/Android/` · `docs/OpenHarmony/` · `docs/iOS/` · `docs/knowledge/`，总索引见 `docs/README.md`。
+> docs 目录按平台归档（2026-09-13）：`docs/Windows/` · `docs/Android/` · `docs/OpenHarmony/` · `docs/iOS/` · `docs/knowledge/`；
+> **软著材料唯一归档到 `docs/ruanzhu/`（入口 `docs/ruanzhu/README.md`，工作区在其 `workspace/` 下——禁止另建）**；总索引见 `docs/README.md`。
 
 **禁止**：不要重复读取全局 `.clinerules` 与项目 `.clinerules`（系统均已自动注入）；不要遍历 `C:\Users\小蔡爱金雪\.cline` 目录；不要读取 `.mcp.json`（已有 MCP 工具列表即可）。
 
@@ -21,6 +22,9 @@
 - **自动发布**：每次 git commit 到 master/main 会自动触发 Windows 发布（`tools/publish_windows.ps1`），提交后核对 `release/auto-release.log`。
 - **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携、原子写、自动迁移老数据）。
 - **架构**：左栏三栏目 = `LeftPanel` 抽象基类 + 三个子类（`HymnListPanel` / `DefaultPlaylistsPanel` / `MyPlaylistsPanel`），`HomeScreen` 为协调者。
+- **软著材料（支线）**：唯一归档位置 = `docs/ruanzhu/`（总入口 `docs/ruanzhu/README.md`；材料在 `v<版本>/`、编辑工作区在 `workspace/`）。
+  生成器 `tools/make_ruanzhu_source.py` / `make_ruanzhu_manual.py`、迁移器 `tools/migrate_ruanzhu_docs.py`（版本随 `pubspec.yaml` 单源）。
+  **禁止在仓库根或其他位置另建软著工作区 / 进度文件**（历史遗留的 `ruanzhu-workspace/` 已于 2026-09-24 迁入 `docs/ruanzhu/workspace/`）。
 
 ## 图像理解 API（deepseek-flash 优先）
 

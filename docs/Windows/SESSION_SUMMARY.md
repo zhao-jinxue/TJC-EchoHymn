@@ -8,7 +8,7 @@
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
 > **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（≈33MB 内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（≈3GB 外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
-> **软著材料（支线，2026-09-06 起）**：申请材料的规范/进度/决策**全部在 `ruanzhu-workspace/`（入口 `00_README.md`）单独维护**，不进入本文件；与开发会话无关，日常开发无需阅读。
+> **软著材料（支线，2026-09-06 起；2026-09-24 归档定稿）**：申请材料的规范/进度/决策/工作区**全部归档在 `docs/ruanzhu/`**（总入口 `docs/ruanzhu/README.md`；工作区 = `docs/ruanzhu/workspace/`，**禁止再在仓库根另建 `ruanzhu-workspace/`**），不进入本文件；与开发会话无关，日常开发无需阅读。
 
 ---
 
@@ -373,4 +373,34 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1
   底部「重选关闭行为」按钮。原生侧 Shell_NotifyIconW 实现（无新增插件依赖）。
 - **遗留**：记号全部自绘（未用字体组合字形）；3 份 CSV 源数据自身块内行宽差异
   （已按块宽渲染）；「播放时高亮」经用户确认**不做**。
+
+### 2026-09-24 会话追加决策（v1.8.0 卸载残留修复 + 软著支线归档整理）
+
+1. **卸载残留根因（用户实机发现）**：程序运行中（含托盘隐藏）执行卸载 → `echo_hymn.exe` 与进程
+   工作目录被占用 → `DelTree({app})` **静默失败**留下残留文件；而 Inno 仍删掉 `unins000.exe`
+   与注册表卸载项 → 用户**再也无法通过「设置 → 应用」清理**（实测残留：`D:\Program Files\EchoHymn`
+   空目录，创建 16:06 / 最后写入 16:53，注册表项已消失）。
+2. **为何 `CloseApplications=yes` 兜不住**：该指令只覆盖安装程序自身 `[Files]`/`[InstallDelete]`
+   条目（走 Windows Restart Manager）；本安装包主程序与素材由 `ExtractArchive` 释放、卸载由
+   `DelTree` 整树删除，均不在其感知范围。**也不采用 `AppMutex`**：Inno 官方交互允许「确定继续」，
+   仍会留下残留。
+3. **修复（`installer/echohymn.iss` `[Code]`）**：新增 `EHAppRunning`（互斥体
+   `EchoHymn_SingleInstanceMutex` + 窗口标题双通道）、`EHCloseApp`（`taskkill /F /T`，静默模式
+   免交互）、`EHEnsureAppClosed`、`EHDeleteTree`（删除失败重试 5 次）、`EHResidueList`；
+   接入三点：`PrepareToInstall`（升级安装前，返回非空串即中止）、`InitializeUninstall`
+   （卸载前，返回 False = 干净中止不动文件）、`CurUninstallStepChanged(usUninstall)`
+   （删除后复核，残留则列出路径提示手动删除）。
+4. **构建脚本**：`tools/build_installer.ps1` 新增 **`-IssOnly`**（复用既有主载荷 + `output/` 素材
+   载荷，只重编译安装程序 + 重出双 SHA256，秒级迭代；原 `-SkipStaging` 因 `staging/` 构建后即删
+   实际不可用）。新增 `tools/verify_installer.ps1`：静默装 → 启动程序 → **运行中静默卸载** →
+   程序文件残留检查（`-Baseline` 可对修复前安装包跑对照，期望 RESIDUE）。
+5. **软著支线归档定稿**：`ruanzhu-workspace/` → **`git mv docs/ruanzhu/workspace/`**（V1.5 期
+   留档），新增总入口 `docs/ruanzhu/README.md`，并在 `docs/README.md` 写入**唯一归档规则**
+   （软著材料只进 `docs/ruanzhu/`，禁止另建工作区）；`docs/` 本文件指针同步更新。
+6. **软著工具补齐与降噪**：仓库外一次性脚本 `E:\apk_re_tjc\ruanzhu_migrate.py` 固化入库为
+   `tools/migrate_ruanzhu_docs.py`（`--from/--to/--root/--dry-run`；**含「历史留档/上一版」行保护**
+   ——避免把刻意指向旧版本目录的说明改错；逐行替换 + 幂等）；`tools/make_ruanzhu_{source,manual}.py`
+   的 ruff 6 项 + pyright 5 项告警清零（去多余 `# -*- coding -*-`、未用 `import os`、ISC004
+   隐式拼接加括号/UP031 改 f-string/`cast(ParagraphStyle, …)`/`doc.save(str(out))`）；工作区内
+   V1.5 期脚本（`clean.py`/`export_manual_docx.py`）路径改为「相对本文件固定层级」，不再随目录漂移。
 

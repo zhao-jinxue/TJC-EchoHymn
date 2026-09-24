@@ -1,8 +1,10 @@
 # 📚 EchoHymn 文档总纲（docs 主索引）
 
 > 本文件是 `docs/` 目录的**唯一主文档（总纲 + 索引）**，按平台归档全部开发文档。
-> 整理定稿：2026-09-13。规则：**Windows 开发归纳到 `Windows/`，Android 归纳到 `Android/`，
-> 鸿蒙归纳到 `OpenHarmony/`，苹果归纳到 `iOS/`；跨平台通用知识在 `knowledge/`；会话档案在 `sessions/`（独立流程，不参与归档整理）**。
+> 整理定稿：2026-09-13（2026-09-24 增补软著材料归档规则）。规则：**Windows 开发归纳到 `Windows/`，
+> Android 归纳到 `Android/`，鸿蒙归纳到 `OpenHarmony/`，苹果归纳到 `iOS/`；跨平台通用知识在 `knowledge/`；
+> 软著（计算机软件著作权）材料——含其编辑工作区——**唯一归档到 `ruanzhu/`**（入口 `ruanzhu/README.md`，
+> 禁止在仓库根或其他位置另建软著工作区）；会话档案在 `sessions/`（独立流程，不参与归档整理）**。
 
 ---
 
@@ -16,6 +18,7 @@ docs/
 ├── OpenHarmony/             # 📦 OpenHarmony 鸿蒙（占位，为后续开发做准备）
 ├── iOS/                     # 📦 苹果平台 iOS/macOS（占位，为后续开发做准备）
 ├── knowledge/               # 🛠 跨平台通用知识（与具体平台无关）
+├── ruanzhu/                 # 📜 软著申请材料**唯一归档位置**（入口 README.md；含 v<版本>/ 材料与 workspace/ 工作区）
 └── sessions/                # 🗂 逐会话开发档案（.clinerules 强制流程，目录独立）
 ```
 
@@ -62,6 +65,16 @@ docs/
 | --- | --- |
 | [CLINE_CONTEXT_MINIMIZE.md](knowledge/CLINE_CONTEXT_MINIMIZE.md) | 🛠 Cline 新会话上下文最小化策略（规则分层、按需读取、会话日志机制） |
 | [TJC_APK_JIANPU_RENDER.md](knowledge/TJC_APK_JIANPU_RENDER.md) | 🔍 第三方 TJC 赞美诗 Android APK 逆向复原：简谱/歌词/五线谱三视图渲染机制、CSV 网格「同列=同拍点」同步模型、符号字典（含 `E`=延长记号的判定链）、对 EchoHymn 曲谱渲染的对照与借鉴 |
+
+### 软著材料（`ruanzhu/`，**唯一归档位置**）
+
+| 文档 | 用途 |
+| --- | --- |
+| [ruanzhu/README.md](ruanzhu/README.md) | 📜 **软著材料总入口**：目录结构、现行/历史版本材料索引、生成器与迁移工具、流程文档、迁移记录；**归档规则：软著材料只进 `docs/ruanzhu/`，禁止另建工作区** |
+| `ruanzhu/v<版本>/` | 逐版本递交材料（现行 **v1.8.0**：源程序 11002 行/221 页、说明书 11 章；v1.7.4 历史留档） |
+| `ruanzhu/workspace/` | 软著编辑工作区（V1.5 期留档：01~05 流程文档、`progress_state.json`、当期 `output/` 与 `tools_clean/`） |
+
+> 生成/迁移工具：`tools/make_ruanzhu_source.py`、`tools/make_ruanzhu_manual.py`、`tools/migrate_ruanzhu_docs.py`（版本随 `pubspec.yaml` 单源）。
 
 ### 会话档案（`sessions/`，独立流程）
 

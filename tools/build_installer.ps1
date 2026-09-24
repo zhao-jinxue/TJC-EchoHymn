@@ -2,12 +2,15 @@
 # EchoHymn 安装包构建脚本
 # 流程: 取版本(pubspec) -> 定位 release -> 下载中文语言(缺则) ->
 #       staging 组装 -> AES 加密 7z 载荷 -> ISCC 编译 -> SHA256
-# 用法: pwsh -File tools/build_installer.ps1 [-ReleaseDir <目录名>] [-SkipPayload]
+# 用法: pwsh -File tools/build_installer.ps1 [-ReleaseDir <目录名>] [-SkipPayload] [-IssOnly]
+#       -IssOnly 增量模式：复用既有 installer/payload.7z 与 output/EchoHymn_Data_v*.7z，
+#       只重新编译安装程序（改 .iss 后秒级迭代用；首次构建必须走完整流程）
 # ============================================================
 param(
     [string]$ReleaseDir = "",
     [switch]$SkipStaging = $false,
-    [switch]$SkipPayload = $false
+    [switch]$SkipPayload = $false,
+    [switch]$IssOnly = $false
 )
 $ErrorActionPreference = "Stop"
 . "C:\Users\小蔡爱金雪\.cline\scripts\Fix-Path.ps1"
@@ -62,16 +65,25 @@ $DataName = "EchoHymn_Data_v$AppVersion.7z"
 $DataArc  = Join-Path $InstDir $DataName
 
 # 4) staging 组装（主程序区 + 素材区双拆分；-SkipStaging 复用现有暂存区）
-if (-not $SkipStaging) {
+if ($IssOnly) {
+    # 增量模式：不重打载荷，直接复用既有主载荷 + output 中的外置素材载荷
+    if (-not (Test-Path $Payload)) { throw "-IssOnly 需要已存在的 $Payload（请先完整构建一次）" }
+    $DataInOut = Join-Path $OutDir $DataName
+    if (Test-Path $DataArc) { }
+    elseif (Test-Path $DataInOut) { $DataArc = $DataInOut }
+    else { throw "-IssOnly 需要已存在的 $DataName（installer/ 或 installer\output\ 下）" }
+    Write-Host "增量模式：复用主载荷与素材载荷，仅重编译安装程序"
+}
+elseif (-not $SkipStaging) {
     python (Join-Path $InstDir "prepare_staging.py") $RelPath $Stage $StageData
     if ($LASTEXITCODE -ne 0) { throw "staging 组装失败" }
 } elseif (-not (Test-Path $Stage) -or -not (Test-Path $StageData)) {
     throw "-SkipStaging 但 staging/staging_data 不存在"
 }
 
-# 5) AES-256 加密 7z 双载荷（-SkipPayload 可跳过重打包）
+# 5) AES-256 加密 7z 双载荷（-SkipPayload 可跳过重打包；-IssOnly 必然跳过）
 #    主载荷内嵌安装包（数十 MB）；素材载荷外置单独分发（约 3 GB，不入包）
-if (-not $SkipPayload) {
+if (-not $SkipPayload -and -not $IssOnly) {
     python (Join-Path $InstDir "make_payload.py") $Stage $Payload
     if ($LASTEXITCODE -ne 0) { throw "主载荷打包失败" }
     python (Join-Path $InstDir "make_payload.py") $StageData $DataArc
@@ -99,8 +111,8 @@ $DataInfo = Get-Item $DataArc
     "/DDataFileName=$DataName" $IssFile
 if ($LASTEXITCODE -ne 0) { throw "ISCC 编译失败" }
 
-# 素材载荷移入输出目录与安装包并置（分发时成对交付）
-Move-Item $DataArc (Join-Path $OutDir $DataName) -Force
+# 素材载荷移入输出目录与安装包并置（分发时成对交付；增量模式下它本就在 output 中）
+if (-not $IssOnly) { Move-Item $DataArc (Join-Path $OutDir $DataName) -Force }
 
 # 7) 产出 SHA256 校验文件（安装包与素材数据文件都要）
 $SetupExe = Join-Path $OutDir "EchoHymn_Setup_v$AppVersion.exe"

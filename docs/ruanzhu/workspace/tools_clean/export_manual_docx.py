@@ -11,7 +11,7 @@ import re
 import sys
 from pathlib import Path
 
-WS = Path(__file__).resolve().parent.parent
+WS = Path(__file__).resolve().parents[1]        # docs/ruanzhu/workspace/（2026-09-24 由仓库根迁入）
 SRC = WS / "output" / "user_manual_draft.md"
 DST = WS / "output" / "user_manual.docx"
 HEADER_TEXT = "EchoHymn 赞美诗播放软件 V1.5"

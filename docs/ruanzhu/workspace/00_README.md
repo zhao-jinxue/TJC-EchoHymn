@@ -1,4 +1,14 @@
-# EchoHymn 软著材料工作区（ruanzhu-workspace）
+# EchoHymn 软著材料工作区（docs/ruanzhu/workspace · V1.5 期留档）
+
+> **归档说明（2026-09-24）**：本工作区原位于仓库根 `ruanzhu-workspace/`，已随文档归档规则迁入
+> `docs/ruanzhu/workspace/`。**软著材料的唯一归档位置是 `docs/ruanzhu/`**（总入口见
+> `docs/ruanzhu/README.md`）——**禁止再在仓库根或别处另建软著工作区**，否则同一条支线会出现两份
+> 进度与决策记录（本次迁移就是为了消除这个重复）。
+>
+> 本目录内容属于 **V1.5 期**（2026-09-06 ~ 09-09）：01~05 流程文档 + `progress_state.json` +
+> 该期产物 `output/`。**现行版本**的材料已改为脚本生成：
+> 鉴别材料/说明书用 `tools/make_ruanzhu_source.py`、`tools/make_ruanzhu_manual.py` 产出到
+> `docs/ruanzhu/v<版本>/`；跨版本辅助文档迁移用 `tools/migrate_ruanzhu_docs.py`。
 
 > **定位**：计算机软件著作权申请材料的编辑工作区，与开发主线（`docs/Windows/SESSION_SUMMARY.md`）**解耦**——本目录维护自己的进度与决策，`SESSION_SUMMARY.md` 只保留一行指针。会话过程记录仍遵循项目 `.clinerules` 强制流程写入 `docs/sessions/`。
 
@@ -39,4 +49,7 @@
 
 ## 新会话续接方式
 
-读本文件 + `progress_state.json`（若存在）+ 最近一篇 `docs/sessions/*.md`，然后按 02 的"读档 SOP"向用户复述断点后继续。
+读本文件 + `docs/ruanzhu/workspace/progress_state.json`（若存在）+ 最近一篇 `docs/sessions/*.md`，然后按 02 的"读档 SOP"向用户复述断点后继续。
+
+> 2026-09-24 起：**现行版本材料**的续接入口是 `docs/ruanzhu/README.md`（索引现行 `v<版本>/` 材料与生成器）；
+> 本文件只涵盖 V1.5 期工作区状态。

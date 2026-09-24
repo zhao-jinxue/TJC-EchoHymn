@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """软著「源程序鉴别材料」生成器（V 版本取自 hymn_app/pubspec.yaml 单源）。
 
 口径（中国版权保护中心实务）：
@@ -15,13 +14,14 @@
 用法：python tools/make_ruanzhu_source.py
 """
 import math
-import os
 import pathlib
+from typing import cast
 
 from docx import Document
 from docx.enum.text import WD_BREAK
 from docx.oxml import OxmlElement
 from docx.shared import Pt
+from docx.styles.style import ParagraphStyle
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC_ROOT = ROOT / 'hymn_app' / 'lib'
@@ -96,7 +96,8 @@ def build_docx(pages, version, out):
     add_page_field(header)
     for run in header.runs:
         run.font.size = Pt(9)
-    style = doc.styles['Normal']
+    # 样式对象的静态类型是 BaseStyle，font 属性只在 ParagraphStyle 上声明 → 显式 cast
+    style = cast(ParagraphStyle, doc.styles['Normal'])
     style.font.name = 'Consolas'
     style.font.size = Pt(9)
     style.element.get_or_add_rPr().get_or_add_rFonts().set(
@@ -109,7 +110,7 @@ def build_docx(pages, version, out):
             p.paragraph_format.space_after = Pt(0)
             p.paragraph_format.space_before = Pt(0)
             p.paragraph_format.line_spacing = 1.0
-    doc.save(out)
+    doc.save(str(out))
 
 
 def main():

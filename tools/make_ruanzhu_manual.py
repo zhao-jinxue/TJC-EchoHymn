@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """软著「软件说明书（操作手册）」生成器（Word，V 版本取自 pubspec 单源）。
 
 体例：封面信息 → 概述 → 安装 → 界面总览 → 各功能操作 → 数据与文件 → 版本信息 → 版权声明；
@@ -9,11 +8,13 @@
 用法：python tools/make_ruanzhu_manual.py
 """
 import pathlib
+from typing import cast
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.shared import Cm, Pt
+from docx.styles.style import ParagraphStyle
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUTDIR = ROOT / 'docs' / 'ruanzhu'
@@ -56,7 +57,8 @@ def build(version):
     header.add_run(' 页')
     for run in header.runs:
         run.font.size = Pt(9)
-    normal = doc.styles['Normal']
+    # 样式对象的静态类型是 BaseStyle，font 属性只在 ParagraphStyle 上声明 → 显式 cast
+    normal = cast(ParagraphStyle, doc.styles['Normal'])
     normal.font.name = '宋体'
     normal.font.size = Pt(10.5)
     normal.element.get_or_add_rPr().get_or_add_rFonts().set(W + 'eastAsia', '宋体')
@@ -107,8 +109,8 @@ def build(version):
     h('1.2  主要功能', 2)
     bullets([
         '歌词显示：一页一节，底部翻页条，手动/自动翻页（自动跟随播放进度）；',
-        '曲谱显示：简谱网格渲染（列 = 拍点），单声部主旋律与当前节歌词同列对齐，'
-        '支持按节切换与跟随播放切节，内容不足一屏时整块垂直居中；',
+        ('曲谱显示：简谱网格渲染（列 = 拍点），单声部主旋律与当前节歌词同列对齐，'
+         '支持按节切换与跟随播放切节，内容不足一屏时整块垂直居中；'),
         '简谱/五线谱显示：内置扫描图查看，支持缩放与滚动；',
         '音频播放：播放/暂停/上一首/下一首、进度拖动、音量调节、钢琴版与人声版切换；',
         '诗歌检索：按歌名与歌词检索，简体/繁体关键字双向匹配；',
@@ -125,12 +127,14 @@ def build(version):
     # ---------- 2 安装 ----------
     h('2  安装与卸载', 1)
     h('2.1  安装', 2)
-    para('安装采用主体与素材分离的双产物分发：安装程序（EchoHymn_Setup_v%s.exe）与'
-         '素材数据包（EchoHymn_Data_v%s.7z）须置于同一目录。运行安装程序后，'
+    para(f'安装采用主体与素材分离的双产物分发：安装程序（EchoHymn_Setup_v{version}.exe）与'
+         f'素材数据包（EchoHymn_Data_v{version}.7z）须置于同一目录。运行安装程序后，'
          '安装向导依次进行环境检查、安装目录选择与安装确认，随后解出主程序；'
-         '素材数据包由向导在同目录自动检测并解出至安装目录的数据子目录。' % (version, version))
+         '素材数据包由向导在同目录自动检测并解出至安装目录的数据子目录。')
     h('2.2  卸载', 2)
-    para('通过"设置 → 应用"或开始菜单卸载条目卸载；卸载保留用户的个人歌单与界面状态数据。')
+    para('通过"设置 → 应用"或开始菜单卸载条目卸载。卸载时若软件仍在运行（含最小化到'
+         '系统托盘的情形），卸载程序会先提示并结束该进程，再清理安装目录；'
+         '个人歌单与界面状态数据默认保留。')
 
     # ---------- 3 界面总览 ----------
     h('3  界面总览', 1)
@@ -215,8 +219,8 @@ def build(version):
     para('软件提供两种关闭按钮行为，可由用户选择并记忆：')
     bullets([
         '直接关闭：点击关闭按钮立即退出软件；',
-        '进入系统托盘：点击关闭按钮将窗口隐藏到系统托盘（音频继续播放），'
-        '托盘图标左键单击或双击可恢复窗口，右键菜单提供「显示主窗口」与「退出」。',
+        ('进入系统托盘：点击关闭按钮将窗口隐藏到系统托盘（音频继续播放），'
+         '托盘图标左键单击或双击可恢复窗口，右键菜单提供「显示主窗口」与「退出」。'),
     ])
     para('首次点击关闭按钮时弹出选择框，用户选择后软件自动记住该选择（保存于程序同级的'
          '状态文件中），此后点击关闭按钮直接执行已保存的选择，不再重复询问。'
@@ -233,5 +237,5 @@ def build(version):
 if __name__ == '__main__':
     v = app_version()
     doc, out = build(v)
-    doc.save(out)
+    doc.save(str(out))
     print('产物：', out)

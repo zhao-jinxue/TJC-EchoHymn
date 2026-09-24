@@ -4,7 +4,7 @@
 
 ## 一、 准备工作：建立状态追踪文件
 
-在项目根目录（或 `ruanzhu-workspace` 下）创建一个名为 `progress_state.json` 的文件，用于记录进度：
+在软著工作区目录 `docs/ruanzhu/workspace/` 下创建一个名为 `progress_state.json` 的文件，用于记录进度：
 
 ```json
 {
@@ -43,11 +43,11 @@
    - `current_step`、对应 `stepN_status` 的完成计数与断点位置（`last_processed_file` / `last_line_number`）；
    - `pending_tasks` 写入**下一会话要执行的第一条具体指令**（如"运行 tools_clean/clean.py 处理第 8~14 号文件并追加到 source_code.txt"）。
 2. 按项目 `.clinerules` 强制流程，在 `docs/sessions/<会话时间>.md` 中记录本轮的提问、思路与结果（JSON 只存机器状态，人类可读的决策与教训进会话日志——两者互补，缺一不可）。
-3. `git add ruanzhu-workspace/ docs/sessions/` 随代码一起提交，状态即永久留档。
+3. `git add docs/ruanzhu/ docs/sessions/` 随代码一起提交，状态即永久留档。
 
 ## 三、读档 SOP（新会话开始）
 
-1. 读取 `ruanzhu-workspace/progress_state.json`，确认 `current_step` 与断点位置。
+1. 读取 `docs/ruanzhu/workspace/progress_state.json`，确认 `current_step` 与断点位置。
 2. 读取最近一篇 `docs/sessions/*.md` 的"最终结果/遗留问题"，恢复人类语境。
 3. 向用户复述："当前处于 Step X，已完成 …，下一步将 …，是否继续？"——得到确认后再动手，禁止从 Step 1 重跑。
 4. 幂等性检查：Step 2 续写 `source_code.txt` 前，先核对文件现有行数与 `completed_pages × 50` 是否一致，不一致以文件实际内容为准修正状态。

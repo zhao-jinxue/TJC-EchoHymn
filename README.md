@@ -112,7 +112,7 @@ EchoHymn/
 │                                # extract_ppt.py（PPT 编码解析）· build_jianpu_font.py（合并印刷简谱字体+字形度量）·
 │                                # score_selftest.py（全库曲谱输出自测）· git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
-└── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/，总纲见 docs/README.md）
+└── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/ · 软著材料 ruanzhu/ · 会话档案 sessions/，总纲见 docs/README.md）
 ```
 
 **架构要点**：左栏三个栏目 = `LeftPanel` 抽象基类（渲染接口 / 公共播放 / `scrollToCurrent` / `restoreSaved` / `syncWithPlayback`）
@@ -194,7 +194,7 @@ flutter build windows --release   # 期望构建成功
 
 - **单元测试**（`flutter test`）：`hymn_app/test/font_size_level_test.dart`（3）+ `hymn_app/test/hymn_search_service_test.dart`（15）= **18 用例**
 - **实机测试与回归清单**：`hymn_app/test/v120/`~`v151/`（窗口/歌词/搜索/弹窗/播放条 G 系列回归、配色 T/R 系列、字号 R37~R42、手册 M01~M15、音量 Q01~Q08、搜索 S01~S41 + 复测 R01~R20）
-- **发布验证基线**：静默装到非默认目录核对文件数（完整安装 3040 文件）→ 以普通（非提权）权限启动确认 `state.json`/`logs/` 可写 → 静默卸载确认程序文件清空且个人数据保留 → 三页向导人工走查（详见 `docs/Windows/RELEASE_RULES.md` 第三节）
+- **发布验证基线**：静默装到非默认目录核对文件数（完整安装 3040 文件）→ 以普通（非提权）权限启动确认 `state.json`/`logs/` 可写 → **程序运行中**执行静默卸载，确认程序文件清空且个人数据保留（`tools/verify_installer.ps1` 已脚本化，`-Baseline` 可对修复前安装包跑对照）→ 三页向导人工走查（详见 `docs/Windows/RELEASE_RULES.md` 第三节）
 - **诊断存档**：[docs/Windows/BUGFIX_REPORT_2026-09-05.md](docs/Windows/BUGFIX_REPORT_2026-09-05.md)（P0 零发现 / P1×1 / P2×4，回滚检查点 tag `pre-bugfix-2026-09-05`）
 
 ## 🗺 平台规划

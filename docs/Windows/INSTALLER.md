@@ -22,7 +22,7 @@
 ### 静默安装（管理员/批量部署）
 
 ```
-EchoHymn_Setup_v1.5.1.exe /VERYSILENT /NORESTART /TASKS="desktopicon"
+EchoHymn_Setup_v1.8.0.exe /VERYSILENT /NORESTART /TASKS="desktopicon"
 ```
 
 前提同样是 `EchoHymn_Data_v<版本>.7z` 与安装包同目录（素材缺失时环境检查阻断，静默模式直接失败退出）。静默模式跳过誓言交互页（属发布者/批量部署通道；环境检查仍生效）；日志参数 `/LOG=C:\eh_install.log` 便于远程排障。
@@ -37,6 +37,10 @@ EchoHymn_Setup_v1.5.1.exe /VERYSILENT /NORESTART /TASKS="desktopicon"
 
 开始菜单 `EchoHymn · 聆听赞美诗 → 卸载 EchoHymn`，或控制面板"程序和功能"。
 卸载会询问**是否保留个人数据**（个人歌单数据库 + state.json + 日志），默认建议保留；选「否」则彻底删除整个安装目录。
+
+**软件正在运行时卸载**（含已最小化到系统托盘的情形）：卸载程序先弹中文提示，点「是」即**自动结束 `echo_hymn.exe`**（`taskkill /F /T`，含子进程）再清理安装目录；点「否」则**干净中止卸载**（不动任何文件、不删注册表项）。静默卸载（`/VERYSILENT`）不弹窗、直接结束进程。删除后还会**复核目录是否清空**：未清空则列出残留路径并提示手动删除，不会静默留下半截目录。
+
+> 修复背景（2026-09-24）：`CloseApplications=yes` 只覆盖安装程序自身 `[Files]`/`[InstallDelete]` 条目（走 Windows Restart Manager），而本安装包的主程序与素材由 `ExtractArchive` 直接释放、卸载时由 `DelTree` 整树删除——运行中的实例会因 `echo_hymn.exe` 与进程工作目录被占用使删除**静默失败**，安装目录残留；而此时 `unins000.exe` 与注册表卸载项已被删除，用户再也无法通过「设置 → 应用」清理（只能手工删目录）。现由 `[Code]` 显式处理：互斥体 `EchoHymn_SingleInstanceMutex` + 窗口标题双通道检测，安装前（`PrepareToInstall`）与卸载前（`InitializeUninstall`）结束进程，删除失败时重试并报告残留。**注意：托盘隐藏的实例同样被检测到**（窗口隐藏但进程与外置单实例互斥体仍在）。
 
 ---
 
@@ -54,6 +58,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File E:\EchoHymn\tools\build_installer.
 ```
 
 流程（全自动）：读 `hymn_app/pubspec.yaml` 版本号 → 取最新 `release/echohymn_win_*` 为载荷源 → 按 `installer/payload_manifest.txt`（数据库实际引用清单；`Hymn_Downloads` 内只收引用文件，数据库与 Flutter 运行时资产全收）组装**双暂存区**（`staging`＝主程序区、`staging_data`＝素材区）→ 分别生成 AES-256 加密 7z（主载荷内嵌安装包，素材载荷外置）→ ISCC 编译 → 输出 `installer/output/` 下**双产物**：`EchoHymn_Setup_v<版本>.exe`（约 30 MB）+ `EchoHymn_Data_v<版本>.7z`（约 3 GB）+ 两份 `.sha256` 校验文件。中文语言文件为**仓库固化的官方简体中文翻译**（`installer/ChineseSimplified.isl`，Inno 6.5.0+ 配套，维护者 Zhenghan Yang/Kira，源: jrsoftware.org/files/istrans/；2026-09-05 起替代原离线生成器方案——后者只译 57 键导致向导内置页中英混杂与占位符错误，已删除）。
+
+**增量重编译（只改了 `installer/echohymn.iss` 时，秒级）**：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File E:\EchoHymn\tools\build_installer.ps1 -IssOnly
+```
+
+`-IssOnly` 复用既有 `installer/payload.7z` 与 `installer/output/EchoHymn_Data_v<版本>.7z`，只重跑 ISCC 编译并重出两份 `.sha256`（素材包字节未变 → 其 SHA256 不变）；首次构建或角色数据变更必须走完整流程。另有 `-SkipStaging` / `-SkipPayload` 两个更细的增量开关。
 
 ### 素材清单再生成
 

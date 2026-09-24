@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""软著源代码清洗脚本（EchoHymn ruanzhu-workspace / 01 提示词 Step 2 前置工具）。
+"""软著源代码清洗脚本（EchoHymn 软著工作区 docs/ruanzhu/workspace / 01 提示词 Step 2 前置工具）。
 
 模式：
   report  —— Step 1 资产盘点：逐文件统计原始/清洗后行数 + 敏感信息预扫描（不改写任何文件）
   build   —— Step 2 产物生成：按传入的有序文件清单清洗拼接，取前 N 页 + 后 M 页写入输出文件，
               并做每页 50 行与总行数断言校验
 
-清洗规则（对齐 ruanzhu-workspace/01_cline_master_prompt.md）：
+清洗规则（对齐 docs/ruanzhu/workspace/01_cline_master_prompt.md）：
   删除空行与纯注释行；删除行尾 // 注释与 /*..*/ 块注释（支持 Dart 嵌套块注释）；
   字符串字面量（含 raw / 三引号多行串）内的 // 与引号安全处理；
   import/library/part/export 指令行原样保留；行尾空白去除；统一 \n。
@@ -143,8 +143,11 @@ def rel(p: Path, root: Path) -> str:
 
 
 # ---- build 模式常量（对齐 output/material_plan.md §4，基线 commit 73b0d20）----
-WS = Path(__file__).resolve().parent.parent            # ruanzhu-workspace/
-APP = WS.parent / "hymn_app"
+# 2026-09-24 本工作区由仓库根 ruanzhu-workspace/ 迁入 docs/ruanzhu/workspace/：
+# 改为按「相对本文件的固定层级」锚定，路径不再随目录层级漂移（WS = 工作区，ROOT = 仓库根）。
+WS = Path(__file__).resolve().parents[1]        # docs/ruanzhu/workspace/
+ROOT = Path(__file__).resolve().parents[4]      # 仓库根
+APP = ROOT / "hymn_app"
 HEADER_TEXT = "EchoHymn 赞美诗播放软件 V1.5"
 TOTAL_CLEANED = 5788           # rev1：三引号 SQL 拆物理行后 (sqlite_repository 238->246)
 FRONT_LINES = 1500             # 前30页=换行后物理流行 1~1500；后30页=末 1500
@@ -342,7 +345,7 @@ def verify() -> int:
 
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "report"
-    root = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("E:/EchoHymn/hymn_app/lib")
+    root = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "hymn_app" / "lib"
     files = collect(root)
     total_raw = total_clean = 0
     hits: list[str] = []
@@ -370,7 +373,7 @@ def main() -> int:
         print(f"SENSITIVE_HITS={len(hits)}")
         for h in hits:
             print("  " + h)
-        (root.parent / "../ruanzhu-workspace/tools_clean/stats.json").resolve().write_text(
+        (WS / "tools_clean" / "stats.json").write_text(
             json.dumps({"total_cleaned": total_clean, "files": stats}, ensure_ascii=False, indent=2),
             encoding="utf-8")
         return 0
