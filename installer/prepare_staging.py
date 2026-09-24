@@ -38,6 +38,7 @@ def main() -> int:
 
     n = size = 0
     nd = sd = 0
+    matched = set()
     for root, _, files in os.walk(rel_dir):
         for f in files:
             src = os.path.join(root, f)
@@ -54,6 +55,7 @@ def main() -> int:
                     shutil.copy2(src, dst)
                     nd += 1
                     sd += os.path.getsize(src)
+                    matched.add(rel.lower())
                     continue
             else:
                 if top in {s.lower() for s in SKIP_ROOT}:
@@ -65,6 +67,16 @@ def main() -> int:
             size += os.path.getsize(src)
     print(f"STAGING_OK 主程序 文件数: {n}  合计: {size / 2**20:.1f} MB -> {stage_main}")
     print(f"STAGING_OK 素材   文件数: {nd}  合计: {sd / 2**30:.2f} GB -> {stage_data}")
+
+    # 完整性校验（2026-09-24 新增）：清单里 Hymn_Downloads 的条目必须全部落到素材区。
+    # 触发场景：release 目录的素材仍在拷贝中就开始 staging（竞态）→ 曾静默产出缺 450 文件的素材包。
+    expected = {r for r in refs if r.startswith("data/hymn_downloads/")}
+    missing = sorted(expected - matched)
+    if missing:
+        print(f"STAGING_FAIL 素材清单缺失 {len(missing)} 个（release 目录可能未拷贝完）：")
+        for x in missing[:5]:
+            print("   ", x)
+        return 1
     return 0
 
 
