@@ -73,7 +73,7 @@
 | `e749bce`（2026-09-24，v1.8.0 补丁） | **根治「程序运行中卸载 → 安装目录残留」**：`CloseApplications=yes` 不覆盖 `ExtractArchive`/`DelTree` 路径 → `[Code]` 新增 `EHAppRunning`（互斥体 `EchoHymn_SingleInstanceMutex` + 窗口标题双通道）/`EHCloseApp`(`taskkill /F /T`)/`EHDeleteTree`/`EHResidueList`，接入 `PrepareToInstall`、`InitializeUninstall`、`CurUninstallStepChanged`；`tools/verify_installer.ps1` 实测 A（残留 13 条目，135 s）→ B（零残留，77 s） |
 | `20f7acb`/`598e8b1`（2026-09-24） | 素材打包**完整性校验**（防 release 拷贝竞态静默缺文件）+ `installer/output` 被外部删除后**完整重建**（新哈希 B2C89E6A… 安装包 / C963C022… 素材包）+ v1.8.0 安装包重打与 SHA256 留档 |
 
-> ✅ **tag 现状（2026-09-30 核对）**：git tag 起初最新为 `v1.6.2`，**v1.7.0~v1.8.0 六个版本当时只有 `pubspec.yaml` 递增 + `release:` 提交**；已于 **2026-09-30 21:45 补打**（lightweight tag，指向各自 `release:` 提交：`bc89cc0`/`e90035a`/`fd8f5c1`/`897589c`/`4e655a5`/`325272b`）并 **push 到 origin**（远端 SHA 已逐一对上）。历史 `v1.0.0`~`v1.6.2` 为 annotated tag。
+> ✅ **tag 现状（2026-09-30 核对）**：git tag 起初最新为 `v1.6.2`，**v1.7.0~v1.8.0 六个版本当时只有 `pubspec.yaml` 递增 + `release:` 提交**；已于 **2026-09-30 21:45 补打**（指向各自 `release:` 提交：`bc89cc0`/`e90035a`/`fd8f5c1`/`897589c`/`4e655a5`/`325272b`）并 **push 到 origin**；补打时先落为 lightweight，当日即**统一重打为 annotated tag**（tagger `EchoHymn <echohymn@example.com>` + 版本说明），与历史 `v1.0.0`~`v1.6.2` 风格一致，远端已 force push 覆盖（`git ls-remote --tags origin` 每个 tag 均有 `^{}` 指向对应 release 提交）。
 
 **关键文件**：
 

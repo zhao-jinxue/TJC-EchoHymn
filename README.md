@@ -4,7 +4,7 @@
 歌词·曲谱·简谱·五线谱四种显示模式、钢琴版·人声版音频播放，配套 Inno Setup 加密安装包对外分发。
 
 > **当前版本**：**v1.8.0**（2026-09-24 发布，提交 `325272b`）——版本号单源 = `hymn_app/pubspec.yaml`
-> ✅ **tag 现状**：v1.7.0 / v1.7.1 / v1.7.2 / v1.7.3 / v1.7.4 / v1.8.0 起初只递增了 `pubspec.yaml` 与 `release:` 提交、未打 tag，**已于 2026-09-30 补打并推送 origin**（指向各自 release 提交：`bc89cc0` / `e90035a` / `fd8f5c1` / `897589c` / `4e655a5` / `325272b`；补打的 6 个为 lightweight tag，历史 v1.0.0~v1.6.2 为 annotated tag）。
+> ✅ **tag 现状**：v1.7.0 / v1.7.1 / v1.7.2 / v1.7.3 / v1.7.4 / v1.8.0 起初只递增了 `pubspec.yaml` 与 `release:` 提交、未打 tag，**已于 2026-09-30 补打并推送 origin**（指向各自 release 提交：`bc89cc0` / `e90035a` / `fd8f5c1` / `897589c` / `4e655a5` / `325272b`）；补打时先落为 lightweight，当日即**统一重打为 annotated tag**（tagger `EchoHymn <echohymn@example.com>` + 版本说明，与历史 v1.0.0~v1.6.2 一致）并 force push 覆盖远端。
 > **内容规模**：473 首诗歌 · 分类两级（一级 13 → 二级 47）· 钢琴版/人声版音频 · 曲谱（APK CSV 网格）/ 简谱 / 五线谱 · 诗歌源考
 > **目标平台**：Windows（✅ 已开发 + 提交自动发布）· Android（📂 目录就绪，未开发）· OpenHarmony 鸿蒙（📁 占位）· ~~Web~~（❌ 2026-08-16 移除）
 > **许可**：个人学习参考免费，商业使用需授权 —— 见 [LICENSE](LICENSE)
