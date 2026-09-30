@@ -1,10 +1,11 @@
 # 🎵 EchoHymn · 赞美诗与颂歌
 
 一个基于 **Flutter** 的 Windows 桌面赞美诗聆听应用：诗歌列表 / 分类歌单 / 个人歌单、
-歌词·简谱·五线谱三模式显示、钢琴版·人声版音频播放，配套 Inno Setup 加密安装包对外分发。
+歌词·曲谱·简谱·五线谱四种显示模式、钢琴版·人声版音频播放，配套 Inno Setup 加密安装包对外分发。
 
-> **当前版本**：**v1.6.2**（tag `v1.6.2`，2026-09-22）——版本号单源 = `hymn_app/pubspec.yaml`
-> **内容规模**：473 首诗歌 · 分类两级（一级 13 → 二级 47）· 钢琴版/人声版音频 · 简谱与五线谱谱图 · 诗歌源考
+> **当前版本**：**v1.8.0**（2026-09-24 发布，提交 `325272b`）——版本号单源 = `hymn_app/pubspec.yaml`
+> ⚠️ **tag 现状**：git tag 最新为 `v1.6.2`，**v1.7.0 / v1.7.1 / v1.7.2 / v1.7.3 / v1.7.4 / v1.8.0 只递增了 `pubspec.yaml` 与 release 提交、未打 tag**（版本沿革表按下表提交日期记录）；封版时建议补打 tag。
+> **内容规模**：473 首诗歌 · 分类两级（一级 13 → 二级 47）· 钢琴版/人声版音频 · 曲谱（APK CSV 网格）/ 简谱 / 五线谱 · 诗歌源考
 > **目标平台**：Windows（✅ 已开发 + 提交自动发布）· Android（📂 目录就绪，未开发）· OpenHarmony 鸿蒙（📁 占位）· ~~Web~~（❌ 2026-08-16 移除）
 > **许可**：个人学习参考免费，商业使用需授权 —— 见 [LICENSE](LICENSE)
 
@@ -26,11 +27,14 @@
 - ▶️ 播放 / 暂停、上一首 / 下一首、进度拖动；**钢琴版 / 人声版**多版本切换（人声版 >1 时出现 👥 版本菜单）
 - 🔊 **音量 = 系统音量镜像**（v1.5.x 方案 A）：系统音量为唯一响度旋钮、播放器增益恒 100%，与系统播放器听感一致；系统音量面板或媒体键改动实时跟随
 - ⌨️ **全局快捷键**：`空格`/`Ctrl+P` 播放暂停、`Ctrl+→`/`Alt+→` 下一首、`Ctrl+←`/`Alt+←` 上一首、`Ctrl+↑↓` 音量、`Ctrl+M` 静音、`F1` 用户手册、通用媒体键；输入框聚焦时空格放行输入
-- 🧷 **单实例保护**：已运行时再次双击启动自动聚焦既有窗口
+- 🧷 **单实例保护**：已运行时再次双击启动自动聚焦既有窗口（互斥体 `EchoHymn_SingleInstanceMutex`）
+- 🖥 **关闭行为选择 + 系统托盘**（v1.8.0）：首次点标题栏关闭按钮弹窗询问「直接关闭 / 进入系统托盘 / 取消」，选择写入 `state.json closeAction` 后立即执行、之后不再重复询问；进托盘后窗口隐藏、**音频继续播放**，托盘图标左键单击/双击恢复窗口、右键菜单「显示主窗口 / 退出」；手册底部「重选关闭行为」可随时改选
 
 ### 歌词与谱面
 
-- 🎼 三种显示模式：**歌词 / 简谱 / 五线谱**（谱图与源考取自数据库字段）
+- 🎼 **四种显示模式**：**歌词 / 曲谱 / 简谱 / 五线谱**（v1.7.0 起；谱面与源考取自数据库字段）
+  - `曲谱` = **一页一节单声部简谱网格**：数据源 = 第三方 TJC 赞美诗 APK 的 `assets/NNN.csv` 网格（**列 = 拍点**），底部「第 k / N 节」翻页条 + 右上「手动 / 自动」（自动跟随播放进度切节）
+  - `简谱` = 印刷简谱**扫描图**（参考图）；`五线谱` = 五线谱扫描图；两个网格模式**无数据时回退**该首简谱扫描图
 - 🔍 **谱面宽度驱动缩放**（v1.5.2）：最小宽 = 初始 contain 显示宽、最大宽 = 歌词区当前显示宽（随窗口拉伸与字号等级实时跟随）；**`Ctrl+滚轮` = 缩放、`滚轮` = 滚动**；超高出常显滚动条；换歌自动复位缩放与滚动位置
 
 ### 个性化
@@ -39,9 +43,10 @@
   - 语义色槽 27 色（含 8 个分区极浅底色 + 未选中控件底色/描边）；标题栏调色盘按钮即时换肤并持久化；暗夜墨同步 DWM 深色标题栏
 - 🔠 **4 级字号**：×1.0 / ×1.3 / ×1.6 / ×1.9，整棵 UI 树（含弹窗/菜单/Toast）等比缩放；左栏宽随系数扩展，右栏固定 600（内容可滚动）
 - 🔤 **内置字体 EchoSans**（Noto Sans SC 子集，OFL 许可，真 400/500/700 字面）：不依赖目标机字体，无雅黑环境表现一致
-- 🎼 **「曲谱+歌词」字体原生渲染**：用印刷 PDF 内嵌简谱字体（`EchoJianpu`，随 App 内置、无需安装）（**该模式的界面入口已于 2026-09-21 撤下，视图代码与数据保留，见 `docs/Windows/UI_CONFIRMATION.md` §5.20**）
-  直接绘制库内 `code_seq` 码位——**时值线、低/高音点、附点、小节线、连音弧全部由字形自带**；
-  字体由 `tools/build_jianpu_font.py` 跨 475 份 PDF 合并子集而成（覆盖 code_seq 全部 80 个码位）
+- 🎼 **曲谱网格渲染（v1.7.0+）**：`JianpuGridView` 把库内 `jianpu_cell` 网格按「列 = 拍点」排版——
+  音符取内置印刷记谱字体 `EchoJianpu` 的 **CJK 码位**字形（`0x4e52`=`1` … `0x5d4c`=`0`，`Text('1')` 会静默不可见），
+  记号（附点 / 减时线 / 延长记号）与小节线自绘；每块按自身列数铺满可用宽，内容不足一屏**整块垂直居中**
+- 🎼 **内置记谱字体 `EchoJianpu`**：`tools/build_jianpu_font.py` 从印刷 PDF 内嵌记谱字体（MMP2005）跨文件合并子集（覆盖全部 80 个码位），并生成 `lib/data/jianpu_metrics.dart` 墨迹度量表；旧「曲谱+歌词」PDF `code_seq` 管线已于 v1.7.0 随数据一并停用（视图代码与结论留 git 历史）
 - 📖 **应用内用户手册**：软件介绍 / 操作说明（▶ 小节 → • 二级 → – 三级分层）/ 快捷键与滚轮表（12 行）/ 启动显示设置；`?` 或 `F1` 打开、`Esc`/✕ 关闭、启动自动弹出可关
 
 ### 数据与可靠性
@@ -61,9 +66,9 @@
 ├───────────────┬───────────────────────────────────────────────────────┬─────────────────┤
 │ 左栏 350       │ 顶栏 40px：⟨左栏⟩⟨右栏⟩ … 中央当前歌曲《标题》… ⟨⟩         │ 右栏 600        │
 │ 诗歌列表       ├───────────────────────────────────────────────────────┤  诗歌源考       │
-│ 默认歌单       │ 版本栏 44px：[钢琴版][人声版]   [歌词][简谱][五线谱]     │（词曲作者/      │
+│ 默认歌单       │ 版本栏 44px：[钢琴版][人声版] [歌词][曲谱][简谱][五线谱] │（词曲作者/      │
 │ 个人歌单       ├───────────────────────────────────────────────────────┤ 背景/分类）     │
-│               │ 歌词 / 简谱 / 五线谱 显示区（谱面 Ctrl+滚轮缩放）        │                 │
+│               │ 歌词 / 曲谱网格 / 简谱·五线谱图（图 Ctrl+滚轮缩放）      │                 │
 │               ├───────────────────────────────────────────────────────┤                 │
 │               │ 播放条：[🔊][滑条][50%] [⏮][⏯][⏭] [👥]（上方进度条）  │                 │
 ├───────────────┴───────────────────────────────────────────────────────┴─────────────────┤
@@ -88,29 +93,34 @@ EchoHymn/
 │   │   ├── screens/home_screen.dart        # 主屏协调者（标题栏·顶栏·状态栏·侧栏抽屉·状态存取）
 │   │   ├── widgets/
 │   │   │   ├── panels/                     # 左栏：left_panel_base（抽象基类）+ 三子类面板
-│   │   │   ├── hymn_display.dart           # 内容区（版本栏 / 歌词 / _ScoreImageView 谱面 / 播放条）
+│   │   │   ├── hymn_display.dart           # 内容区（版本栏 / 歌词 / 曲谱网格 / 谱面图查看器 / 播放条）
+│   │   │   ├── jianpu_grid_view.dart       # 曲谱网格渲染（列=拍点；EchoJianpu 码位取字形，块宽铺满）
 │   │   │   ├── hymn_search_dialog.dart     # 歌名+歌词搜索结果三列弹窗
 │   │   │   ├── playlist_dialog.dart        # 个人歌单新建/编辑弹窗
 │   │   │   └── user_manual_dialog.dart     # 用户手册（三级结构 + 快捷键表 + 启动显示设置）
 │   │   ├── services/                       # sqlite_repository · audio_service · hymn_search_service ·
 │   │   │                                   # app_state_service · app_paths · chinese_convert_service · log_service
-│   │   ├── models/                         # hymn · hymn_category · playlist
+│   │   ├── models/                         # hymn · hymn_category · playlist · hymn_ref（编号字符串）·
+│   │   │                                   # jianpu_grid / jianpu_layout（曲谱网格模型）
 │   │   ├── theme/                          # app_palette（27 色槽 + 5 套预设 + ThemeController）
 │   │   │                                   # app_fonts（FontSizeLevel 4 级 + FontScaleController + AppFonts）
-│   │   └── data/chinese_convert_map.dart   # 繁→简 1052 / 简→繁 1025 映射（tools/gen_convert_map.py 生成）
+│   │   └── data/                           # chinese_convert_map.dart（繁→简 1052 / 简→繁 1025，gen_convert_map.py 生成）
+│   │                                       # jianpu_metrics.dart（EchoJianpu 字形墨迹度量，build_jianpu_font.py 生成）
 │   ├── windows/runner/                     # C++ 宿主：去系统标题栏、单实例、850×890 客户区、窗口通道
 │   ├── assets/{data,fonts}/                # hymns.json；内置字体 EchoSans / EchoKai / EchoJianpu
 │   ├── android/ · ohos/                    # Android 目录就绪 / 鸿蒙占位（均未开发）
 │   ├── native/                             # ⚠️ C++ hymn_engine 历史可选组件（当前不经 dart:ffi 调用）
-│   └── test/                               # 单元测试 18 用例 + v120~v151 实机测试/回归清单
-├── data/                        # tjc_hymn.db（473 首 / 45 分类 / 个人歌单）+ Hymn_Downloads（约 3GB 音频与谱图素材）
+│   └── test/                               # 单元测试 43 用例（含 golden 版式快照）+ v120~v151 实机测试/回归清单
+├── data/                        # tjc_hymn.db（473 首 / 分类 13→47 / 曲谱网格 21.8k 行 / 个人歌单）+ Hymn_Downloads（约 3GB 音频与谱图素材）
 ├── installer/                   # 📦 Inno Setup 工程：echohymn.iss（三页向导+誓言+两段解包）、
 │                                #    prepare_staging.py / make_payload.py（主体+素材双载荷 AES-256）、
 │                                #    payload_manifest.txt、ChineseSimplified.isl（官方翻译固化）、app_icon.ico、output/（双产物）
 ├── tools/                       # publish_windows.ps1（自动发布）· build_installer.ps1（一键双产物+SHA256）·
-│                                # scan_db_refs.py（素材清单 payload_manifest.txt）· gen_convert_map.py ·
-│                                # extract_ppt.py（PPT 编码解析）· build_jianpu_font.py（合并印刷简谱字体+字形度量）·
-│                                # score_selftest.py（全库曲谱输出自测）· git-hooks/post-commit 等
+│                                # verify_installer.ps1（装/卸/运行中卸载验证）· scan_db_refs.py（素材清单 payload_manifest.txt）·
+│                                # import_apk_csv.py（APK CSV → jianpu_* 三表）· jianpu_csv_selftest.py（L0~L3 谱面自测）·
+│                                # build_jianpu_font.py（合并印刷简谱字体 + 生成字形度量）· gen_convert_map.py ·
+│                                # restore_hymn_category.py(分类数据复原) · make_ruanzhu_source.py / make_ruanzhu_manual.py /
+│                                # migrate_ruanzhu_docs.py(软著材料) · extract_ppt.py · git-hooks/post-commit 等
 ├── release/                     # 🤖 提交自动发布的 Windows 绿色目录（保留最近 5 份）+ auto-release.log
 └── docs/                        # 📚 文档（按平台归档：Windows/ Android/ OpenHarmony/ iOS/ · 软著材料 ruanzhu/ · 会话档案 sessions/，总纲见 docs/README.md）
 ```
@@ -136,7 +146,7 @@ flutter run -d windows            # 开发运行（热重载）
 
 ```bash
 flutter analyze                   # 期望 0 issues
-flutter test                      # 期望 18/18 通过
+flutter test                      # 期望 43/43 通过
 flutter build windows --release   # 期望构建成功
 ```
 
@@ -148,7 +158,7 @@ flutter build windows --release   # 期望构建成功
 | 形态 | 命令 | 产物 | 用途 |
 | --- | --- | --- | --- |
 | **绿色目录** | `flutter build windows --release`（或提交自动触发） | `hymn_app\build\windows\x64\runner\Release\` → `release\echohymn_win_<时间戳>_<短哈希>\` | 开发自用 / 内部验证，整目录拷贝即可运行 |
-| **安装包** | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\build_installer.ps1` | `installer\output\EchoHymn_Setup_v<版本>.exe`（≈33 MB）+ `EchoHymn_Data_v<版本>.7z`（≈3 GB）+ 两份 `.sha256` | 对外分发（v1.5.2 实测 32.7 MB / 3035 MB） |
+| **安装包** | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\build_installer.ps1` | `installer\output\EchoHymn_Setup_v<版本>.exe`（≈38.8 MB）+ `EchoHymn_Data_v<版本>.7z`（≈3 GB）+ 两份 `.sha256` | 对外分发（v1.8.0 实测 38.76 MB / 3039.70 MB） |
 
 安装包要点（操作手册 [docs/Windows/INSTALLER.md](docs/Windows/INSTALLER.md)，规范基线 [docs/Windows/RELEASE_RULES.md](docs/Windows/RELEASE_RULES.md) 18 条）：
 
@@ -169,9 +179,9 @@ flutter build windows --release   # 期望构建成功
 
 | 位置 | 内容 |
 | --- | --- |
-| `exe` 同级 `state.json` | `leftTab` / `subcategory` / `playlistName` / `hymnNumber` / `audioVersion` / `displayMode` / `playlistIndex` / `showLeft` / `showRight` / `appTheme` / `fontSizeLevel` / `manualOnStart`；缺失或损坏回退默认；首次自动从旧 `%APPDATA%` 的 shared_preferences 迁移 |
+| `exe` 同级 `state.json` | `leftTab` / `subcategory` / `playlistName` / `hymnNumber` / `audioVersion` / `displayMode` / `playlistIndex` / `showLeft` / `showRight` / `appTheme` / `fontSizeLevel` / `manualOnStart` / `lyricAutoMode`（歌词·曲谱翻页 手动/自动）/ `closeAction`（v1.8.0 关闭行为：`''` 未选 / `'exit'` 直接关闭 / `'tray'` 进托盘）；缺失或损坏回退默认；首次自动从旧 `%APPDATA%` 的 shared_preferences 迁移 |
 | `exe` 同级 `logs/` | 按天文本日志（UTF-8 BOM，保留 7 份）：库加载 / UI / 交互 / 歌单 / 播放 / 异常 |
-| `data/tjc_hymn.db` | `tjc_hymn`（473 首：歌词十节、五线谱/简谱路径、`audio_versions` JSON、`source_info` 源考）· `hymn_category`（一级 13 → 二级 47，`category`/`subcategory`/`hymns(JSON，编号含 51_a 甲乙变体)`）· `playlist_hymn`（个人歌单，`id/name/hymns(JSON)/created_at/updated_at`） |
+| `data/tjc_hymn.db` | `tjc_hymn`（473 首：歌词十节、五线谱/简谱路径、`audio_versions` JSON、`source_info` 源考）· `hymn_category`（一级 13 → 二级 47，`category`/`subcategory`/`hymns(JSON，编号含 51_a 甲乙变体)`）· `playlist_hymn`（个人歌单，`id/name/hymns(JSON)/created_at/updated_at`）· **`jianpu_score`(474 首元数据) / `jianpu_row`(21819 行) / `jianpu_cell`(321703 格，列=拍点)（v1.7.0 新增；旧 `hymn_score*` / `hymn_codepoint_map` 已删除，库 8.5 → 26.7 MB）** |
 | `data/Hymn_Downloads/` | 音频（鋼琴版 m4a / 人聲版 mp3）、`简谱`/`五线谱` 的 png 与 pdf、每首一个 `checksums.json` |
 
 ## 🔧 技术栈
@@ -179,7 +189,7 @@ flutter build windows --release   # 期望构建成功
 | 层 | 技术 |
 | --- | --- |
 | UI | Flutter / Dart（Material）；基座 850×890 + 抽屉式侧栏 + `Transform.scale` 等比缩放 |
-| 窗口宿主 | Win32 C++（`windows/runner`）：去 `WS_CAPTION` 自绘标题栏、单实例 Mutex、`echo_hymn/window` 通道、DWM 深色随配色切换 |
+| 窗口宿主 | Win32 C++（`windows/runner`）：去 `WS_CAPTION` 自绘标题栏、单实例 Mutex `EchoHymn_SingleInstanceMutex`、`echo_hymn/window` 通道（setClientSize / minimize / maximizeToggle / close / startWindowDrag / **hideToTray / showFromTray**）、**系统托盘**（`Shell_NotifyIconW`：左键恢复窗口、右键「显示主窗口 / 退出」）、DWM 深色随配色切换 |
 | 音频 | `audioplayers` 6.x → Windows Media Foundation；`DeviceFileSource` 直读中文路径；响度走系统主音量（COM 读写 + 轮询同步） |
 | 数据 | `sqlite3` + `sqlite3_flutter_libs`（`data/tjc_hymn.db`） |
 | 搜索 | `HymnSearchService`（Dart 层歌名 + 歌词全扫，繁简双向映射） |
@@ -192,7 +202,7 @@ flutter build windows --release   # 期望构建成功
 
 ## 🧪 测试
 
-- **单元测试**（`flutter test`）：`hymn_app/test/font_size_level_test.dart`（3）+ `hymn_app/test/hymn_search_service_test.dart`（15）= **18 用例**
+- **单元测试**（`flutter test`）：`font_size_level_test.dart`（3）+ `hymn_search_service_test.dart`（15）+ `hymn_ref_test.dart`（4）+ `jianpu_grid_test.dart`（18）+ `jianpu_golden_test.dart`（3，golden 版式快照）= **43 用例**
 - **实机测试与回归清单**：`hymn_app/test/v120/`~`v151/`（窗口/歌词/搜索/弹窗/播放条 G 系列回归、配色 T/R 系列、字号 R37~R42、手册 M01~M15、音量 Q01~Q08、搜索 S01~S41 + 复测 R01~R20）
 - **发布验证基线**：静默装到非默认目录核对文件数（完整安装 3040 文件）→ 以普通（非提权）权限启动确认 `state.json`/`logs/` 可写 → **程序运行中**执行静默卸载，确认程序文件清空且个人数据保留（`tools/verify_installer.ps1` 已脚本化，`-Baseline` 可对修复前安装包跑对照）→ 三页向导人工走查（详见 `docs/Windows/RELEASE_RULES.md` 第三节）
 - **诊断存档**：[docs/Windows/BUGFIX_REPORT_2026-09-05.md](docs/Windows/BUGFIX_REPORT_2026-09-05.md)（P0 零发现 / P1×1 / P2×4，回滚检查点 tag `pre-bugfix-2026-09-05`）
@@ -220,11 +230,15 @@ flutter build windows --release   # 期望构建成功
 | v1.5.0 | 2026-09-01 | 四级字号全局等比缩放 + 播放条镜像 Row + 内置 EchoSans + 手册重构与启动弹出 + 音量双重衰减根治 |
 | v1.5.1 | 2026-09-02 | 歌名 + 歌词统一模糊搜索弹窗（红/蓝关键字加粗、双击唯一播放入口）+ 手册操作说明子项化 |
 | v1.5.2 | 2026-09-05 | 谱面宽度驱动缩放与滚轮语义定稿 + 手册三级分层 + 全局稳健性修复（P1×1 / P2×4）；安装包主体/素材双载荷拆分 |
-| **v1.6.0** | 2026-09-21 | **曲谱视图「字体原生渲染」定稿**（内置印刷简谱字体 `EchoJianpu` + 字形墨迹度量排版，连音弧/时值线/低音点全部由字形自带）+ 全库曲谱自测工具 `tools/score_selftest.py`；「曲谱+歌词」模式**从 UI 撤下**（视图代码与数据保留）+ 歌词页去「第 N 节」标签；第 349 首按用户要求整首移出（库内 **473 首**）；`tools/scan_db_refs.py` 恢复并新增手工保留项 |
-
+| **v1.6.0** | 2026-09-21 | **曲谱视图「字体原生渲染」定稿**（内置印刷简谱字体 `EchoJianpu` + 字形墨迹度量排版，连音弧/时值线/低音点全部由字形自带）+ 全库曲谱自测工具 `tools/score_selftest.py`（**该 PDF 管线的工具与数据在 v1.7.0 已停用删除**）；「曲谱+歌词」模式**从 UI 撤下**（视图代码与数据保留）+ 歌词页去「第 N 节」标签；第 349 首按用户要求整首移出（库内 **473 首**）；`tools/scan_db_refs.py` 恢复并新增手工保留项 |
 | **v1.6.1** | 2026-09-22 | **默认歌单数据复原 + 甲乙变体编号纳入歌单**：`hymn_category` 误删的 `category`(一级)/`subcategory`(二级)/`hymns`(清单) 三列由 `tools/restore_hymn_category.py` **纯增列复原**（归属取自 git 老库、清单用 `api_cache` 列表页重建）→ 一级 13 类 / 二级 47 个 / 清单 **473 首 100% 覆盖**；歌单成员编号**放宽为字符串**（新增 `lib/models/hymn_ref.dart`，兼容旧库整数），`51_a`/`124_b` 等 **10 个甲乙变体编号**可在默认歌单与个人歌单中浏览·加入·还原；顺带修复「添加成员时变体编号退化成 hymn id」旧缺陷 |
-
-| **v1.6.2** | 2026-09-22 | **歌词页内容整块垂直居中**：`_buildLyricPage` 主轴由 `spaceBetween`（摊开铺满：标题贴顶、末行贴底）改为 `center` —— 行数少的页面此前标题与歌词被撑到两端、整块偏上；现整块居中（保留 `minHeight`：内容多时正常滚动且顶部不裁），水平方向原本已居中。实机截图（第 25/26 首）新旧像素对比：标题→歌词间隙 **158 → 65 px**、上下留白 92/107 px（差 15 px≈7%）；安装包 `.iss` 补 `VersionInfoVersion`（修复 exe「文件版本」为空） |
+| **v1.6.2** | 2026-09-22 | **歌词页内容整块垂直居中**：`_buildLyricPage` 主轴由 `spaceBetween`（摊开铺满：标题贴顶、末行贴底）改为 `center` —— 行数少的页面此前标题与歌词被撑到两端、整块偏上；现整块居中（保留 `minHeight`：内容多时正常滚动且顶部不裁），水平方向原本已居中。实机截图（第 25/26 首）新旧像素对比：标题→歌词间隙 **158 → 65 px**、上下留白 92/107 px（差 15 px≈7%）；安装包 `.iss` 补 `VersionInfoVersion`（修复 exe「文件版本」为空）|
+| v1.7.0 | 2026-09-23 | **谱面数据源切换为 APK CSV 网格**（`tools/import_apk_csv.py` → 新表 `jianpu_score` / `jianpu_row` / `jianpu_cell`，**列 = 拍点**；旧 `hymn_score*` / `hymn_codepoint_map` 与 PDF 管线工具全部删除，库 8.5 → 26.7 MB）+ 曲谱/简谱双模式开放（一页一节 + 手动/自动翻页）+ 自测 `tools/jianpu_csv_selftest.py`（L0~L3） |
+| v1.7.1 | 2026-09-23 | 曲谱网格**按块宽渲染**（每块用自己的列数铺满可用宽、同列同 x）+ 移除播放高亮遗留需求 |
+| v1.7.2 | 2026-09-23 | **模式语义对调**：`曲谱` = 一页一节**单声部**网格、`简谱` = 扫描图；整页多节并列入口删除；菜单/手册同步 |
+| v1.7.3 | 2026-09-23 | **曲谱只显示第一声部**：源 CSV 实为四部合唱谱（每块 = 女高/女低/词/男高/男低），`JianpuScore.build(firstVoiceOnly: true)` 每块只留第一声部组 + 全部歌词行；小节线跨行改为块内连续乐谱行数 |
+| v1.7.4 | 2026-09-24 | **曲谱页内容整块垂直居中**（`ConstrainedBox(minHeight: 视口净高)` + `MainAxisAlignment.center`，与歌词页同口径）；三张 golden 重生成 |
+| **v1.8.0** | 2026-09-24 | **关闭行为选择 + 系统托盘**：首次点关闭弹窗询问「直接关闭 / 进入系统托盘 / 取消」，`state.json closeAction` 持久化；托盘图标（`Shell_NotifyIconW`）左键恢复、右键「显示主窗口 / 退出」，托盘时音频继续播放；手册新增「关闭与系统托盘」小节 + 底部「重选关闭行为」按钮。同批修复**安装包「程序运行中卸载 → 安装目录残留」**（`[Code]` 双通道检测互斥体 + 窗口标题 → `taskkill /F /T`，删除后复核残留）；软著材料同步 V1.8.0 |
 
 ## 📚 文档索引
 
@@ -233,11 +247,11 @@ flutter build windows --release   # 期望构建成功
 | 文档 | 用途 |
 | --- | --- |
 | [docs/README.md](docs/README.md) | 📍 文档总纲：目录索引 + 平台导航 + 附录（C++ `hymn_engine` 历史组件构建/恢复 FFI 路径） |
-| [docs/Windows/](docs/Windows/) | 🖥 **Windows 开发全集**：开发总结（续接必读）· UI 定稿确认单 · UI 设计规范 · 配色效果图预览 · 打包迁移 · 安装/发布规范 · 诊断报告 · VS/CMake 环境安装 · 推荐工具 |
+| [docs/Windows/](docs/Windows/) | 🖥 **Windows 开发全集**：开发总结（续接必读）· UI 定稿确认单 · UI 设计规范 · **简谱谱面自测方案** · 配色效果图预览 · 打包迁移 · 安装/发布规范 · 诊断报告 · VS/CMake 环境安装 · 推荐工具 |
 | [docs/Android/](docs/Android/) | 🚧 Android 移植计划（立项 2026-09-11）：环境现状、阶段 0~3、风险清单 |
 | [docs/OpenHarmony/](docs/OpenHarmony/README.md) | 📦 鸿蒙占位：接入前提与待办 |
 | [docs/iOS/](docs/iOS/README.md) | 📦 苹果平台占位：接入前提与待办 |
-| [docs/knowledge/](docs/knowledge/) | 🛠 跨平台通用知识（Cline 上下文最小化等） |
+| [docs/knowledge/](docs/knowledge/) | 🛠 跨平台通用知识（Cline 上下文最小化 · **TJC APK 简谱渲染逆向复用**） |
 | [docs/sessions/](docs/sessions/) | 🗂 逐会话开发档案（提问 / 解决思路 / 最终结果） |
 
 ## ⚠️ 说明与当前遗留

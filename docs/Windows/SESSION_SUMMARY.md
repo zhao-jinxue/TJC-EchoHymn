@@ -7,7 +7,7 @@
 > **重要**：每次 git commit 到 master/main 会**自动触发 Windows 发布**（见「自动发布机制」章节），请提交后核对 `release/auto-release.log`。
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
-> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（≈33MB 内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（≈3GB 外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
+> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（v1.8.0 实测 **38.76 MB**，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.0 实测 **3039.70 MB**，外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
 > **软著材料（支线，2026-09-06 起；2026-09-24 归档定稿）**：申请材料的规范/进度/决策/工作区**全部归档在 `docs/ruanzhu/`**（总入口 `docs/ruanzhu/README.md`；工作区 = `docs/ruanzhu/workspace/`，**禁止再在仓库根另建 `ruanzhu-workspace/`**），不进入本文件；与开发会话无关，日常开发无需阅读。
 
 ---
@@ -64,6 +64,17 @@
 
 | `v1.6.2`（**tag**，2026-09-22） | 🎉 **v1.6.2 发布**：**歌词页内容整块垂直居中**——`_buildLyricPage` 主轴 `spaceBetween` → `center`（行数少的页面此前「标题贴顶、歌词贴底、整块偏上」；现整块居中，保留 `minHeight` 保证内容多时正常滚动且顶部不裁；水平方向原本已居中）；实机截图新旧对比（第 26 首，1453×725）：标题→歌词间隙 **158 → 65 px**、内容块 198..611 → 268..540、上下留白 92 / 107 px（差 15 px≈7%）；`flutter analyze` 无问题 · `flutter test` **57/57**；`.iss` 补 `VersionInfoVersion`（修复安装包 exe「文件版本」为空）；重打安装包 `EchoHymn_Setup_v1.6.2.exe` + `EchoHymn_Data_v1.6.2.7z`；pubspec 升 1.6.2 |
 
+| `bc89cc0`（**v1.7.0**，2026-09-23） | 🎉 **v1.7.0 发布**：**谱面数据源切换为 TJC APK CSV 网格**——`tools/import_apk_csv.py` 读 474 份 `assets/NNN.csv`（**列 = 拍点**）写入新表 `jianpu_score`(474) / `jianpu_row`(21819) / `jianpu_cell`(321703)，旧 `hymn_score*` 五表 + `hymn_codepoint_map` 与 PDF 管线（`tools/score_selftest.py`、`extract_score_nonstd.py`）**全部删除**（库 8.5 → 26.7 MB）；版本栏开放 `曲谱`/`简谱` 双模式（一页一节 + 手动/自动翻页）；自测 `tools/jianpu_csv_selftest.py`（L0 DB↔CSV 逐格零差异 / L1 列对齐 / L2 可读网格 / L3 实机快照 30/30）；golden 快照 `test/goldens/jianpu_009.png` |
+| `e90035a`（**v1.7.1**，2026-09-23） | 🎉 **v1.7.1 发布**：曲谱网格**按块宽渲染**（每块用自身列数铺满可用宽、列数少的块字号更大；块内行宽差异 `163/197/297` 按块内最大行宽处理，同列仍同 x）+ 移除「播放时高亮当前拍点」遗留需求 |
+| `fd8f5c1`（**v1.7.2**，2026-09-23） | 🎉 **v1.7.2 发布**：**模式语义对调**——`曲谱` = 一页一节单声部网格（`JianpuGridView(stanza: k)` + 翻页条 + 手动/自动），`简谱` 恢复为扫描图（参考图）；整页多节并列入口（`_buildScoreWhole`）删除；用户手册「显示模式」同步 |
+| `897589c`（**v1.7.3**，2026-09-23） | 🎉 **v1.7.3 发布**：**曲谱只显示第一声部**——源 CSV 实为四部合唱谱（每块 = 女高/女低/歌词/男高/男低 五行组），`JianpuScore.build(firstVoiceOnly: true)` 每块只留第一声部组 + 全部歌词行；小节线跨行 = 块内连续乐谱行数（单声部 3 / 全声部 6）；全声部形态保留在 `firstVoiceOnly: false`（自测用） |
+| `4e655a5`（**v1.7.4**，2026-09-24） | 🎉 **v1.7.4 发布**：曲谱页内容不足一屏时**整块垂直居中**（`ConstrainedBox(minHeight: 视口净高)` + `MainAxisAlignment.center`，与歌词页同口径）；三张 golden 重生成；同批制作安装包（主体 38.8 MB + 素材 2.97 GB，SHA256 留档） |
+| `325272b`（**v1.8.0**，2026-09-24） | 🎉 **v1.8.0 发布**：**关闭行为选择 + 系统托盘**——首次点关闭弹窗三选一（直接关闭 / 进入系统托盘 / 取消），`state.json` 的 `closeAction` 持久化后直接执行；托盘图标（`Win32Window::HideToTray/ShowFromTray/OnTrayMessage` + `Shell_NotifyIconW`）左键恢复、右键「显示主窗口 / 退出」，托盘期间音频继续播放；手册新增「关闭与系统托盘」+ 底部「重选关闭行为」按钮；`flutter test` **43/43** |
+| `e749bce`（2026-09-24，v1.8.0 补丁） | **根治「程序运行中卸载 → 安装目录残留」**：`CloseApplications=yes` 不覆盖 `ExtractArchive`/`DelTree` 路径 → `[Code]` 新增 `EHAppRunning`（互斥体 `EchoHymn_SingleInstanceMutex` + 窗口标题双通道）/`EHCloseApp`(`taskkill /F /T`)/`EHDeleteTree`/`EHResidueList`，接入 `PrepareToInstall`、`InitializeUninstall`、`CurUninstallStepChanged`；`tools/verify_installer.ps1` 实测 A（残留 13 条目，135 s）→ B（零残留，77 s） |
+| `20f7acb`/`598e8b1`（2026-09-24） | 素材打包**完整性校验**（防 release 拷贝竞态静默缺文件）+ `installer/output` 被外部删除后**完整重建**（新哈希 B2C89E6A… 安装包 / C963C022… 素材包）+ v1.8.0 安装包重打与 SHA256 留档 |
+
+> ⚠️ **tag 现状（2026-09-30 封版前核对）**：git tag 最新仍为 `v1.6.2`，**v1.7.0~v1.8.0 六个版本只有 `pubspec.yaml` 递增 + `release:` 提交，未打 tag**；本表按提交日期记录，封版时建议补打。
+
 **关键文件**：
 
 - 面板：`hymn_app/lib/widgets/panels/{left_panel_base, hymn_list_panel, default_playlists_panel, my_playlists_panel}.dart`
@@ -83,9 +94,10 @@
 
 - **UI**：Flutter（Material），**基座画面 850×890 物理像素** + 侧栏抽屉式展开（左 **350** / 右 **600**）；**自上而下四栏**：自绘窗口标题栏 **30px**（移除系统 `WS_CAPTION`，左侧 logo+应用名，右侧「用户手册 / 最小化 / 最大化·还原 / 关闭」按钮组，整条可拖拽/双击最大化）→ 顶栏 **40px**（左右侧栏切换 + 中央当前歌曲）→ 内容区 → 底部状态栏 **30px**；窗口**等比缩放**（`Transform.scale`，最大化铺满不裁切）；最小客户区 850×890
 - **操作**：**全局快捷键**（v1.3.0）：空格/Ctrl+P 播放暂停、Ctrl+→ 或 Alt+→ 下一首、Ctrl+← 或 Alt+← 上一首、Ctrl+↑/↓ 音量、Ctrl+M 静音、F1 用户手册、通用媒体键；根 `Focus` 包裹 `MaterialApp`，任意焦点（含弹窗）事件冒泡统一处理；输入框聚焦时空格放行输入；**谱面滚轮两条规则（v1.5.2）**：滚轮=滚动、Ctrl+滚轮=缩放
-- **谱面显示（v1.5.2）**：`_ScoreImageView` 宽度驱动缩放——最小宽=初始 contain 宽 / 最大宽=歌词区当前显示宽（`LayoutBuilder` 实时，随窗口/字号跟随），高度按图片宽高比同步，超高出常显滚动条；换歌自动复位缩放与滚动位置
+- **谱面显示（v1.5.2 起为扫描图口径）**：`_ScoreImageView` 宽度驱动缩放——最小宽=初始 contain 宽 / 最大宽=歌词区当前显示宽（`LayoutBuilder` 实时，随窗口/字号跟随），高度按图片宽高比同步，超高出常显滚动条；换歌自动复位缩放与滚动位置（现用于 `简谱`/`五线谱` 扫描图）
+- **曲谱显示（v1.7.0 起，v1.7.2/1.7.3/1.7.4 定稿）**：`曲谱` = **一页一节单声部简谱网格**（`JianpuGridView(stanza: k)`，数据源 `jianpu_*` 三表「列 = 拍点」）+ 底部「第 k / N 节」翻页条 + 右上「手动/自动」（自动跟随播放进度）；单声部过滤 `firstVoiceOnly: true`；按块宽铺满 + 不足一屏整块垂直居中；音符取 `EchoJianpu` **CJK 码位**字形（直传 ASCII 数字会静默不可见）；`简谱` = 印刷扫描图，两网格模式无数据时回退简谱扫描图
 - **用户手册**：标题栏「？」按钮或 F1 打开（软件介绍 / 操作说明 / 快捷键说明），Esc 或 ✕ 关闭；**操作说明三级结构（v1.5.2）**：▶小节标题 → • 二级圆点 → – 三级短横（`GuideLine{text, subs}`，不同情况分层拆开）；快捷键表 12 行（键盘 + Esc + 滚轮）
-- **数据**：SQLite `tjc_hymn.db`（473 首）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
+- **数据**：SQLite `tjc_hymn.db`（`tjc_hymn` 473 首 / `hymn_category` 13→47 / **曲谱网格 `jianpu_score` 474 + `jianpu_row` 21819 + `jianpu_cell` 321703（v1.7.0 起，列 = 拍点）**）+ `AppPaths.resolveAsset`（向上查找 12 层 data/）
 - **简繁转换**：**纯 Dart 查表**（`lib/data/chinese_convert_map.dart`，由 `tools/gen_convert_map.py` 从数据库全量字符生成：繁→简 1052 / 简→繁 1025）；**弃用 OpenCC FFI**（本机 opencc.dll 与 UI 线程不兼容，导致白屏/崩溃）
 - **音频播放**：`audioplayers` 6.8.1 → Windows Media Foundation；`DeviceFileSource(abs)` 直读中文路径
 - **状态持久化**：`echo_hymn.exe` 同级 `state.json`（**串行写队列防并发损坏；全进程唯一写入口 `AppStateService.shared`——v1.5.2 根治双实例双队列并发竞态**；左栏Tab/歌单/诗歌/音频版本/歌词模式/播放列表位置 `playlistIndex`/**侧栏展开状态 showLeft/showRight**/**配色 appTheme**/**字号 fontSizeLevel**）
@@ -261,7 +273,10 @@
 13f. ✅ **全局 Bug 诊断修复 P1×1 + P2×4（v1.5.2，2026-09-05）**：state.json 双写队列竞态根治（AppStateService.shared 全进程唯一串行链）+ 谱面 http 判定统一 + 换谱面滚动复位 + dispose 注销窗口回调 + 歌单单次 INSERT 原子建单；analyze 0 + 18/18 测试 + Release 构建全过；**修复报告存档 `docs/Windows/BUGFIX_REPORT_2026-09-05.md`**（检查点 tag `pre-bugfix-2026-09-05`）
 14. ✅ **Windows 安装包（2026-09-04~05，`f1a9810`+`54ceccc`+`15082d5`）**：三页向导 + 加密载荷 + 主体/素材双文件拆分（安装包 32.7MB + 素材包 2.96GB）；静默装/卸冒烟全过——**待用户实机 GUI 走查**（UAC 秒弹、素材缺失 ✘ 阻断指引、誓言右键粘贴回滚、两段解包进度）；素材包分发通道（网盘/U盘）待规划；OV 代码签名证书留作预算决策（规则 9，收益已降为消除"未知发布者"提示）
 15. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-16. ~~Android / 鸿蒙——暂不作为当前任务（目录占位）~~ → **Android 已于 2026-09-11 立项**（阶段 0 环境完成，续接见 `docs/Android/SESSION_SUMMARY.md` + `docs/Android/ANDROID_PLAN.md`）；鸿蒙/苹果仍为占位
+17. ✅ **曲谱/简谱数据源切换与四模式（v1.7.0~v1.7.4，2026-09-23~24）**：APK CSV 网格三表取代 PDF 码位管线（库 8.5→26.7 MB）；版本栏四按钮（歌词/曲谱/简谱/五线谱）；曲谱 = 一页一节单声部网格（块宽渲染、垂直居中）、简谱 = 扫描图；自测 `tools/jianpu_csv_selftest.py`（L0~L3）；golden 三张
+18. ✅ **关闭行为选择 + 系统托盘（v1.8.0，2026-09-24）**：`state.json closeAction` + 托盘图标（`Shell_NotifyIconW`）+ 手册「关闭与系统托盘」与「重选关闭行为」；`flutter test` 43/43
+19. ✅ **安装包「运行中卸载残留」根治（2026-09-24）**：`[Code]` 双通道检测 + `taskkill` + 删除后复核；`tools/verify_installer.ps1` A/B 对照（残留 13 → 0）
+20. ⏳ **待办（封版前未完成项）**：安装包实机 GUI 走查（UAC 即时性、素材缺失阻断指引、誓言粘贴回滚、两段解包进度）· 素材包分发通道（网盘/U 盘）· OV 代码签名证书预算决策 · 小屏（可用区 < 850×890）布局验证 · **v1.7.0~v1.8.0 补打 git tag**
 
 ---
 
@@ -299,7 +314,7 @@
 ## 七、状态存储（state.json）
 
 - 位置：`echo_hymn.exe` 同级目录 `state.json`
-- 字段：`leftTab` / `subcategory` / `playlistName` / `hymnNumber` / `audioVersion` / `displayMode` / `playlistIndex` / **`showLeft`** / **`showRight`** / **`appTheme`**（v1.4.0 配色）/ **`fontSizeLevel`**（v1.5.0 字号等级）/ **`manualOnStart`**（启动弹出手册开关）
+- 字段：`leftTab` / `subcategory` / `playlistName` / `hymnNumber` / `audioVersion` / `displayMode` / `playlistIndex` / **`showLeft`** / **`showRight`** / **`appTheme`**（v1.4.0 配色）/ **`fontSizeLevel`**（v1.5.0 字号等级）/ **`manualOnStart`**（启动弹出手册开关）/ **`lyricAutoMode`**（歌词·曲谱翻页 手动·自动）/ **`closeAction`**（v1.8.0 关闭行为：`''` 未选 / `'exit'` 直接关闭 / `'tray'` 进托盘）
 - 写入：原子写（`.tmp` 临时文件 → 重命名替换）+ **串行写队列**，写失败不影响运行
 - 读取：缺失/损坏 → 返回默认状态（不崩溃）；首次无新文件时从旧 `%APPDATA%\com.example\echo_hymn\shared_preferences.json` 自动迁移
 
@@ -319,6 +334,7 @@
 ```bash
 cd hymn_app
 flutter analyze            # 应 0 issues
+flutter test               # 应 43 通过（含 golden 版式快照）
 flutter build windows --release
 # 产物: build\windows\x64\runner\Release\echo_hymn.exe
 # 运行需 data\ 在 exe 的上级目录链中（AppPaths 向上找 12 层）

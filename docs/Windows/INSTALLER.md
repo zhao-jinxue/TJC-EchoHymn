@@ -1,13 +1,13 @@
 # 📦 EchoHymn 安装/卸载指南（Windows）
 
 > 面向：普通用户（安装）与发布者（构建）。
-> 分发形态（2026-09-05 起**双文件**）：`EchoHymn_Setup_v<版本>.exe`（约 30 MB，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（约 3 GB，外置加密诗歌素材）。**两个文件必须放在同一目录**再双击安装包。
+> 分发形态（2026-09-05 起**双文件**）：`EchoHymn_Setup_v<版本>.exe`（v1.8.0 实测 **38.76 MB**，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.0 实测 **3039.70 MB**，外置加密诗歌素材）。**两个文件必须放在同一目录**再双击安装包。
 
 ---
 
 ## 一、用户安装流程（三步向导）
 
-> **安装前**：请确认 `EchoHymn_Setup_v<版本>.exe` 与 `EchoHymn_Data_v<版本>.7z` 已在同一个文件夹内——素材文件缺失时，第一步环境检查会显示 ✘ 并给出指引，补齐后点「重新检测」即可。素材拆分后安装包仅约 30 MB，双击后 UAC 授权弹窗基本即时出现（旧 3GB 单文件时代的 5~15 秒系统扫描空档已消除）。
+> **安装前**：请确认 `EchoHymn_Setup_v<版本>.exe` 与 `EchoHymn_Data_v<版本>.7z` 已在同一个文件夹内——素材文件缺失时，第一步环境检查会显示 ✘ 并给出指引，补齐后点「重新检测」即可。素材拆分后安装包仅约 38.8 MB（v1.8.0 实测 38.76 MB），双击后 UAC 授权弹窗基本即时出现（旧 3GB 单文件时代的 5~15 秒系统扫描空档已消除）。
 
 1. **系统兼容性检查（首屏）**：自动检测 64 位系统、Windows 10+、Media Foundation（音频播放命脉，Win N/KN 版需先装"媒体功能包"）、**诗歌素材文件是否同目录就位**、磁盘空间（系统盘 ≥2GB 缓冲 / 安装盘 ≥ 素材 3GB + 程序 + 5GB 缓冲）、VC++ 运行库（随包内置无需安装）。全部 ✔ 才能继续；修复环境后可点「重新检测」。
 2. **选择安装位置**：默认 `D:\Program Files\EchoHymn`；**无 D 盘或 D 盘剩余空间不足时自动回退 `C:\Program Files\EchoHymn`**，也可手动更改。
@@ -57,7 +57,7 @@ EchoHymn_Setup_v1.8.0.exe /VERYSILENT /NORESTART /TASKS="desktopicon"
 pwsh -NoProfile -ExecutionPolicy Bypass -File E:\EchoHymn\tools\build_installer.ps1
 ```
 
-流程（全自动）：读 `hymn_app/pubspec.yaml` 版本号 → 取最新 `release/echohymn_win_*` 为载荷源 → 按 `installer/payload_manifest.txt`（数据库实际引用清单；`Hymn_Downloads` 内只收引用文件，数据库与 Flutter 运行时资产全收）组装**双暂存区**（`staging`＝主程序区、`staging_data`＝素材区）→ 分别生成 AES-256 加密 7z（主载荷内嵌安装包，素材载荷外置）→ ISCC 编译 → 输出 `installer/output/` 下**双产物**：`EchoHymn_Setup_v<版本>.exe`（约 30 MB）+ `EchoHymn_Data_v<版本>.7z`（约 3 GB）+ 两份 `.sha256` 校验文件。中文语言文件为**仓库固化的官方简体中文翻译**（`installer/ChineseSimplified.isl`，Inno 6.5.0+ 配套，维护者 Zhenghan Yang/Kira，源: jrsoftware.org/files/istrans/；2026-09-05 起替代原离线生成器方案——后者只译 57 键导致向导内置页中英混杂与占位符错误，已删除）。
+流程（全自动）：读 `hymn_app/pubspec.yaml` 版本号 → 取最新 `release/echohymn_win_*` 为载荷源 → 按 `installer/payload_manifest.txt`（数据库实际引用清单；`Hymn_Downloads` 内只收引用文件，数据库与 Flutter 运行时资产全收）组装**双暂存区**（`staging`＝主程序区、`staging_data`＝素材区）→ 分别生成 AES-256 加密 7z（主载荷内嵌安装包，素材载荷外置）→ **素材打包完整性校验**（防 `release` 拷贝竞态静默缺文件）→ ISCC 编译 → 输出 `installer/output/` 下**双产物**：`EchoHymn_Setup_v<版本>.exe`（v1.8.0 实测 38.76 MB）+ `EchoHymn_Data_v<版本>.7z`（v1.8.0 实测 3039.70 MB）+ 两份 `.sha256` 校验文件。中文语言文件为**仓库固化的官方简体中文翻译**（`installer/ChineseSimplified.isl`，Inno 6.5.0+ 配套，维护者 Zhenghan Yang/Kira，源: jrsoftware.org/files/istrans/；2026-09-05 起替代原离线生成器方案——后者只译 57 键导致向导内置页中英混杂与占位符错误，已删除）。
 
 **增量重编译（只改了 `installer/echohymn.iss` 时，秒级）**：
 

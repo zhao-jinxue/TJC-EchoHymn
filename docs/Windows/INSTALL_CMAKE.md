@@ -5,7 +5,7 @@
 > | 路径 | 命令 | 是否依赖 PATH 中的 cmake |
 > | --- | --- | --- |
 > | Flutter Windows 应用 | `flutter build windows` | ❌ 不需要（Flutter 自动用 VS 内置 CMake） |
-> | C++ 原生引擎（历史可选组件） | `cmake -S . -B build` | ✅ **需要**（当前项目已不使用，仅恢复 FFI 时才需要） |
+> | C++ 原生引擎（历史可选组件） | `cmake -S . -B build` | ⚠️ **可选**（当前项目已不使用，仅恢复 FFI 时才需要） |
 
 > **现状说明（2026-08-21）**：当前 EchoHymn 无 C++ 原生引擎依赖（简繁转换/搜索/状态均在 Dart 层），`flutter build windows` 会自动使用 VS 内置 CMake。下方 CMake 安装方案**仅**在需要手动构建 `hymn_app/native/`（历史可选组件）时才需要。
 >

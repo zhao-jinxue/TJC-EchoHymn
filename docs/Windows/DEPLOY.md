@@ -25,8 +25,9 @@ flutter build windows --release
 
 产物在 `hymn_app\build\windows\x64\runner\Release\`，包含：
 
-- `echo_hymn.exe`（应用主程序）
-- 依赖的 Flutter 运行时文件（audioplayers 走系统 Media Foundation，无需额外 DLL）
+- `echo_hymn.exe`（应用主程序）+ `data\app.so`（Dart AOT 代码）
+- Flutter 运行时与插件 DLL（v1.8.0 实测）：`flutter_windows.dll`、`audioplayers_windows_plugin.dll`、`sqlite3.dll`、`sqlite3_flutter_libs_plugin.dll`、`dartjni.dll`、`msvcp140.dll`、`vcruntime140.dll`、`vcruntime140_1.dll`、`native_assets.json`
+- 音频解码走系统 Media Foundation，无需额外编解码 DLL
 
 > **当前架构为纯 Dart**：不需要手动构建 `hymn_app/native` 的 C++ 引擎，也无需拷贝任何 DLL
 > （历史可选组件说明见 [docs/README.md 附录](../README.md)）。

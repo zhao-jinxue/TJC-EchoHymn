@@ -3,6 +3,10 @@
 > 逆向对象：`com.tinanlin.tjc_hymn_cn_v2.4.2`（TJC 赞美诗，纯 Java/Kotlin，单 `classes.dex`，无 native）
 > 取证日期：2026-09-22；逆向工作区（仓库外）：`E:\apk_re_tjc`（脚本 + 截图 + ui dump 全部保留）
 > 用途：EchoHymn 曲谱渲染的**对照参考**与**对齐校验思路**来源；EchoHymn 侧不直接采用其技术栈（见 §7）。
+> ⚠️ **EchoHymn 侧最新状态（2026-09-30 核对，v1.8.0）**：本文 §7 的对照表反映 **v1.6.x** 时的实现——
+> 谱面数据现已**整体切换为本 APK 的 `assets/NNN.csv` 网格**（`tools/import_apk_csv.py` → `jianpu_score/jianpu_row/jianpu_cell` 三表，
+> **列 = 拍点**），旧的 `hymn_score*` / `hymn_codepoint_map` 表与 `tools/score_selftest.py` 已删除；
+> 自测基线改为 `tools/jianpu_csv_selftest.py`（L0~L3，见 `docs/Windows/SCORE_SELFTEST.md`）。
 
 ---
 
