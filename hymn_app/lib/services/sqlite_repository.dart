@@ -10,6 +10,23 @@ import '../models/playlist.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
 
+/// 歌单名称最大长度（与 `CreatePlaylistDialog` 的 `TextField.maxLength` 对齐）。
+///
+/// 仓储层作为**所有写入路径的最后一道防线**：UI 已做 trim/长度/重名校验，
+/// 但导入、迁移、脚本等新调用方可能绕过 UI，故在此再兜底一次。
+const int kPlaylistNameMaxLength = 30;
+
+/// 规范化歌单名称：**去首尾空白 + 截断到 [kPlaylistNameMaxLength]**。
+///
+/// 逐字截断安全说明：Dart `String` 按 UTF-16 码元截断，汉字多在 BMP 内（1 码元），
+/// 极端情况下截断到代理对中间会产生孤立代理项；但歌单名来自 `TextField`
+/// （长度即字符数），实际不会出现该情况，且仅影响显示不影响存储完整性。
+String normalizePlaylistName(String name) {
+  final trimmed = name.trim();
+  if (trimmed.length <= kPlaylistNameMaxLength) return trimmed;
+  return trimmed.substring(0, kPlaylistNameMaxLength);
+}
+
 /// SQLite 数据仓库：tjc_hymn / hymn_category / playlist_hymn（个人歌单单表）
 class SqliteRepository {
   final Database _db;
@@ -254,17 +271,22 @@ class SqliteRepository {
   /// 创建歌单（名称+成员**单次 INSERT 原子落库**，杜绝"先建空表再补成员"
   /// 双写中断留下半创建歌单的中间态），返回新 id
   int createPlaylist(String name, [List<HymnRef> hymns = kEmptyHymnRefs]) {
+    // 入参防御（v1.8.0）：名称归一化（trim + 长度上限）；空白名视为编程错误直接抛出
+    final safeName = normalizePlaylistName(name);
+    if (safeName.isEmpty) {
+      throw ArgumentError.value(name, 'name', '歌单名称不能为空');
+    }
     final now = DateTime.now().toIso8601String();
     final json = Playlist.hymnsToJson(hymns);
     _db.execute(
       'INSERT INTO playlist_hymn (name, hymns, created_at, updated_at) VALUES (?, ?, ?, ?)',
-      [name, json, now, now],
+      [safeName, json, now, now],
     );
     final id = _db.lastInsertRowId;
     LogService.instance.info(
       LogTag.playlist,
       '创建个人歌单',
-      detail: '歌单ID: $id\n歌单名称: $name\n诗歌数量: ${hymns.length}\n成员明细: $json\n创建时间: $now',
+      detail: '歌单ID: $id\n歌单名称: $safeName\n诗歌数量: ${hymns.length}\n成员明细: $json\n创建时间: $now',
     );
     return id;
   }
@@ -275,37 +297,71 @@ class SqliteRepository {
     String name,
     List<HymnRef> hymns,
   ) {
+    // 入参防御（v1.8.0）：名称归一化；空白名抛出；id 不存在仅告警不改库
+    final safeName = normalizePlaylistName(name);
+    if (safeName.isEmpty) {
+      throw ArgumentError.value(name, 'name', '歌单名称不能为空');
+    }
+    if (getPlaylistById(id) == null) {
+      LogService.instance.warning(
+        LogTag.playlist,
+        '修改歌单失败：歌单不存在',
+        detail: '歌单ID: $id',
+      );
+      return;
+    }
     final now = DateTime.now().toIso8601String();
     final json = Playlist.hymnsToJson(hymns);
     _db.execute(
       'UPDATE playlist_hymn SET name = ?, hymns = ?, updated_at = ? WHERE id = ?',
-      [name, json, now, id],
+      [safeName, json, now, id],
     );
     LogService.instance.info(
       LogTag.playlist,
       '修改个人歌单',
-      detail: '歌单ID: $id\n歌单名称: $name\n诗歌数量: ${hymns.length}\n'
+      detail: '歌单ID: $id\n歌单名称: $safeName\n诗歌数量: ${hymns.length}\n'
           '成员明细: $json\n更新时间: $now',
     );
   }
 
   /// 重命名歌单（保留成员）
   void renamePlaylist(int id, String newName) {
+    // 入参防御（v1.8.0）：名称归一化；空白名抛出；id 不存在仅告警不改库
+    final safeName = normalizePlaylistName(newName);
+    if (safeName.isEmpty) {
+      throw ArgumentError.value(newName, 'newName', '歌单名称不能为空');
+    }
+    if (getPlaylistById(id) == null) {
+      LogService.instance.warning(
+        LogTag.playlist,
+        '重命名歌单失败：歌单不存在',
+        detail: '歌单ID: $id',
+      );
+      return;
+    }
     final now = DateTime.now().toIso8601String();
     _db.execute(
       'UPDATE playlist_hymn SET name = ?, updated_at = ? WHERE id = ?',
-      [newName, now, id],
+      [safeName, now, id],
     );
     LogService.instance.info(
       LogTag.playlist,
       '重命名个人歌单',
-      detail: '歌单ID: $id\n新名称: $newName\n更新时间: $now',
+      detail: '歌单ID: $id\n新名称: $safeName\n更新时间: $now',
     );
   }
 
   /// 删除歌单
   void deletePlaylist(int id) {
     final before = getPlaylistById(id);
+    if (before == null) {
+      // 入参防御（v1.8.0）：id 不存在仅告警（DELETE 本身幂等，仍执行）
+      LogService.instance.warning(
+        LogTag.playlist,
+        '删除歌单：歌单不存在（忽略）',
+        detail: '歌单ID: $id',
+      );
+    }
     _db.execute('DELETE FROM playlist_hymn WHERE id = ?', [id]);
     LogService.instance.info(
       LogTag.playlist,

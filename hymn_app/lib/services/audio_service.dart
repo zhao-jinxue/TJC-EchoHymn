@@ -123,6 +123,16 @@ class AudioService {
     return const [];
   }
 
+  /// 播放列表下标钳制（v1.8.0 入参防御）：
+  /// 仅接受落在 `[0, _playlist.length)` 的合法下标，越界/未设置时返回 `null`，
+  /// 由调用方保持原 `_currentIndex` 不变——避免越界值污染当前索引
+  /// （`playAt` 已守卫，但 `playHymn`/`loadHymn` 的 `index` 此前未校验）。
+  int? _validIndex(int? index) {
+    if (index == null) return null;
+    if (index < 0 || index >= _playlist.length) return null;
+    return index;
+  }
+
   void setPlaylist(List<Hymn> hymns, {int? startIndex}) {
     _playlist = hymns;
     if (startIndex != null && startIndex >= 0 && startIndex < hymns.length) {
@@ -135,7 +145,8 @@ class AudioService {
   /// [version] 指定音频版本（同时记忆为当前版本，供版本栏高亮）。
   Future<void> loadHymn(Hymn hymn, {int? index, String? version}) async {
     _currentHymn = hymn;
-    if (index != null) _currentIndex = index;
+    final loadedIndex = _validIndex(index);
+    if (loadedIndex != null) _currentIndex = loadedIndex;
     if (version != null) {
       _currentAudioVersion = version;
       _actualAudioVersion = version;
@@ -153,7 +164,8 @@ class AudioService {
   /// 播放指定诗歌；[version] 指定音频版本（缺省用当前版本或默认）
   Future<void> playHymn(Hymn hymn, {int? index, String? version}) async {
     _currentHymn = hymn;
-    if (index != null) _currentIndex = index;
+    final playedIndex = _validIndex(index);
+    if (playedIndex != null) _currentIndex = playedIndex;
     onCurrentChanged?.call();
 
     // 选择音频版本：
