@@ -54,4 +54,4 @@
 - 素材（歌曲/音频/谱图）更新后：先 `python tools/scan_db_refs.py` 再生成 `installer/payload_manifest.txt`，后构建（规则 6 的数据侧保障）。
 - 更换载荷密码：改 `installer/make_payload.py` 的 `PASSWORD`，并将新口令逐字符 XOR `0x5A` 的结果同步填入 `echohymn.iss` 的 `DecodeKey`（主载荷与外置素材载荷共用同一密钥，两处必须一致）。
 - 修订宣誓词：仅改 `echohymn.iss` 的 `OATH_TEXT` 常量（校验归一化逻辑随之生效），修改属规则 5 变更，需重新走查誓言页。
-- **分发形态（2026-09-05 起）**：`EchoHymn_Setup_v<版本>.exe`（v1.8.0 实测 38.76 MB，仅内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.0 实测 3039.70 MB 外置素材）两文件必须置于用户电脑同一目录后双击安装包；素材不再入包使 UAC 前系统扫描空档从 ~10 秒降至 1 秒内。
+- **分发形态（2026-09-05 起）**：`EchoHymn_Setup_v<版本>.exe`（v1.8.1 实测 38.77 MB，仅内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.1 实测 3042.85 MB 外置素材）两文件必须置于用户电脑同一目录后双击安装包；素材不再入包使 UAC 前系统扫描空档从 ~10 秒降至 1 秒内。（历史实测：v1.8.0 = 38.76 MB / 3039.70 MB）
