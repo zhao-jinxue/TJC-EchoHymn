@@ -30,10 +30,15 @@ class JianpuGridView extends StatelessWidget {
 
   /// 只显示该节（1 基）；`null` = 显示全部节（印刷/APK 的整页形态）。
   ///
-  /// **概念前提**：数据里「节」只是**歌词行**的属性 ——
+  /// **概念前提**：数据里「节」是**歌词行**的属性 ——
   /// 一个乐句块（block）的谱行被该块的所有节共用
   /// （全库 474 首实测无「一块一节」：见 `tools/jianpu_csv_selftest.py` 的统计口径）。
-  /// 因此按节过滤只会让歌词从 N 行减到 1 行，**谱面行不随节变化**。
+  /// 因此按节过滤只会让歌词行数变化，**谱面行不随节变化**。
+  ///
+  /// **两类歌词行**（2026-10-12 修正）：
+  /// - 分节块（歌词行数 ≥ 节数）：按行位置取该节那一行（超出节数的行 = 重复句，
+  ///   归入对应节，见 [_visibleRows] 第 4 条）；
+  /// - 副歌 / 各节共用的块（歌词行数 < 节数，印刷本只写一遍）：**每节都显示**。
   final int? stanza;
 
   // ---------- 版式常量（em：相对槽宽 S = 记谱字号；印刷实测 槽距 ≈ 1.0 × S） ----------
@@ -82,12 +87,14 @@ class JianpuGridView extends StatelessWidget {
             .clamp(minSlot, maxSlot),
     ];
     // 高度约束：总像素高超过可用高时整体等比收缩（保持块间字号比例），否则纵向滚动
+    final visible = <List<JianpuRow>>[
+      for (final block in score.blocks) _visibleRows(block),
+    ];
     var totalH = 0.0;
-    for (var bi = 0; bi < score.blocks.length; bi++) {
-      final block = score.blocks[bi];
-      if (bi > 0 && _hasVisible(block)) totalH += slots[bi] * blockGapEm;
-      for (final row in block.rows) {
-        if (_visible(row)) totalH += slots[bi] * _rowEm(row.kind);
+    for (var bi = 0; bi < visible.length; bi++) {
+      if (bi > 0 && visible[bi].isNotEmpty) totalH += slots[bi] * blockGapEm;
+      for (final row in visible[bi]) {
+        totalH += slots[bi] * _rowEm(row.kind);
       }
     }
     if (totalH > availH && totalH > 0) {
@@ -101,12 +108,11 @@ class JianpuGridView extends StatelessWidget {
     for (var bi = 0; bi < score.blocks.length; bi++) {
       final block = score.blocks[bi];
       final m = _Metrics(slot: slots[bi], gridW: slots[bi] * block.colCount);
-      if (bi > 0 && _hasVisible(block)) {
+      if (bi > 0 && visible[bi].isNotEmpty) {
         children.add(SizedBox(height: slots[bi] * blockGapEm));
       }
       final barCols = block.barColsByLine();
-      for (final row in block.rows) {
-        if (!_visible(row)) continue;
+      for (final row in visible[bi]) {
         children.add(_buildRow(row, barCols[row.lineNo] ?? const <int>{}, m));
       }
     }
@@ -148,15 +154,35 @@ class JianpuGridView extends StatelessWidget {
 
   double _rowHeight(JianpuRowKind k, _Metrics m) => m.slot * _rowEm(k);
 
-  /// 该行是否参与显示 —— 按节过滤**只作用于歌词行**
-  /// （谱行/记号行被该块全部节共用，故任何一节都要显示；节号缺失时照样显示，避免丢词）
-  bool _visible(JianpuRow row) =>
-      stanza == null ||
-      row.kind != JianpuRowKind.lyric ||
-      row.stanzaNo == null ||
-      row.stanzaNo == stanza;
-
-  bool _hasVisible(JianpuBlock block) => block.rows.any(_visible);
+  /// 该块在当前节下要显示的行（保持原行序）
+  ///
+  /// **按节过滤规则（`stanza == null` 时全部显示）**：
+  /// 1. 非歌词行（音符/记号/小节线）恒显示 —— 一段旋律被该块全部节共用；
+  /// 2. 该块歌词**各节共用**（[JianpuBlock.sharesLyricsAcrossStanzas]：副歌 /
+  ///    各节完全相同的句子，印刷本只写一遍）⇒ **每节都显示**；
+  ///    修订前只认节号 → 第 2 节起副歌块整块无词（2026-10-12 用户实机反馈的 bug）；
+  /// 3. 歌词行缺节号（旧库/异常数据）⇒ 照旧显示，避免丢词；
+  /// 4. 其余按**歌词行在块内的位置**归节：第 i 行 = 第 `((i-1) mod 节数)+1` 节。
+  ///    位置比行上记的节号可靠：源数据里第 111 首首块每行都印 `(1)`，
+  ///    第 18 首块 2 有 6 行（后 3 行是前三节句尾的重复句）。
+  List<JianpuRow> _visibleRows(JianpuBlock block) {
+    final n = score.stanzaCount;
+    final s = stanza;
+    if (s == null || n <= 1 || block.sharesLyricsAcrossStanzas(n)) {
+      return block.rows;
+    }
+    final out = <JianpuRow>[];
+    var lyricPos = 0;
+    for (final row in block.rows) {
+      if (row.kind != JianpuRowKind.lyric) {
+        out.add(row);
+        continue;
+      }
+      lyricPos++;
+      if (row.stanzaNo == null || ((lyricPos - 1) % n) + 1 == s) out.add(row);
+    }
+    return out;
+  }
 
   Widget _buildRow(JianpuRow row, Set<int> barCols, _Metrics m) {
     final h = _rowHeight(row.kind, m);
@@ -250,6 +276,9 @@ class JianpuGridView extends StatelessWidget {
           ),
         );
       case JianpuCellKind.stanza:
+        // 节号 `(k)` 只在它标示的那一节显示：源数据里第 111 首首块每行都印 `(1)`，
+        // 逐节显示时若不判断，第 2/3 节会显示错的节号（整页形态照旧全部显示）
+        if (stanza != null && cell.displayText != '($stanza)') return null;
         return Align(
           alignment: Alignment.center,
           child: Text(

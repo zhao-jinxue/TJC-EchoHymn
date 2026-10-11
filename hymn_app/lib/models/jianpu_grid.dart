@@ -194,6 +194,13 @@ class JianpuRow {
       kind == JianpuRowKind.markUp ||
       kind == JianpuRowKind.markDown;
 
+  /// 该行是否带印刷节号 `(k)`（源 CSV 歌词行首列的 `(k)` 单元格）。
+  ///
+  /// 印刷本**只在每首第 1 个乐句块**逐节写节号 → 「带节号的**行数**」即全曲节数
+  /// （见 [JianpuScore.build] 的节数推导）。
+  bool get hasStanzaLabel =>
+      cells.values.any((c) => c.kind == JianpuCellKind.stanza);
+
   /// 该行参与显示的列号（升序）
   List<int> get cols => cells.keys.toList()..sort();
 
@@ -230,6 +237,24 @@ class JianpuBlock {
   /// 块内全部小节线
   final List<JianpuBarSpan> bars;
 
+  /// 块内歌词行数（= 该块承载的「行数」：分节块 = 节数(+ 重复句)；副歌块 < 节数）
+  int get lyricCount {
+    var n = 0;
+    for (final r in rows) {
+      if (r.kind == JianpuRowKind.lyric) n++;
+    }
+    return n;
+  }
+
+  /// 该块歌词是否**各节共用**（副歌 / 各节完全相同的句子）——每节都要唱。
+  ///
+  /// 判据（2026-10-12 全库 474 首核对的数据事实）：印刷本对副歌/叠句**只写一遍**，
+  /// 所以这类块的歌词行数**少于全曲节数**（第 283 首副歌两块各 1 行、节数 3；
+  /// 第 103 首副歌两块各 2 行、节数 3）。逐节显示时若只认节号，
+  /// 第 2 节起这些块就会整块无词 —— 这是「有副歌的曲子没词」的根因。
+  bool sharesLyricsAcrossStanzas(int stanzaCount) =>
+      stanzaCount > 1 && lyricCount > 0 && lyricCount < stanzaCount;
+
   /// 行号 → 该行需要绘制小节线的列集合（含被 `rowspan` 覆盖的行）
   Map<int, Set<int>> barColsByLine() {
     final out = <int, Set<int>>{};
@@ -258,7 +283,11 @@ class JianpuScore {
 
   final List<JianpuBlock> blocks;
 
-  /// 节数（全曲）
+  /// 节数（全曲；「一页一节」的页数与行归节都以它为准）
+  ///
+  /// 由 [build] 从行数据推导（见 [_deriveStanzaCount]），数据库
+  /// `jianpu_score.stanza_count` 只作兜底 —— 后者按「行内位置」统计，
+  /// 会被重复句行虚增（第 18 首 3 节却记成 6）。
   final int stanzaCount;
 
   static const JianpuScore empty =
@@ -272,6 +301,9 @@ class JianpuScore {
   /// 源数据每个乐句块 = 一个系统 = 女高/女低/歌词/男高/男低 五行组（S,A,词,T,B），
   /// 过滤后每块只保留**第一个声部组**（记号上+音符+记号下）+ 全部歌词行 ——
   /// 即用户红框口径：各节歌词共唱第一行旋律（2026-09-23 定稿）。
+  ///
+  /// [stanzaCount]（数据库 `jianpu_score.stanza_count`）只作**兜底**：
+  /// 正常数据下节数由 [_deriveStanzaCount] 从行数据推导（2026-10-12）。
   factory JianpuScore.build({
     required String hymnNumber,
     required String source,
@@ -311,8 +343,41 @@ class JianpuScore {
       hymnNumber: hymnNumber,
       source: source,
       blocks: blocks,
-      stanzaCount: stanzaCount,
+      // 节数以**行数据**为准（数据库 stanza_count 会被重复句虚增，只作兜底）
+      stanzaCount: _deriveStanzaCount(rows, stanzaCount),
     );
+  }
+
+  /// 推导全曲节数（「一页一节」的页数与行归节都以此为准）。
+  ///
+  /// 数据事实（2026-10-12 全库 474 首逐首核对）：
+  /// 1. 印刷本每个乐句块**逐节写一行歌词**，且只在第 1 个块里写节号 `(k)`；
+  /// 2. 故「带 `(k)` 节号的行数（**只看行数、不看节号取值**）」= 全曲节数 ——
+  ///    个别诗歌（第 111 首）把首块每行都印成 `(1)`，行数依然正确，
+  ///    而数据库按行内位置统计的 `stanza_count` 则被虚增（第 18 首 3 节记成 6、
+  ///    第 130 首 4 节记成 5 …，全库 25 首）；
+  /// 3. 极少数诗歌（第 460 首）**完全没有节号** → 回退「块内最大歌词行数」
+  ///    （与数据库口径一致，行为不变）。
+  static int _deriveStanzaCount(List<JianpuRow> rows, int fallback) {
+    final labelled = <int, int>{};
+    final lyric = <int, int>{};
+    for (final r in rows) {
+      if (r.kind != JianpuRowKind.lyric) continue;
+      lyric.update(r.blockNo, (v) => v + 1, ifAbsent: () => 1);
+      if (r.hasStanzaLabel) {
+        labelled.update(r.blockNo, (v) => v + 1, ifAbsent: () => 1);
+      }
+    }
+    var maxLabelled = 0;
+    for (final n in labelled.values) {
+      if (n > maxLabelled) maxLabelled = n;
+    }
+    if (maxLabelled > 1) return maxLabelled;
+    var maxLyric = 0;
+    for (final n in lyric.values) {
+      if (n > maxLyric) maxLyric = n;
+    }
+    return maxLyric > 0 ? maxLyric : fallback;
   }
 
   /// 四部合唱谱（S,A,词,T,B）只保留**第一声部**：每块第一个

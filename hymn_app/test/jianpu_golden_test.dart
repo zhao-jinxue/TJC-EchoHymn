@@ -166,4 +166,36 @@ void main() {
       matchesGoldenFile('goldens/jianpu_163.png'),
     );
   });
+
+  testWidgets('第 283 首《为主收庄稼》第 3 节：副歌块必须有词（2026-10-12 修复）',
+      (tester) async {
+    tester.view.physicalSize = const Size(1040, 1120);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final db = sqlite3.open('../data/tjc_hymn.db');
+    final score = _loadScore(db, '283', firstVoiceOnly: true);
+    db.dispose();
+    // 数据事实：4 个块 = 正歌 2 块（各 3 行词）+ 副歌 2 块（各 1 行词，各节共用）
+    expect(score.stanzaCount, 3);
+    expect(score.blocks.map((b) => b.lyricCount).toList(), [3, 3, 1, 1]);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(useMaterial3: true, fontFamily: 'EchoSans'),
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF2F6FD),
+        body: JianpuGridView(
+          score: score,
+          constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 1120),
+          stanza: 3,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(JianpuGridView),
+      matchesGoldenFile('goldens/jianpu_283_stanza3.png'),
+    );
+  });
 }

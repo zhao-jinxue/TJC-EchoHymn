@@ -12,7 +12,7 @@
 > | **本文档** | **代码里有什么、怎么用、是否安全、谁调用谁** |
 >
 > - 扫描范围：`hymn_app/lib/**`（31 个 Dart 文件）+ `hymn_app/native/**`（C ABI 接口层）
-> - 代码基线：**v1.8.0**
+> - 代码基线：**v1.8.1**
 > - 生成日期：2026-10-03
 > - 维护规则：**改代码 = 改本文档**（见「八、维护约定」）
 
@@ -236,7 +236,7 @@ Windows 原生窗口能力（`native` 侧 `flutter_window.cpp` 注册）。Dart 
 | `HymnCategory` | `models/hymn_category.dart` | 分类（`hymn_category`）；`hymns` 为 `[{标题:编号}]` |
 | `HymnRef` | `models/hymn_ref.dart` | 歌单成员 `typedef MapEntry<String,String>`；`hymnRefNumber` 归一化编号为字符串 |
 | `Playlist` | `models/playlist.dart` | 个人歌单（`playlist_hymn` 单表） |
-| `JianpuCell`/`JianpuRow`/`JianpuBlock`/`JianpuScore` | `models/jianpu_grid.dart` | 简谱网格四层模型；`JianpuScore.build(firstVoiceOnly:)` 支持「只取第一声部」 |
+| `JianpuCell`/`JianpuRow`/`JianpuBlock`/`JianpuScore` | `models/jianpu_grid.dart` | 简谱网格四层模型；`JianpuScore.build(firstVoiceOnly:)` 支持「只取第一声部」；**节数由行数据推导**（`_deriveStanzaCount`：带 `(k)` 节号的行数，库值仅兜底）；`JianpuRow.hasStanzaLabel` / `JianpuBlock.lyricCount` / `JianpuBlock.sharesLyricsAcrossStanzas(n)`（歌词行数 < 节数 = 副歌/各节共用块） |
 | `JianpuGlyph` | `models/jianpu_layout.dart` | 记谱字形度量（码位 → 墨迹宽/上下界） |
 
 **顶层工具函数（`models/hymn.dart`）**：`autoPageIndexFor`（按进度换算页码）、
@@ -296,7 +296,7 @@ Windows 原生窗口能力（`native` 侧 `flutter_window.cpp` 注册）。Dart 
 | `showHymnSearchDialog` / `_HymnSearchDialog` / `buildKeywordSpans` | `widgets/hymn_search_dialog.dart` | 统一搜索结果弹窗（单击选中 / 双击返回并播放） |
 | `CreatePlaylistDialog` / `HymnPickDialog` | `widgets/playlist_dialog.dart` | 歌单创建/修改/删除 + 诗歌选择 |
 | `UserManualDialog` / `ManualPrefs` / `GuideLine` | `widgets/user_manual_dialog.dart` | 用户手册弹窗 + 「启动时显示」偏好单例 |
-| `JianpuGridView` / `_Metrics` / `_FermataPainter` | `widgets/jianpu_grid_view.dart` | 简谱网格渲染（列 = 拍点，按块宽铺满） |
+| `JianpuGridView` / `_Metrics` / `_FermataPainter` | `widgets/jianpu_grid_view.dart` | 简谱网格渲染（列 = 拍点，按块宽铺满）；`stanza: k` 逐节过滤见 `_visibleRows`（副歌/共用块每节都显示；其余按行位置 `((i-1) mod 节数)+1` 归节） |
 | `_ScoreImageView` | `widgets/hymn_display.dart` | 谱面图片查看器（宽度驱动缩放 + 滚轮分流） |
 | `_WindowButton` / `_EmptyHint` | `home_screen.dart` / 各面板 | 无状态 UI 原子件（窗口按钮、空态提示） |
 
@@ -366,7 +366,7 @@ Windows 原生窗口能力（`native` 侧 `flutter_window.cpp` 注册）。Dart 
 | `autoPageIndexFor({position,totalSeconds,pageCount})` | 进度、总时长、页数 | `int`（0 基页） | `totalSeconds<=0` 或 `pageCount<=1` → 恒 `0` | 无 |
 | `lyricMaxFontByHeight(availH,lineCount)` | 可用高、行数 | `double` | `lineCount<=0` → `40.0` | 无 |
 | `lyricMaxFontByWidth(availW,maxDisplayWidth)` | 可用宽、最长行宽 | `double` | `maxDisplayWidth<=0` → `40.0` | 无 |
-| `JianpuScore.build({...firstVoiceOnly})` | 行数据等 | `JianpuScore` | 空行 → 空 score；`firstVoiceOnly` 过滤非第一声部 | 无 |
+| `JianpuScore.build({...firstVoiceOnly})` | 行数据等 | `JianpuScore` | 空行 → 空 score；`firstVoiceOnly` 过滤非第一声部；`stanzaCount` 由行数据推导（入参仅兜底） | 无 |
 | `HymnSearchService.search(all, keyword)` | 全量、关键字 | `List<HymnSearchHit>` | 空关键字 → `[]`；每首仅一条 | 无 |
 | `buildKeywordSpans(text,keyword,color,base)` | 文本/关键字/色/样式 | `List<InlineSpan>` | 关键字未出现 → 单段原样 | 无 |
 | `LeftPanelState.playHymn(hymn,index,contextList,{...})` | 诗歌/下标/上下文/来源 | `void` | — | 设置播放上下文 + 播放 + 回调上层 + `setState` |

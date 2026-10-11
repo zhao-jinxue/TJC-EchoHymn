@@ -151,6 +151,68 @@ void main() {
       expect(barCols.containsKey(2), isFalse);
     });
 
+    test('节数推导与副歌块判定（歌词行数 < 节数 ⇒ 各节共用）', () {
+      JianpuRow lyric(int line, int block, int stanza, {bool labelled = false}) =>
+          JianpuRow(
+            lineNo: line,
+            blockNo: block,
+            kind: JianpuRowKind.lyric,
+            colCount: 2,
+            stanzaNo: stanza,
+            cells: {
+              if (labelled)
+                0: JianpuCell(
+                    col: 0,
+                    kind: JianpuCellKind.stanza,
+                    sym: '($stanza)',
+                    text: '($stanza)'),
+              1: const JianpuCell(
+                  col: 1, kind: JianpuCellKind.text, sym: '字', text: '字'),
+            },
+          );
+      final rows = <JianpuRow>[
+        lyric(0, 0, 1, labelled: true),
+        lyric(1, 0, 2, labelled: true),
+        lyric(2, 0, 3, labelled: true),
+        lyric(3, 1, 1),
+        lyric(4, 1, 2),
+        lyric(5, 1, 3),
+        lyric(6, 2, 1), // 副歌块：只有 1 行词
+        lyric(7, 3, 1), // 副歌块
+      ];
+      // 兜底值故意给错（模拟数据库被重复句虚增的 stanza_count = 6）
+      final score = JianpuScore.build(
+          hymnNumber: 'x', source: 't', rows: rows, stanzaCount: 6);
+      expect(score.stanzaCount, 3, reason: '带节号的行数 = 真节数');
+      expect(score.blocks.map((b) => b.lyricCount).toList(), [3, 3, 1, 1]);
+      expect(score.blocks[0].sharesLyricsAcrossStanzas(3), isFalse);
+      expect(score.blocks[1].sharesLyricsAcrossStanzas(3), isFalse);
+      expect(score.blocks[2].sharesLyricsAcrossStanzas(3), isTrue);
+      expect(score.blocks[3].sharesLyricsAcrossStanzas(3), isTrue);
+      // 单节 (=1)：不构成「各节共用」，也不翻页
+      expect(score.blocks[2].sharesLyricsAcrossStanzas(1), isFalse);
+    });
+
+    test('节数推导：无节号时回退「块内最大歌词行数」', () {
+      JianpuRow lyric(int line, int block) => JianpuRow(
+          lineNo: line,
+          blockNo: block,
+          kind: JianpuRowKind.lyric,
+          colCount: 1,
+          stanzaNo: 1,
+          cells: {
+            0: const JianpuCell(
+                col: 0, kind: JianpuCellKind.text, sym: '字', text: '字'),
+          });
+      final score = JianpuScore.build(
+        hymnNumber: 'x',
+        source: 't',
+        rows: [lyric(0, 0), lyric(1, 0), lyric(2, 1), lyric(3, 1)],
+        stanzaCount: 9,
+      );
+      expect(score.stanzaCount, 2);
+    });
+
     test('空网格判定', () {
       expect(JianpuScore.empty.isEmpty, isTrue);
       expect(
@@ -275,6 +337,108 @@ void main() {
     });
   }, skip: dbFile == null ? '缺 data/tjc_hymn.db' : null);
 
+  group('实库数据：副歌 / 重复句的按节显示（2026-10-12 修复「副歌块没词」）', () {
+    /// 逐节渲染（与实机同参数：单声部 + 一页一节）
+    Future<void> pump(
+        WidgetTester tester, JianpuScore score, int? stanza) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(useMaterial3: true, fontFamily: 'EchoSans'),
+        home: Scaffold(
+          body: JianpuGridView(
+            score: score,
+            constraints: const BoxConstraints(maxWidth: 900, maxHeight: 1800),
+            stanza: stanza,
+          ),
+        ),
+      ));
+    }
+
+    test('第 283 首《为主收庄稼》：节数 3、副歌两块各 1 行词', () {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '283', firstVoiceOnly: true);
+      db.dispose();
+      expect(score.stanzaCount, 3);
+      expect(score.blocks.length, 4);
+      expect(score.blocks.map((b) => b.lyricCount).toList(), [3, 3, 1, 1]);
+      expect(score.blocks[0].sharesLyricsAcrossStanzas(3), isFalse);
+      expect(score.blocks[1].sharesLyricsAcrossStanzas(3), isFalse);
+      expect(score.blocks[2].sharesLyricsAcrossStanzas(3), isTrue);
+      expect(score.blocks[3].sharesLyricsAcrossStanzas(3), isTrue);
+    });
+
+    testWidgets('第 283 首：副歌歌词在每一节都显示（第 3 节必须不空）',
+        (tester) async {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '283', firstVoiceOnly: true);
+      db.dispose();
+
+      // 第 1 节：正歌「举」+ 副歌两句（「谨」「伸」）
+      await pump(tester, score, 1);
+      expect(find.text('举'), findsOneWidget);
+      expect(find.text('谨'), findsOneWidget);
+      expect(find.text('伸'), findsOneWidget);
+      expect(find.text('欣'), findsNothing);
+      expect(find.text('(1)'), findsOneWidget);
+
+      // 第 3 节（用户截图那一页）：正歌「自…欣」+ 副歌两句仍在
+      await pump(tester, score, 3);
+      expect(find.text('欣'), findsOneWidget);
+      expect(find.text('谨'), findsOneWidget, reason: '副歌「谨遵主命…」');
+      expect(find.text('伸'), findsOneWidget, reason: '副歌「伸出鎌刀…」');
+      expect(find.text('举'), findsNothing);
+      expect(find.text('欠'), findsNothing);
+      expect(find.text('(3)'), findsOneWidget);
+    });
+
+    testWidgets('第 18 首：块内重复句按位置归节（节数 3，不虚增为 6）',
+        (tester) async {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '18', firstVoiceOnly: true);
+      db.dispose();
+      expect(score.stanzaCount, 3, reason: '块 2 有 6 行 = 3 节 + 3 行重复句');
+      expect(score.blocks[1].lyricCount, 6);
+
+      // 第 1 节：正歌第 2 句含「安」，其重复句「安宅要再来」也含「安」→ 2 次
+      await pump(tester, score, 1);
+      expect(find.text('安'), findsNWidgets(2));
+      expect(find.text('叹'), findsNothing);
+
+      // 第 2 节：正歌第 2 句 + 其重复句「叹息和忧苦」→「叹」2 次
+      await pump(tester, score, 2);
+      expect(find.text('叹'), findsNWidgets(2));
+      expect(find.text('安'), findsNothing);
+    });
+
+    testWidgets('第 111 首：首块节号全是 (1)，按位置归节且不显示错节号',
+        (tester) async {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '111', firstVoiceOnly: true);
+      db.dispose();
+      expect(score.stanzaCount, 3);
+
+      // 第 2 节：首块第 2 行必须显示（修订前按节号过滤 → 该行整行丢失）
+      await pump(tester, score, 2);
+      expect(find.text('深'), findsOneWidget, reason: '首块第 2 行「…深入黑暗的迷途」');
+      expect(find.text('(1)'), findsNothing, reason: '节号与本节不符 → 不显示');
+      expect(find.text('(2)'), findsNothing, reason: '源数据无 (2) 节号');
+      // 副歌（各节共用）仍在
+      expect(find.text('魔'), findsOneWidget);
+    });
+
+    testWidgets('第 103 首：副歌块 2 行词 < 节数 3 → 每节都显示',
+        (tester) async {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '103', firstVoiceOnly: true);
+      db.dispose();
+      expect(score.stanzaCount, 3);
+      expect(score.blocks.map((b) => b.lyricCount).toList(), [3, 3, 2, 2]);
+
+      await pump(tester, score, 3);
+      expect(find.text('耽'), findsOneWidget, reason: '第 3 节正歌');
+      expect(find.text('倾'), findsNWidgets(2), reason: '副歌两句都在');
+    });
+  }, skip: dbFile == null ? '缺 data/tjc_hymn.db' : null);
+
   group('谱面数据源已切换（旧 PDF 管线表已删除）', () {
     test('hymn_score* / hymn_codepoint_map 不存在；jianpu_* 存在', () {
       final db = sqlite3.open(dbFile!.path);
@@ -297,7 +461,7 @@ void main() {
       }
     });
 
-    test('谱面与库内诗歌编号的对应关系（仅第 349 首为"库外"）', () {
+    test('谱面与库内诗歌编号一一对应（474 首，无「库外」）', () {
       final db = sqlite3.open(dbFile!.path);
       final orphans = db
           .select('SELECT hymn_number FROM jianpu_score WHERE hymn_number NOT IN '
@@ -310,9 +474,10 @@ void main() {
           'SELECT hymn_number FROM tjc_hymn WHERE hymn_number NOT IN '
           '(SELECT hymn_number FROM jianpu_score)');
       db.dispose();
-      // APK 有 474 份 CSV；本库 473 首（第 349 首按用户要求整首移出）
+      // APK 有 474 份 CSV；本库 474 首（第 349 首 2026-10-11 已回到 tjc_hymn，
+      // 曲名「救主正在等待」）→ 谱面与库内编号一一对应、无「库外」缺口
       expect(cnt, 474);
-      expect(orphans, ['349']);
+      expect(orphans, isEmpty);
       expect(noScore.length, 0);
     });
   }, skip: dbFile == null ? '缺 data/tjc_hymn.db' : null);
