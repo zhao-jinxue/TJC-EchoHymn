@@ -1,7 +1,7 @@
 # 📚 EchoHymn 文档总纲（docs 主索引）
 
 > 本文件是 `docs/` 目录的**唯一主文档（总纲 + 索引）**，按平台归档全部开发文档。
-> 整理定稿：2026-09-13（2026-09-24 增补软著材料归档规则；**2026-09-30 封版前校验**：Windows 索引补 `SCORE_SELFTEST.md`、版本口径由 v1.5.2 更正为 v1.8.0；**2026-10-03 增补 `CODE_REFERENCE.md` 代码说明文档**）。规则：**Windows 开发归纳到 `Windows/`，
+> 整理定稿：2026-09-13（2026-09-24 增补软著材料归档规则；**2026-09-30 封版前校验**：Windows 索引补 `SCORE_SELFTEST.md`、版本口径由 v1.5.2 更正为 v1.8.0；**2026-10-03 增补 `CODE_REFERENCE.md` 代码说明文档**；**2026-10-11 增补 Android 重订计划（手机 / 平板双分支，手机优先）与立项初版归档索引**）。规则：**Windows 开发归纳到 `Windows/`，
 > Android 归纳到 `Android/`，鸿蒙归纳到 `OpenHarmony/`，苹果归纳到 `iOS/`；跨平台通用知识在 `knowledge/`；
 > 软著（计算机软件著作权）材料——含其编辑工作区——**唯一归档到 `ruanzhu/`**（入口 `ruanzhu/README.md`，
 > 禁止在仓库根或其他位置另建软著工作区）；会话档案在 `sessions/`（独立流程，不参与归档整理）**。
@@ -47,7 +47,8 @@ docs/
 | 文档 | 用途 |
 | --- | --- |
 | [SESSION_SUMMARY.md](Android/SESSION_SUMMARY.md) | 📋 **Android 开发总结**（续接必读）：里程碑、阶段 0 环境操作留档、Windows 主线已做的 Android 铺垫、进度与待办 |
-| [ANDROID_PLAN.md](Android/ANDROID_PLAN.md) | 🚧 Android 移植计划（2026-09-11 立项）：环境现状、阶段 0~3 执行实况与踩坑记录、风险清单 |
+| [ANDROID_PLAN.md](Android/ANDROID_PLAN.md) | 🚧 **Android 开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）**：目标系统基线（Android 16 / API 36 五项硬要求）、双分支形态与三大参照基线（TJC APK / Windows 定稿 / 代码资产）、**UI 设计**、**功能实现**（阶段 A~E）、**代码管理**、**模拟测试**、**软件发布**、风险清单、里程碑 M0~M6 |
+| [ANDROID_PLAN_2026-09-11_初版.md](Android/ANDROID_PLAN_2026-09-11_初版.md) | 📦 立项初版计划（阶段 0 环境搭建全流程、四阶段路线、D 盘布局、踩坑与风险清单原文） |
 
 ### OpenHarmony 鸿蒙（`OpenHarmony/`，占位）
 

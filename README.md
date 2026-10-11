@@ -6,7 +6,7 @@
 > **当前版本**：**v1.8.0**（2026-09-24 发布，提交 `325272b`）——版本号单源 = `hymn_app/pubspec.yaml`
 > ✅ **tag 现状**：v1.7.0 / v1.7.1 / v1.7.2 / v1.7.3 / v1.7.4 / v1.8.0 起初只递增了 `pubspec.yaml` 与 `release:` 提交、未打 tag，**已于 2026-09-30 补打并推送 origin**（指向各自 release 提交：`bc89cc0` / `e90035a` / `fd8f5c1` / `897589c` / `4e655a5` / `325272b`）；当日**统一 tag 类型**：这 6 个 + 原为 lightweight 的 `v1.3.1` 一并重打为 **annotated tag**（tagger `EchoHymn <echohymn@example.com>` + 版本说明）并 force push 覆盖远端 → **18 个版本号 tag（v1.0.0~v1.8.0）全部为 annotated**，仅 `backup-before-filter`、`pre-bugfix-2026-09-05` 两个**非版本号检查点** tag 保持 lightweight。
 > **内容规模**：473 首诗歌 · 分类两级（一级 13 → 二级 47）· 钢琴版/人声版音频 · 曲谱（APK CSV 网格）/ 简谱 / 五线谱 · 诗歌源考
-> **目标平台**：Windows（✅ 已开发 + 提交自动发布）· Android（📂 目录就绪，未开发）· OpenHarmony 鸿蒙（📁 占位）· ~~Web~~（❌ 2026-08-16 移除）
+> **目标平台**：Windows（✅ 已开发 + 提交自动发布）· Android（🚧 **开发计划已出**：手机 / 平板双分支，手机优先 —— 见 `docs/Android/ANDROID_PLAN.md`）· OpenHarmony 鸿蒙（📁 占位）· ~~Web~~（❌ 2026-08-16 移除）
 > **许可**：个人学习参考免费，商业使用需授权 —— 见 [LICENSE](LICENSE)
 
 ---
@@ -108,7 +108,7 @@ EchoHymn/
 │   │                                       # jianpu_metrics.dart（EchoJianpu 字形墨迹度量，build_jianpu_font.py 生成）
 │   ├── windows/runner/                     # C++ 宿主：去系统标题栏、单实例、850×890 客户区、窗口通道
 │   ├── assets/{data,fonts}/                # hymns.json；内置字体 EchoSans / EchoKai / EchoJianpu
-│   ├── android/ · ohos/                    # Android 目录就绪 / 鸿蒙占位（均未开发）
+│   ├── android/ · ohos/                    # Android 开发计划已出（2026-10-11，手机优先）/ 鸿蒙占位
 │   ├── native/                             # ⚠️ C++ hymn_engine 历史可选组件（当前不经 dart:ffi 调用）
 │   └── test/                               # 单元测试 43 用例（含 golden 版式快照）+ v120~v151 实机测试/回归清单
 ├── data/                        # tjc_hymn.db（473 首 / 分类 13→47 / 曲谱网格 21.8k 行 / 个人歌单）+ Hymn_Downloads（约 3GB 音频与谱图素材）
@@ -212,7 +212,7 @@ flutter build windows --release   # 期望构建成功
 | 平台 | 状态 | 说明 |
 | --- | --- | --- |
 | **Windows** | ✅ 已开发 | 桌面优先；提交自动发布 + 手动安装包双通道 |
-| **Android** | 🚧 已立项（2026-09-11） | 阶段 0 环境搭建完成（D 盘 SDK/JDK17/AVD，flutter doctor 全绿）；移植计划见 [docs/Android/ANDROID_PLAN.md](docs/Android/ANDROID_PLAN.md) |
+| **Android** | 🚧 开发计划已出（2026-10-11 重订 · **手机 / 平板双分支，手机优先**） | 阶段 0 环境搭建完成（D 盘 SDK/JDK17/AVD，flutter doctor 全绿）；计划见 [docs/Android/ANDROID_PLAN.md](docs/Android/ANDROID_PLAN.md)（目标 Android 16 / API 36；UI 设计 / 功能实现 / 代码管理 / 模拟测试 / 软件发布 五环节） |
 | **OpenHarmony 鸿蒙** | 📁 占位，未开发 | `hymn_app/ohos/` 仅 README；接入须知见 [docs/OpenHarmony/](docs/OpenHarmony/README.md) |
 | **苹果（iOS/macOS）** | 📁 占位，未立项 | 需 macOS + Xcode；接入须知见 [docs/iOS/](docs/iOS/README.md) |
 | ~~Web~~ | ❌ 已移除 | `dart:ffi` 与桌面窗口通道不可用，目录与流水线已删 |
@@ -248,7 +248,7 @@ flutter build windows --release   # 期望构建成功
 | --- | --- |
 | [docs/README.md](docs/README.md) | 📍 文档总纲：目录索引 + 平台导航 + 附录（C++ `hymn_engine` 历史组件构建/恢复 FFI 路径） |
 | [docs/Windows/](docs/Windows/) | 🖥 **Windows 开发全集**：开发总结（续接必读）· UI 定稿确认单 · UI 设计规范 · **简谱谱面自测方案** · 配色效果图预览 · 打包迁移 · 安装/发布规范 · 诊断报告 · VS/CMake 环境安装 · 推荐工具 |
-| [docs/Android/](docs/Android/) | 🚧 Android 移植计划（立项 2026-09-11）：环境现状、阶段 0~3、风险清单 |
+| [docs/Android/](docs/Android/) | 🚧 Android 开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）：目标系统基线、UI 设计、功能实现阶段 A~E、代码管理、模拟测试、软件发布、风险清单、里程碑 M0~M6（立项初版见 `ANDROID_PLAN_2026-09-11_初版.md`） |
 | [docs/OpenHarmony/](docs/OpenHarmony/README.md) | 📦 鸿蒙占位：接入前提与待办 |
 | [docs/iOS/](docs/iOS/README.md) | 📦 苹果平台占位：接入前提与待办 |
 | [docs/knowledge/](docs/knowledge/) | 🛠 跨平台通用知识（Cline 上下文最小化 · **TJC APK 简谱渲染逆向复用**） |
