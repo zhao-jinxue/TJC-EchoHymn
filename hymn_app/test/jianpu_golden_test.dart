@@ -199,9 +199,12 @@ void main() {
     );
   });
 
-  testWidgets('第 20 首《尊主为王》第 1 节：行距 / 字号版式快照（2026-10-13）',
+  testWidgets('第 20 首《尊主为王》第 1 节：版式快照（与实机同口径，1920 宽）',
       (tester) async {
-    // 窗口按实机常用宽（1920）取，槽宽 ≈ 65 px，与用户实机截图同口径
+    // 窗口按实机常用宽（1920）取，槽宽 ≈ 65 px，与用户实机截图同口径。
+    // 用途：行距/字号类版式改动的基准 —— 2026-10-13 曾试改「行距压缩一半 + 字号放大」，
+    // 用户目视后裁定**回退到既有行距方案**（见 docs/Windows/SCORE_SELFTEST.md
+    // 「歌词行距：为什么保持现状」一节），此后本快照即回退后的基准。
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
