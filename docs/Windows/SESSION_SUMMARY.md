@@ -7,7 +7,7 @@
 > **重要**：每次 git commit 到 master/main 会**自动触发 Windows 发布**（见「自动发布机制」章节），请提交后核对 `release/auto-release.log`。
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
-> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（v1.8.2 实测 **38.77 MB / SHA256 `10D0ABD8…`**，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.2 实测 **3042.85 MB / SHA256 `7BE6E308…`**，外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
+> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（**v1.8.5 实测 38.77 MiB = 40,650,409 B / SHA256 `92724296…`**，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（**v1.8.5 实测 3043.05 MiB = 3,190,873,500 B / SHA256 `4DD1EAD3…`**，外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
 > **软著材料（支线，2026-09-06 起；2026-09-24 归档定稿）**：申请材料的规范/进度/决策/工作区**全部归档在 `docs/ruanzhu/`**（总入口 `docs/ruanzhu/README.md`；工作区 = `docs/ruanzhu/workspace/`，**禁止再在仓库根另建 `ruanzhu-workspace/`**），不进入本文件；与开发会话无关，日常开发无需阅读。
 
 ---
