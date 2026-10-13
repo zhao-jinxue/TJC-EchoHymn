@@ -95,7 +95,7 @@ APK(assets/NNN.csv)  →  tools/import_apk_csv.py  →  data/tjc_hymn.db
 - 「播放时高亮当前拍点/乐句」经用户确认**不做**（已从遗留清单移除）。
 - **单声部过滤（v1.7.3）**：源 CSV 为**四部合唱谱**（每块 = S,A,词,T,B 五行组）；
   `JianpuScore.build(firstVoiceOnly: true)` 每块只保留第一个「记号上+音符+记号下」声部组
-  + 全部歌词行（「曲谱」模式使用）；小节线跨行 = 块内连续乐谱行数（过滤后 3 / 全声部 6，
+  - 全部歌词行（「曲谱」模式使用）；小节线跨行 = 块内连续乐谱行数（过滤后 3 / 全声部 6，
   与源 `rowspan` 等价）。全声部形态 = `firstVoiceOnly: false`（组件快照/自测）。
 - **垂直居中（v1.7.4）**：曲谱页内容不足一屏时**整块垂直居中**（与歌词页同口径：
   `ConstrainedBox(minHeight: 视口净高)` + `MainAxisAlignment.center`）；超一屏从顶滚动、不裁顶。

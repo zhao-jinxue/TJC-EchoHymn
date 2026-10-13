@@ -160,7 +160,7 @@ flutter build windows --release   # 期望构建成功
 | 形态 | 命令 | 产物 | 用途 |
 | --- | --- | --- | --- |
 | **绿色目录** | `flutter build windows --release`（或提交自动触发） | `hymn_app\build\windows\x64\runner\Release\` → `release\echohymn_win_<时间戳>_<短哈希>\` | 开发自用 / 内部验证，整目录拷贝即可运行 |
-| **安装包** | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\build_installer.ps1` | `installer\output\EchoHymn_Setup_v<版本>.exe`（≈38.8 MB）+ `EchoHymn_Data_v<版本>.7z`（≈3 GB）+ 两份 `.sha256` | 对外分发（v1.8.1 实测 38.77 MB / 3042.85 MB） |
+| **安装包** | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\build_installer.ps1` | `installer\output\EchoHymn_Setup_v<版本>.exe`（≈38.8 MB）+ `EchoHymn_Data_v<版本>.7z`（≈3 GB）+ 两份 `.sha256` | 对外分发（v1.8.2 实测 38.77 MB / 3042.85 MB） |
 
 安装包要点（操作手册 [docs/Windows/INSTALLER.md](docs/Windows/INSTALLER.md)，规范基线 [docs/Windows/RELEASE_RULES.md](docs/Windows/RELEASE_RULES.md) 18 条）：
 

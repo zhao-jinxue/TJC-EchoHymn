@@ -7,7 +7,7 @@
 > **重要**：每次 git commit 到 master/main 会**自动触发 Windows 发布**（见「自动发布机制」章节），请提交后核对 `release/auto-release.log`。
 > **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携）。
 > **日志文件**：`echo_hymn.exe` 同级目录 `logs/`（文本日志，UTF-8 BOM，保留 7 份）。
-> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（v1.8.1 实测 **38.77 MB / SHA256 `AB834E52…`**，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.1 实测 **3042.85 MB / SHA256 `21FDA606…`**，外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
+> **安装包分发形态（2026-09-05 起双文件）**：`EchoHymn_Setup_v<版本>.exe`（v1.8.2 实测 **38.77 MB / SHA256 `10D0ABD8…`**，内嵌主程序）+ `EchoHymn_Data_v<版本>.7z`（v1.8.2 实测 **3042.85 MB / SHA256 `7BE6E308…`**，外置加密诗歌素材）**必须置于同一目录**后双击安装；详见 `docs/Windows/INSTALLER.md` 与 `docs/Windows/RELEASE_RULES.md`。
 > **软著材料（支线，2026-09-06 起；2026-09-24 归档定稿）**：申请材料的规范/进度/决策/工作区**全部归档在 `docs/ruanzhu/`**（总入口 `docs/ruanzhu/README.md`；工作区 = `docs/ruanzhu/workspace/`，**禁止再在仓库根另建 `ruanzhu-workspace/`**），不进入本文件；与开发会话无关，日常开发无需阅读。
 
 ---
@@ -274,10 +274,10 @@
 13f. ✅ **全局 Bug 诊断修复 P1×1 + P2×4（v1.5.2，2026-09-05）**：state.json 双写队列竞态根治（AppStateService.shared 全进程唯一串行链）+ 谱面 http 判定统一 + 换谱面滚动复位 + dispose 注销窗口回调 + 歌单单次 INSERT 原子建单；analyze 0 + 18/18 测试 + Release 构建全过；**修复报告存档 `docs/Windows/BUGFIX_REPORT_2026-09-05.md`**（检查点 tag `pre-bugfix-2026-09-05`）
 14. ✅ **Windows 安装包（2026-09-04~05，`f1a9810`+`54ceccc`+`15082d5`）**：三页向导 + 加密载荷 + 主体/素材双文件拆分（安装包 32.7MB + 素材包 2.96GB）；静默装/卸冒烟全过——**待用户实机 GUI 走查**（UAC 秒弹、素材缺失 ✘ 阻断指引、誓言右键粘贴回滚、两段解包进度）；素材包分发通道（网盘/U盘）待规划；OV 代码签名证书留作预算决策（规则 9，收益已降为消除"未知发布者"提示）
 15. `windows/runner/win32_window.cpp` 最小 850×890 小屏实机布局验证（屏幕不足时最大化并等比内缩）——**暂不作为任务**
-17. ✅ **曲谱/简谱数据源切换与四模式（v1.7.0~v1.7.4，2026-09-23~24）**：APK CSV 网格三表取代 PDF 码位管线（库 8.5→26.7 MB）；版本栏四按钮（歌词/曲谱/简谱/五线谱）；曲谱 = 一页一节单声部网格（块宽渲染、垂直居中）、简谱 = 扫描图；自测 `tools/jianpu_csv_selftest.py`（L0~L3）；golden 三张
-18. ✅ **关闭行为选择 + 系统托盘（v1.8.0，2026-09-24）**：`state.json closeAction` + 托盘图标（`Shell_NotifyIconW`）+ 手册「关闭与系统托盘」与「重选关闭行为」；`flutter test` 43/43
-19. ✅ **安装包「运行中卸载残留」根治（2026-09-24）**：`[Code]` 双通道检测 + `taskkill` + 删除后复核；`tools/verify_installer.ps1` A/B 对照（残留 13 → 0）
-20. ⏳ **待办（封版前未完成项）**：安装包实机 GUI 走查（UAC 即时性、素材缺失阻断指引、誓言粘贴回滚、两段解包进度）· 素材包分发通道（网盘/U 盘）· OV 代码签名证书预算决策 · 小屏（可用区 < 850×890）布局验证 · **v1.7.0~v1.8.0 补打 git tag**
+16. ✅ **曲谱/简谱数据源切换与四模式（v1.7.0~v1.7.4，2026-09-23~24）**：APK CSV 网格三表取代 PDF 码位管线（库 8.5→26.7 MB）；版本栏四按钮（歌词/曲谱/简谱/五线谱）；曲谱 = 一页一节单声部网格（块宽渲染、垂直居中）、简谱 = 扫描图；自测 `tools/jianpu_csv_selftest.py`（L0~L3）；golden 三张
+17. ✅ **关闭行为选择 + 系统托盘（v1.8.0，2026-09-24）**：`state.json closeAction` + 托盘图标（`Shell_NotifyIconW`）+ 手册「关闭与系统托盘」与「重选关闭行为」；`flutter test` 43/43
+18. ✅ **安装包「运行中卸载残留」根治（2026-09-24）**：`[Code]` 双通道检测 + `taskkill` + 删除后复核；`tools/verify_installer.ps1` A/B 对照（残留 13 → 0）
+19. ⏳ **待办（封版前未完成项）**：安装包实机 GUI 走查（UAC 即时性、素材缺失阻断指引、誓言粘贴回滚、两段解包进度）· 素材包分发通道（网盘/U 盘）· OV 代码签名证书预算决策 · 小屏（可用区 < 850×890）布局验证 · **v1.7.0~v1.8.0 补打 git tag**
 
 ---
 
