@@ -1,7 +1,7 @@
 # 📚 EchoHymn 文档总纲（docs 主索引）
 
 > 本文件是 `docs/` 目录的**唯一主文档（总纲 + 索引）**，按平台归档全部开发文档。
-> 整理定稿：2026-09-13（2026-09-24 增补软著材料归档规则；**2026-09-30 封版前校验**：Windows 索引补 `SCORE_SELFTEST.md`、版本口径由 v1.5.2 更正为 v1.8.0；**2026-10-03 增补 `CODE_REFERENCE.md` 代码说明文档**；**2026-10-11 增补 Android 重订计划（手机 / 平板双分支，手机优先）与立项初版归档索引**；**2026-10-12 版本口径更新为 v1.8.2（曲谱副歌有词修复 + 逐节规则按用户裁定收口）**）。规则：**Windows 开发归纳到 `Windows/`，
+> 整理定稿：2026-09-13（2026-09-24 增补软著材料归档规则；**2026-09-30 封版前校验**：Windows 索引补 `SCORE_SELFTEST.md`、版本口径由 v1.5.2 更正为 v1.8.0；**2026-10-03 增补 `CODE_REFERENCE.md` 代码说明文档**；**2026-10-11 增补 Android 重订计划（手机 / 平板双分支，手机优先）与立项初版归档索引**；**2026-10-12 版本口径更新为 v1.8.2（曲谱副歌有词修复 + 逐节规则按用户裁定收口）；2026-10-13 更新为 v1.8.3（单声部只留最上一行音符 + 记谱字号减半）**）。规则：**Windows 开发归纳到 `Windows/`，
 > Android 归纳到 `Android/`，鸿蒙归纳到 `OpenHarmony/`，苹果归纳到 `iOS/`；跨平台通用知识在 `knowledge/`；
 > 软著（计算机软件著作权）材料——含其编辑工作区——**唯一归档到 `ruanzhu/`**（入口 `ruanzhu/README.md`，
 > 禁止在仓库根或其他位置另建软著工作区）；会话档案在 `sessions/`（独立流程，不参与归档整理）**。
@@ -13,7 +13,7 @@
 ```text
 docs/
 ├── README.md                # 📍 本文件：文档总纲（目录索引 + 平台导航 + 附录：C++ 原生引擎）
-├── Windows/                 # ✅ Windows 平台开发全套文档（主战场，v1.0~v1.8.2）
+├── Windows/                 # ✅ Windows 平台开发全套文档（主战场，v1.0~v1.8.3）
 ├── Android/                 # 🚧 Android 移植文档（2026-09-11 立项，阶段 0 已完成；含开发总结）
 ├── OpenHarmony/             # 📦 OpenHarmony 鸿蒙（占位，为后续开发做准备）
 ├── iOS/                     # 📦 苹果平台 iOS/macOS（占位，为后续开发做准备）
@@ -29,7 +29,7 @@ docs/
 | 文档 | 用途 |
 | --- | --- |
 | [SESSION_SUMMARY.md](Windows/SESSION_SUMMARY.md) | 📋 **Windows 主线 + 跨平台工程史**开发总结（新会话续接**必读**）：完整里程碑、技术栈、逐会话决策、遗留任务（Android 侧记录见 `docs/Android/SESSION_SUMMARY.md`） |
-| [UI_CONFIRMATION.md](Windows/UI_CONFIRMATION.md) | ✅ UI 还原确认单（最终定稿 **v1.8.2**），验收基准 |
+| [UI_CONFIRMATION.md](Windows/UI_CONFIRMATION.md) | ✅ UI 还原确认单（最终定稿 **v1.8.3**），验收基准 |
 | [UI_DESIGN_TEMPLATE.md](Windows/UI_DESIGN_TEMPLATE.md) | 🎨 UI 设计规范（组件/交互/主题/间距），迭代与人工验收基准 |
 | [SCORE_SELFTEST.md](Windows/SCORE_SELFTEST.md) | 🔬 简谱谱面自测方案（APK CSV 网格管线）：数据流、L0~L3 自测层级、基线口径、变更流程 |
 | [CODE_REFERENCE.md](Windows/CODE_REFERENCE.md) | 🧩 **代码说明文档（接口 / 类 / 函数）**：C ABI · MethodChannel · SQLite 契约、类与关键函数契约、入参安全审查（SEC 风险表）、Mermaid 时序图与调用图 |

@@ -378,38 +378,68 @@ class JianpuScore {
     return fallback;
   }
 
-  /// 四部合唱谱（S,A,词,T,B）只保留**第一声部**：每块第一个
-  /// 「记号上 + 音符 + 记号下」组 + 全部歌词/空行；其余声部行丢弃。
+  /// 四声部合唱谱只保留**第一声部（主旋律 = 块内最上面那一行音符）**。
+  ///
+  /// 源 CSV 的块内布局（2026-10-13 用印刷本逐首交叉确认；第 1 首等 **130 首**如此）：
+  /// ```text
+  ///    [上方记号]           ← 第一声部自己的高音点 / 延长记号 / 小节线
+  ///    音符行  ★第一声部    ← 主旋律（S）
+  ///    [下方记号]           ← 第一声部自己的低音点 / 减时线
+  ///    [上方记号] 音符行    ← 第二声部（A）；再往下最多到第四声部（T/B）
+  ///    歌词行（一行一节）
+  ///    ……
+  /// ```
+  /// 保留规则：**全部歌词行** + 第一个音符行 + 它上方紧邻的记号行 +
+  /// 它与**下一个音符行之间**含「音符下方记号」（低八度点 `D` / 减时线 `B`）的记号行。
+  ///
+  /// 第二声部起的行全部丢弃。**「两声部之间的那行记号」靠字形归属**：
+  /// 低八度点 `D` 属于**上方**那个声部（第 111 首块 1 的 `MDN` 行 = 主旋律的低音点 → 保留），
+  /// 高八度点 `U` / 延长记号 `E` 属于**下方**那个声部（第 9/102 首的 `MUDN`/`MEN` 行 → 丢弃）。
+  ///
+  /// 旧实现按「遇到记号下即组结束」判组，遇第 1 首这种「S 行没有下方记号、紧跟 A 行」
+  /// 的排版会把 A 行一并画出 → 首/末歌词行上下各多出一行简谱（2026-10-13 用户反馈）。
   static List<JianpuRow> _firstVoiceRows(List<JianpuRow> rows) {
+    var firstNote = -1;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].kind == JianpuRowKind.note) {
+        firstNote = i;
+        break;
+      }
+    }
+    if (firstNote < 0) return rows; // 异常数据（无音符行）→ 原样保留
+
+    var nextNote = rows.length; // 第二声部的音符行（无则到块尾）
+    for (var i = firstNote + 1; i < rows.length; i++) {
+      if (rows[i].kind == JianpuRowKind.note) {
+        nextNote = i;
+        break;
+      }
+    }
+    var head = firstNote; // 第一个音符行上方紧邻的记号行起点
+    while (head > 0 && rows[head - 1].kind == JianpuRowKind.markUp) {
+      head--;
+    }
+
     final out = <JianpuRow>[];
-    var seenNote = false;
-    var done = false;
-    for (final r in rows) {
-      if (!r.isMusical) {
-        out.add(r); // 歌词/空行始终保留
-        continue;
-      }
-      if (done) continue; // 第一声部组之后的声部行丢弃
-      switch (r.kind) {
-        case JianpuRowKind.markUp:
-          if (seenNote) {
-            done = true; // 音符后再现记号上 = 下一声部开始
-          } else {
-            out.add(r);
-          }
-        case JianpuRowKind.note:
-          out.add(r);
-          seenNote = true;
-        case JianpuRowKind.markDown:
-          out.add(r);
-          if (seenNote) done = true; // 记号下收尾 = 第一声部组结束
-        case JianpuRowKind.lyric:
-        case JianpuRowKind.blank:
-          out.add(r);
-      }
+    for (var i = 0; i < rows.length; i++) {
+      final r = rows[i];
+      final keep = r.kind == JianpuRowKind.lyric || // 歌词行全部保留
+          (i >= head && i <= firstNote) || // 主旋律行 + 其上方记号
+          (i > firstNote && i < nextNote && _hasDownMark(r)); // 主旋律自己的下方记号
+      if (keep) out.add(r);
     }
     return out;
   }
+
+  /// 该行是否含「音符**下方**」类记号（低八度点 `D` / 减时线 `B`）。
+  ///
+  /// ⚠️ 不能用 `dots`（`D` 计数）判断：高八度点字形 `MUDN` 里同样含字母 `D`
+  /// （`U` + `D` = 高八度点），必须**排除同时带 `U` 的字形**。
+  static bool _hasDownMark(JianpuRow row) => row.cells.values.any((c) {
+        if (c.kind != JianpuCellKind.mark) return false;
+        final glyph = c.text ?? c.sym; // 字形字母串，如 'D' / 'BD' / 'UD' / 'E'
+        return glyph.contains('B') || (glyph.contains('D') && !glyph.contains('U'));
+      });
 
   /// 全曲最大列数（渲染时统一列宽的基准）
   int get maxCols =>

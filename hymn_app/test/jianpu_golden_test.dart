@@ -198,4 +198,39 @@ void main() {
       matchesGoldenFile('goldens/jianpu_283_stanza3.png'),
     );
   });
+
+  testWidgets('第 1 首《颂赞独一真神》第 1 节：歌词上下各只有一行简谱（2026-10-13 修复）',
+      (tester) async {
+    tester.view.physicalSize = const Size(1040, 1120);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final db = sqlite3.open('../data/tjc_hymn.db');
+    final score = _loadScore(db, '1', firstVoiceOnly: true);
+    db.dispose();
+    // 数据事实：该首每块 = S,A 在歌词上方 + T,B 在下方（4 声部）
+    // → 单声部形态每块只应剩 1 个音符行
+    final notes = score.blocks
+        .map((b) => b.rows.where((r) => r.kind == JianpuRowKind.note).length)
+        .toList();
+    expect(notes, everyElement(1), reason: '每块只保留第一声部（S）一行音符');
+
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(useMaterial3: true, fontFamily: 'EchoSans'),
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF2F6FD),
+        body: JianpuGridView(
+          score: score,
+          constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 1120),
+          stanza: 1,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(JianpuGridView),
+      matchesGoldenFile('goldens/jianpu_001_stanza1.png'),
+    );
+  });
 }

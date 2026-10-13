@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import 'package:echo_hymn/data/jianpu_metrics.dart';
 import 'package:echo_hymn/models/hymn.dart';
 import 'package:echo_hymn/models/jianpu_grid.dart';
+import 'package:echo_hymn/models/jianpu_layout.dart';
 import 'package:echo_hymn/widgets/jianpu_grid_view.dart';
 
 /// 实库（`data/tjc_hymn.db`）——测试工作目录为 `hymn_app/`，故向上找 data/
@@ -191,6 +193,83 @@ void main() {
       expect(score.blocks[3].sharesLyricsAcrossStanzas(3), isTrue);
       // 单节 (=1)：不构成「各节共用」，也不翻页
       expect(score.blocks[2].sharesLyricsAcrossStanzas(1), isFalse);
+    });
+
+    test('第一声部过滤：只留最上面那一行音符（第 1 首 / 111 首 / 102 首形态）', () {
+      const downDots = {
+        0: JianpuCell(
+            col: 0, kind: JianpuCellKind.mark, sym: 'MDN', text: 'D', dots: 1),
+      };
+      const upDots = {
+        0: JianpuCell(
+            col: 0, kind: JianpuCellKind.mark, sym: 'MUDN', text: 'UD', dots: 1),
+      };
+      JianpuRow row(int line, JianpuRowKind kind, [Map<int, JianpuCell>? cells]) =>
+          JianpuRow(
+              lineNo: line,
+              blockNo: 0,
+              kind: kind,
+              colCount: 2,
+              cells: cells ?? const {});
+
+      List<int> kept(List<JianpuRow> rows) => JianpuScore.build(
+            hymnNumber: 'x',
+            source: 't',
+            rows: rows,
+            stanzaCount: 1,
+            firstVoiceOnly: true,
+          ).blocks[0].rows.map((r) => r.lineNo).toList();
+
+      // ① 第 1 首形态：S、A 两行音符 + A 的低音点行 + 歌词 + T、B（对比修订前会多留 A 行）
+      expect(
+          kept([
+            row(0, JianpuRowKind.note), // S ★
+            row(1, JianpuRowKind.note), // A → 丢弃
+            row(2, JianpuRowKind.markDown, downDots), // A 的低音点 → 丢弃
+            row(3, JianpuRowKind.lyric),
+            row(4, JianpuRowKind.markUp),
+            row(5, JianpuRowKind.note), // T → 丢弃
+            row(6, JianpuRowKind.note), // B → 丢弃
+          ]),
+          [0, 3]);
+
+      // ② 第 111 首形态：两声部之间那行是**低音点**（D）→ 属上方声部 → 保留
+      expect(
+          kept([
+            row(0, JianpuRowKind.note), // S ★
+            row(1, JianpuRowKind.markUp, downDots), // S 的低音点 → 保留
+            row(2, JianpuRowKind.note), // A → 丢弃
+            row(3, JianpuRowKind.markDown, downDots), // A 的低音点 → 丢弃
+            row(4, JianpuRowKind.lyric),
+          ]),
+          [0, 1, 4]);
+
+      // ③ 第 9/102 首形态：两声部之间那行是**高音点**（U）→ 属下方声部 → 丢弃
+      expect(
+          kept([
+            row(0, JianpuRowKind.markUp, upDots), // S 的高音点 → 保留
+            row(1, JianpuRowKind.note), // S ★
+            row(2, JianpuRowKind.markUp, upDots), // A 的高音点 → 丢弃
+            row(3, JianpuRowKind.note), // A → 丢弃
+            row(4, JianpuRowKind.lyric),
+          ]),
+          [0, 1, 4]);
+    });
+
+    test('记谱字形 ≈ 歌词视觉大小的一半（noteFontEm 论证）', () {
+      // 数字字形墨迹高（lib/data/jianpu_metrics.dart，1~7 码位）
+      var sum = 0.0;
+      for (final cp in kJianpuDigitCodepoints.values) {
+        final m = kJianpuGlyphMetrics[cp.toRadixString(16).padLeft(4, '0')];
+        expect(m, isNotNull, reason: '码位 ${cp.toRadixString(16)} 应有度量');
+        sum += m![3] - m[2];
+      }
+      final digitInk = sum / kJianpuDigitCodepoints.length; // ≈ 0.345 em
+      const cjkInk = 0.766; // 楷体汉字墨迹高（golden 像素实测）
+      final noteInk = JianpuGridView.noteFontEm * digitInk;
+      const lyricInk = JianpuGridView.lyricFontEm * cjkInk;
+      expect(noteInk / lyricInk, closeTo(0.5, 0.05),
+          reason: '记谱字形墨迹高应约为歌词汉字的一半（用户 2026-10-13 要求）');
     });
 
     test('节数推导：无节号 ⇒ 单节（印刷本对单节诗不标节号）', () {

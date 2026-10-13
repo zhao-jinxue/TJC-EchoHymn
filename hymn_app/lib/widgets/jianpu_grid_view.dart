@@ -41,26 +41,40 @@ class JianpuGridView extends StatelessWidget {
   /// - 副歌 / 各节共用的块（歌词行数 < 节数，印刷本只写一遍）：**每节都显示**。
   final int? stanza;
 
-  // ---------- 版式常量（em：相对槽宽 S = 记谱字号；印刷实测 槽距 ≈ 1.0 × S） ----------
+  // ---------- 版式常量（em：相对槽宽 S = 拍点间距；印刷实测 槽距 ≈ 1.0 × 记谱字号） ----------
   static const double padX = 18;
   static const double padTop = 16;
 
   /// 底部留白：为「上一节/下一节」翻页条预留净空（与歌词页同口径）
   static const double padBottom = 52;
 
-  /// 音符上方记号行（高八度点 / 延长记号 / 小节线）
+  /// **记谱字号系数（相对槽宽 = 拍点间距）** —— 2026-10-13 定稿 **0.60**。
+  ///
+  /// **论证（字形墨迹度量 + 快照像素实测）**：
+  /// - 印刷记谱字体数字字形墨迹高 ≈ **0.345 em**（`lib/data/jianpu_metrics.dart`：
+  ///   1~7 码位为 0.335~0.367 em）；楷体汉字墨迹高 ≈ **0.766 em**；
+  /// - 修订前：记谱字号 = 1.0 × 槽宽、歌词字号 = 0.54 × 槽宽
+  ///   → 音符墨迹 **0.345** 槽宽 vs 歌词墨迹 **0.414** 槽宽 = **83 %**
+  ///   （快照实测 15 px vs 18 px）→ 视觉上「和歌词一样大」，歌词显小；
+  /// - 取 **0.60** → 音符墨迹 0.207 槽宽 = 歌词墨迹的 **50 %**（要求「只有歌词字号的一半」）；
+  /// - **对齐不受影响**：变的是「每列内字形多大」，列宽（拍点间距）与歌词字号都没动，
+  ///   同列 = 同拍点的对齐关系完全保持；歌词字宽 ≈ 1 em 歌词字号必须 ≤ 1 列宽，
+  ///   所以歌词不能再放大、只能把记谱字形缩小 —— 这就是本系数存在的理由。
+  static const double noteFontEm = 0.60;
+
+  /// 音符上方记号行（相对**记谱字号**）
   static const double markUpEm = 0.50;
 
-  /// 音符行
+  /// 音符行（相对**记谱字号**）
   static const double noteRowEm = 1.34;
 
-  /// 音符下方记号行（减时线 / 低八度点）
+  /// 音符下方记号行（相对**记谱字号**）
   static const double markDownEm = 0.58;
 
   /// 空行
   static const double blankEm = 0.30;
 
-  /// 歌词字号 = 0.54 × S（印刷实测 0.50 × S，略放大以适配屏幕）
+  /// 歌词字号 = 0.54 × S（印刷实测 0.50 × S，略放大以适配屏幕）—— 本次不改
   static const double lyricFontEm = 0.54;
   static const double lyricRowEm = lyricFontEm * 1.7;
 
@@ -143,11 +157,11 @@ class JianpuGridView extends StatelessWidget {
     );
   }
 
-  /// 行高（em：相对槽宽 = 记谱字号）
+  /// 行高（em：音符/记号行相对**记谱字号**；歌词/空行相对槽宽）
   double _rowEm(JianpuRowKind k) => switch (k) {
-        JianpuRowKind.note => noteRowEm,
-        JianpuRowKind.markUp => markUpEm,
-        JianpuRowKind.markDown => markDownEm,
+        JianpuRowKind.note => noteRowEm * noteFontEm,
+        JianpuRowKind.markUp => markUpEm * noteFontEm,
+        JianpuRowKind.markDown => markDownEm * noteFontEm,
         JianpuRowKind.lyric => lyricRowEm,
         JianpuRowKind.blank => blankEm,
       };
@@ -243,7 +257,7 @@ class JianpuGridView extends StatelessWidget {
             _symbolGlyph(cell),
             style: TextStyle(
               fontFamily: kJianpuFontFamily,
-              fontSize: m.slot * 0.92,
+              fontSize: m.noteSize * 0.92,
               color: m.noteColor,
             ),
           ),
@@ -254,7 +268,7 @@ class JianpuGridView extends StatelessWidget {
           child: Text(
             cell.displayText,
             style: TextStyle(
-              fontSize: m.slot * 0.62,
+              fontSize: m.noteSize * 0.62,
               color: m.noteColor,
               fontWeight: FontWeight.w600,
             ),
@@ -318,7 +332,7 @@ class JianpuGridView extends StatelessWidget {
         digit,
         style: TextStyle(
           fontFamily: kJianpuFontFamily,
-          fontSize: m.slot,
+          fontSize: m.noteSize,
           height: 1.0,
           color: m.noteColor,
         ),
@@ -331,7 +345,7 @@ class JianpuGridView extends StatelessWidget {
             TextSpan(
               text: acc,
               style: TextStyle(
-                fontSize: m.slot * 0.58,
+                fontSize: m.noteSize * 0.58,
                 color: m.noteColor,
                 fontWeight: FontWeight.w600,
                 height: 1.0,
@@ -341,7 +355,7 @@ class JianpuGridView extends StatelessWidget {
             text: digit,
             style: TextStyle(
               fontFamily: kJianpuFontFamily,
-              fontSize: m.slot,
+              fontSize: m.noteSize,
               color: m.noteColor,
               height: 1.0,
             ),
@@ -351,7 +365,7 @@ class JianpuGridView extends StatelessWidget {
               text: dots,
               style: TextStyle(
                 fontFamily: kJianpuFontFamily,
-                fontSize: m.slot,
+                fontSize: m.noteSize,
                 color: m.noteColor,
                 height: 1.0,
               ),
@@ -393,8 +407,8 @@ class JianpuGridView extends StatelessWidget {
     if (kind == JianpuRowKind.markUp) {
       if (hasFermata) {
         pieces.add(SizedBox(
-          width: m.slot * 0.66,
-          height: m.slot * 0.30,
+          width: m.noteSize * 0.66,
+          height: m.noteSize * 0.30,
           child: CustomPaint(painter: _FermataPainter(m.markColor)),
         ));
       }
@@ -418,7 +432,7 @@ class JianpuGridView extends StatelessWidget {
 
   /// 八度点（1 点 = 低/高八度；2 点 = 倍低/倍高八度）
   Widget _dots(int count, _Metrics m) {
-    final d = (m.slot * 0.15).clamp(1.6, 8.0);
+    final d = (m.noteSize * 0.15).clamp(1.0, 8.0);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -436,13 +450,13 @@ class JianpuGridView extends StatelessWidget {
 
   /// 减时线（1 条 = 八分音符；2 条 = 十六分音符）
   Widget _beams(int count, _Metrics m) {
-    final t = (m.slot * 0.048).clamp(1.0, 3.0);
+    final t = (m.noteSize * 0.048).clamp(1.0, 3.0);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < count; i++) ...[
           if (i > 0) SizedBox(height: t * 1.2),
-          Container(width: m.slot * 0.68, height: t, color: m.markColor),
+          Container(width: m.noteSize * 0.68, height: t, color: m.markColor),
         ],
       ],
     );
@@ -453,13 +467,16 @@ class JianpuGridView extends StatelessWidget {
 class _Metrics {
   const _Metrics({required this.slot, required this.gridW});
 
-  /// 槽宽 = 记谱字号（印刷实测 槽距 ≈ 1.0 em）
+  /// 槽宽 = 拍点间距（列宽；歌词字号与列对齐都以它为基准）
   final double slot;
 
   /// 网格总宽 = 槽宽 × 全曲最大列数
   final double gridW;
 
-  double get barW => (slot * 0.075).clamp(1.0, 3.5);
+  /// **记谱字号**（音符/记号字形大小）= 槽宽 × [JianpuGridView.noteFontEm]
+  double get noteSize => slot * JianpuGridView.noteFontEm;
+
+  double get barW => (noteSize * 0.075).clamp(1.0, 3.5);
 
   double get lyricSize => (slot * JianpuGridView.lyricFontEm).clamp(8.0, 40.0);
 
