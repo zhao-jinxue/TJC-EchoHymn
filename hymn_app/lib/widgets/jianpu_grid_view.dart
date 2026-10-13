@@ -48,40 +48,64 @@ class JianpuGridView extends StatelessWidget {
   /// 底部留白：为「上一节/下一节」翻页条预留净空（与歌词页同口径）
   static const double padBottom = 52;
 
-  /// **记谱字号系数（相对槽宽 = 拍点间距）** —— 2026-10-13 定稿 **0.50**。
+  /// **记谱字号系数（相对槽宽 = 拍点间距）** —— 2026-10-13 定稿 **0.56**。
   ///
   /// **论证（字形墨迹度量 + 快照像素实测）**：
   /// - 印刷记谱字体数字字形墨迹高 ≈ **0.345 em**（`lib/data/jianpu_metrics.dart`：
-  ///   1~7 码位为 0.335~0.367 em）；楷体汉字墨迹高 ≈ **0.766 em**；
-  /// - 修订前：记谱字号 = 1.0 × 槽宽、歌词字号 = 0.54 × 槽宽
-  ///   → 音符墨迹 **0.345** 槽宽 vs 歌词墨迹 **0.414** 槽宽 = **83 %**
-  ///   （快照实测 15 px vs 18 px）→ 视觉上「和歌词一样大」，歌词显小；
-  /// - 用户先要求「记谱 ≈ 歌词的一半」→ 取 0.60（比值 51 %）；**同日再要求「记谱再小」→ 0.50**
-  ///   （音符墨迹 0.172 槽宽 = 歌词墨迹的 **42 %**）；
-  /// - **对齐不受影响**：变的是「每列内字形多大」，列宽（拍点间距）与歌词字号都没动，
-  ///   同列 = 同拍点的对齐关系完全保持；歌词字宽 ≈ 1 em 歌词字号必须 ≤ 1 列宽，
-  ///   所以歌词不能再放大、只能把记谱字形缩小 —— 这就是本系数存在的理由。
-  /// - 继续调整口径：`0.45 → 38 %`、`0.40 → 34 %`（只改这一个常量）。
-  static const double noteFontEm = 0.50;
+  ///   1~7 码位为 0.335~0.367 em）；楷体汉字墨迹高 ≈ **0.766 em**（快照实测）；
+  /// - 调参历史：`1.0`（= 83 %，与歌词一样大，用户反馈「歌词显小」）→
+  ///   `0.60`（51 %）→ `0.50`（**41.6 %**，用户「记谱再小」，快照实测音符 11 px vs 歌词 27 px）；
+  /// - 2026-10-13 第二轮：用户要求「歌词行距压一半，腾出空间放大歌词和记谱」⇒
+  ///   歌词 0.54 → **0.60**、记谱按**同一光学比**同步 0.50 → **0.56**
+  ///   （墨迹比仍 = **42 %**，与用户认可的那一版一致）+ 行距重构 ⇒
+  ///   净空 −49 %、行距 −37 %，歌词/记谱墨迹各 **+11 %**。
+  /// - **对齐不受影响**：变的是「每列内字形多大」，列宽（拍点间距）没动，
+  ///   同列 = 同拍点的对齐关系完全保持。
+  /// - 继续调整口径（只改这一个常量 + [lyricFontEm]）：
+  ///   记谱再小 `0.50 → 37 %`；两者一起放大 `0.60 / 0.64 → 42 %`（净空仍 ≈ 一半）。
+  static const double noteFontEm = 0.56;
 
-  /// 音符上方记号行（相对**记谱字号**）
-  static const double markUpEm = 0.50;
+  /// 音符**行盒**系数（相对记谱字号）—— 记谱字体的字面盒比墨迹大得多
+  /// （墨迹 0.345 em，而 hhea 行盒 ascent 0.877 / descent 0.123 em）：
+  /// 若按 1.0 em 行盒排版，数字墨迹上方会白留 0.28 em（≈ 0.19 × 槽宽）——
+  /// 这正是「两行歌词之间太空」的主要来源。把行盒压到 0.74 em
+  /// （墨迹上边 0.05 em / 下边 0.35 em）⇒ **基线位置不变**（Flutter 按 ascent 比例
+  /// 摆基线：0.877 × 0.74 = 0.649 em），字形大小不变、上方空白砍掉 0.23 em。
+  static const double noteBoxEm = 0.74;
 
-  /// 音符行（相对**记谱字号**）
-  static const double noteRowEm = 1.34;
+  /// 音符行内的「符号字形」（休止 0 / 增时线 - / 附点 .）行盒系数：
+  /// 它们用 0.92 × 记谱字号 ⇒ 行盒 = `noteBoxEm / 0.92` 才能**与数字同一基线**。
+  static const double symbolBoxEm = noteBoxEm / 0.92;
 
-  /// 音符下方记号行（相对**记谱字号**）
-  static const double markDownEm = 0.58;
+  /// 音符行高（相对记谱字号）= 行盒 + 上下各 0.03 em 呼吸
+  static const double noteRowEm = noteBoxEm + 0.06;
+
+  /// 音符上方记号行（相对**记谱字号**）：装高八度点 / 延长记号 / 小节线。
+  /// 上限实测（全库 474 首）：记号栈最高 = 延长记号 0.30 + 单点 0.15 = **0.45 em**
+  /// （块首 markUp 行 48 处；2 点 = 0.3825、2 减时线 = 0.154）→ 取 0.46
+  /// 保证**记号不溢出本行**，块间距才敢压得很小而不与上一行歌词相撞。
+  static const double markUpEm = 0.46;
+
+  /// 音符下方记号行（相对**记谱字号**）：装减时线 / 低八度点。
+  /// 上限实测（全库 474 首逐格）：最常见复杂栈 = 1 减时线 + 2 点 0.3036、
+  /// 2 减时线 0.1536、**2 点 + 1 减时线 0.4305（8 格）**；仅 2 格为 0.5361
+  /// （第 207 首「2 点 + 2 减时线」，溢出 0.09 em ≈ 4 px，落进歌词行上方留白，可接受）
+  /// ⇒ 取 **0.45**。
+  static const double markDownEm = 0.45;
 
   /// 空行
-  static const double blankEm = 0.30;
+  static const double blankEm = 0.20;
 
-  /// 歌词字号 = 0.54 × S（印刷实测 0.50 × S，略放大以适配屏幕）—— 本次不改
-  static const double lyricFontEm = 0.54;
-  static const double lyricRowEm = lyricFontEm * 1.7;
+  /// 歌词字号 = 0.60 × S（印刷实测 0.50 × S，略放大以适配屏幕）
+  static const double lyricFontEm = 0.60;
 
-  /// 块间距（CSV 的 `K` = 换表处）
-  static const double blockGapEm = 0.55;
+  /// 歌词**行盒系数**（= 歌词 TextStyle 的 `height`）：楷体 1.15 em 行盒刚好裹住
+  /// 汉字墨迹（墨迹实测占行盒 0.16~1.04 em）⇒ 行高 = 行盒，上下不再多留白。
+  static const double lyricLeadingEm = 1.15;
+  static const double lyricRowEm = lyricFontEm * lyricLeadingEm;
+
+  /// 块间距（CSV 的 `K` = 换表处）—— 记号行已不溢出 ⇒ 只需一点点气口
+  static const double blockGapEm = 0.14;
 
   /// 槽宽下限/上限（像素）
   static const double minSlot = 9.0;
@@ -167,7 +191,6 @@ class JianpuGridView extends StatelessWidget {
         JianpuRowKind.lyric => lyricRowEm,
         JianpuRowKind.blank => blankEm,
       };
-
   double _rowHeight(JianpuRowKind k, _Metrics m) => m.slot * _rowEm(k);
 
   /// 该块在当前节下要显示的行（保持原行序）
@@ -260,6 +283,9 @@ class JianpuGridView extends StatelessWidget {
             style: TextStyle(
               fontFamily: kJianpuFontFamily,
               fontSize: m.noteSize * 0.92,
+              // 与数字**同一基线**（否则增时线/休止会相对数字上下错位）：
+              // 行盒 = noteBoxEm / 0.92 ⇒ ascent = 0.877 × 0.74 × noteSize
+              height: symbolBoxEm,
               color: m.noteColor,
             ),
           ),
@@ -289,7 +315,7 @@ class JianpuGridView extends StatelessWidget {
               fontFamily: 'EchoKai',
               fontFamilyFallback: const ['KaiTi', 'EchoSans'],
               fontSize: m.lyricSize,
-              height: 1.15,
+              height: lyricLeadingEm,
               color: m.lyricColor,
             ),
           ),
@@ -335,7 +361,9 @@ class JianpuGridView extends StatelessWidget {
         style: TextStyle(
           fontFamily: kJianpuFontFamily,
           fontSize: m.noteSize,
-          height: 1.0,
+          // 行盒压到 [noteBoxEm]：字形大小不变（Flutter 按 ascent 比例摆基线），
+          // 只把数字墨迹上方的空白砍掉 —— 行距压缩的关键（见常量注释）
+          height: noteBoxEm,
           color: m.noteColor,
         ),
       );
@@ -350,7 +378,7 @@ class JianpuGridView extends StatelessWidget {
                 fontSize: m.noteSize * 0.58,
                 color: m.noteColor,
                 fontWeight: FontWeight.w600,
-                height: 1.0,
+                height: noteBoxEm,
               ),
             ),
           TextSpan(
@@ -359,7 +387,7 @@ class JianpuGridView extends StatelessWidget {
               fontFamily: kJianpuFontFamily,
               fontSize: m.noteSize,
               color: m.noteColor,
-              height: 1.0,
+              height: noteBoxEm,
             ),
           ),
           if (dots.isNotEmpty)
@@ -369,7 +397,7 @@ class JianpuGridView extends StatelessWidget {
                 fontFamily: kJianpuFontFamily,
                 fontSize: m.noteSize,
                 color: m.noteColor,
-                height: 1.0,
+                height: noteBoxEm,
               ),
             ),
         ],

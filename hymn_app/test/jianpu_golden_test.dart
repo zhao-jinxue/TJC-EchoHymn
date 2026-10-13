@@ -199,6 +199,44 @@ void main() {
     );
   });
 
+  testWidgets('第 20 首《尊主为王》第 1 节：行距 / 字号版式快照（2026-10-13）',
+      (tester) async {
+    // 窗口按实机常用宽（1920）取，槽宽 ≈ 65 px，与用户实机截图同口径
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final db = sqlite3.open('../data/tjc_hymn.db');
+    final score = _loadScore(db, '20', firstVoiceOnly: true);
+    db.dispose();
+    // 数据事实：4 块 = 正歌 3 块（各 3 节歌词）+ 末块 3 节 + 第 4 节歌词在末块；
+    // 每块「音符行 + 下方记号行 + 歌词行」→ 单声部每块 1 行音符、1 行词
+    expect(score.stanzaCount, 3);
+    expect(
+        score.blocks
+            .map((b) => b.rows.where((r) => r.kind == JianpuRowKind.note).length)
+            .toList(),
+        everyElement(1));
+
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(useMaterial3: true, fontFamily: 'EchoSans'),
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF2F6FD),
+        body: JianpuGridView(
+          score: score,
+          constraints: const BoxConstraints(maxWidth: 1920, maxHeight: 1080),
+          stanza: 1,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(JianpuGridView),
+      matchesGoldenFile('goldens/jianpu_020_stanza1.png'),
+    );
+  });
+
   testWidgets('第 1 首《颂赞独一真神》第 1 节：歌词上下各只有一行简谱（2026-10-13 修复）',
       (tester) async {
     tester.view.physicalSize = const Size(1040, 1120);

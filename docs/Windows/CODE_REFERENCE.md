@@ -12,8 +12,8 @@
 > | **本文档** | **代码里有什么、怎么用、是否安全、谁调用谁** |
 >
 > - 扫描范围：`hymn_app/lib/**`（31 个 Dart 文件）+ `hymn_app/native/**`（C ABI 接口层）
-> - 代码基线：**v1.8.4**
-> - 生成日期：2026-10-03
+> - 代码基线：**v1.8.5**
+> - 生成日期：2026-10-03（2026-10-13 同步曲谱行距/字号版式常量）
 > - 维护规则：**改代码 = 改本文档**（见「八、维护约定」）
 
 ---
@@ -296,7 +296,7 @@ Windows 原生窗口能力（`native` 侧 `flutter_window.cpp` 注册）。Dart 
 | `showHymnSearchDialog` / `_HymnSearchDialog` / `buildKeywordSpans` | `widgets/hymn_search_dialog.dart` | 统一搜索结果弹窗（单击选中 / 双击返回并播放） |
 | `CreatePlaylistDialog` / `HymnPickDialog` | `widgets/playlist_dialog.dart` | 歌单创建/修改/删除 + 诗歌选择 |
 | `UserManualDialog` / `ManualPrefs` / `GuideLine` | `widgets/user_manual_dialog.dart` | 用户手册弹窗 + 「启动时显示」偏好单例 |
-| `JianpuGridView` / `_Metrics` / `_FermataPainter` | `widgets/jianpu_grid_view.dart` | 简谱网格渲染（列 = 拍点，按块宽铺满）；**记谱字号 = 槽宽 × `noteFontEm`(0.50，可调)**（`_Metrics.noteSize`，音符/点横/延长记号/变音记号/小节线宽度均以此为基准；歌词字号与列宽不变 → 对齐不受影响；音符墨迹 ≈ 歌词的 43 %）；`stanza: k` 逐节过滤见 `_visibleRows`（非歌词行恒显示 → 副歌/共用块每节都显示 → 缺节号照显 → 第 i 行 = 第 i 节，**位置 > 节数的块内叠句抛弃**） |
+| `JianpuGridView` / `_Metrics` / `_FermataPainter` | `widgets/jianpu_grid_view.dart` | 简谱网格渲染（列 = 拍点，按块宽铺满）；**记谱字号 = 槽宽 × `noteFontEm`(0.56，可调)**（`_Metrics.noteSize`，音符/点横/延长记号/变音记号/小节线宽度均以此为基准；歌词字号 `lyricFontEm`(0.60)、列宽不变 → 对齐不受影响；音符墨迹 ≈ 歌词的 42 %）；**行距版式（v1.8.5）**：`noteBoxEm`(0.74) 音符行盒贴合墨迹（字形/基线不变、只砍数字上方白边）、行高 `noteRowEm`(0.86)/`markUpEm`(0.46)/`markDownEm`(0.45)/`lyricRowEm`(= `lyricFontEm` × `lyricLeadingEm` 1.15)/`blockGapEm`(0.14)/`blankEm`(0.20)、`symbolBoxEm` 让休止/增时线/附点与数字同一基线 ⇒ 歌词净空约为旧版式一半；`stanza: k` 逐节过滤见 `_visibleRows`（非歌词行恒显示 → 副歌/共用块每节都显示 → 缺节号照显 → 第 i 行 = 第 i 节，**位置 > 节数的块内叠句抛弃**） |
 | `_ScoreImageView` | `widgets/hymn_display.dart` | 谱面图片查看器（宽度驱动缩放 + 滚轮分流） |
 | `_WindowButton` / `_EmptyHint` | `home_screen.dart` / 各面板 | 无状态 UI 原子件（窗口按钮、空态提示） |
 

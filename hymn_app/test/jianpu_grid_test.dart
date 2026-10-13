@@ -275,6 +275,34 @@ void main() {
           reason: '记谱字形墨迹高应为歌词汉字的 30%~55%（用户 2026-10-13 要求「明显更小」）');
     });
 
+    test('歌词行距与字号：净空 ≈ 半、歌词/记谱墨迹双放大（2026-10-13 版式定稿）', () {
+      // 单声部块 = 「音符行 + 下方记号行 + 歌词行」+ 块间距（记谱符号行不出现时更紧）
+      const pitch = JianpuGridView.noteRowEm * JianpuGridView.noteFontEm +
+          JianpuGridView.markDownEm * JianpuGridView.noteFontEm +
+          JianpuGridView.lyricRowEm +
+          JianpuGridView.blockGapEm;
+      // 歌词墨迹占歌词行盒 0.88（golden 像素实测：行盒 1.15 em 内墨迹 0.16~1.04 em）
+      const lyricInkEm = 0.88;
+      const clear = pitch - JianpuGridView.lyricFontEm * lyricInkEm;
+      // 旧版式（v1.8.4）：歌词行盒 1.7、块间距 0.55、音符行 1.34、下方记号行 0.58
+      // ⇒ 净空 ≈ 1.95 槽宽（golden 实测 128 px @ 槽宽 65）
+      const legacyClear = 1.7 * 0.54 + 0.55 + 1.34 * 0.50 + 0.58 * 0.50 - 0.88 * 0.54;
+      // 新版实测 1.00 槽宽（golden 66 px @ 槽宽 65）= 旧值 51 % ≈「一半」
+      expect(clear, lessThanOrEqualTo(legacyClear * 0.60),
+          reason: '歌词两行之间的净空必须压到旧版式的一半左右'
+              '（用户 2026-10-13：「第 20 首两行歌词之间的行距太大了，应该压缩一半」）');
+      expect(clear, greaterThanOrEqualTo(legacyClear * 0.35),
+          reason: '也不能压过头（歌词与下一句的记谱要留出可辨的气口）');
+
+      // 腾出的空间必须用于**放大**歌词与记谱（用户同一条要求的下半句）
+      expect(JianpuGridView.lyricFontEm, greaterThan(0.54));
+      expect(JianpuGridView.noteFontEm, greaterThan(0.50));
+      // 音符行盒已被压到墨迹 + 呼吸的尺寸（行距压缩的另一半功劳）
+      expect(JianpuGridView.noteRowEm, lessThan(1.0),
+          reason: '音符行高应贴合行盒（旧值 1.34 有 0.6 em 白边）');
+      expect(JianpuGridView.blockGapEm, lessThan(0.30));
+    });
+
     test('节数推导：无节号 ⇒ 单节（印刷本对单节诗不标节号）', () {
       JianpuRow lyric(int line, int block) => JianpuRow(
           lineNo: line,
