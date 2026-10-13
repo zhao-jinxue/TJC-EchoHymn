@@ -353,17 +353,18 @@ class JianpuScore {
   /// 数据事实（2026-10-12 全库 474 首逐首核对）：
   /// 1. 印刷本每个乐句块**逐节写一行歌词**，且只在第 1 个块里写节号 `(k)`；
   /// 2. 故「带 `(k)` 节号的行数（**只看行数、不看节号取值**）」= 全曲节数 ——
-  ///    个别诗歌（第 111 首）把首块每行都印成 `(1)`，行数依然正确，
-  ///    而数据库按行内位置统计的 `stanza_count` 则被虚增（第 18 首 3 节记成 6、
-  ///    第 130 首 4 节记成 5 …，全库 25 首）；
-  /// 3. 极少数诗歌（第 460 首）**完全没有节号** → 回退「块内最大歌词行数」
-  ///    （与数据库口径一致，行为不变）。
+  ///    个别诗歌（第 111 首）把首块每行都印成 `(1)`，行数依然正确；
+  /// 3. **完全没有节号（或只标了一个）⇒ 单节**：印刷本对单节诗不标节号
+  ///    （全库仅第 460 首《愿主赐福保佑你》是此形态；用户 2026-10-12 确认
+  ///    「该首源数据只有一节」）→ 不做逐节分页、全部歌词同页显示；
+  /// 4. 数据库 `jianpu_score.stanza_count` 按「行内位置」统计，会被块内叠句虚增
+  ///    （第 18 首 3 节记成 6、第 130 首 4 记成 5 …，全库 25 首）→ 只作兜底。
   static int _deriveStanzaCount(List<JianpuRow> rows, int fallback) {
     final labelled = <int, int>{};
-    final lyric = <int, int>{};
+    var hasLyric = false;
     for (final r in rows) {
       if (r.kind != JianpuRowKind.lyric) continue;
-      lyric.update(r.blockNo, (v) => v + 1, ifAbsent: () => 1);
+      hasLyric = true;
       if (r.hasStanzaLabel) {
         labelled.update(r.blockNo, (v) => v + 1, ifAbsent: () => 1);
       }
@@ -373,11 +374,8 @@ class JianpuScore {
       if (n > maxLabelled) maxLabelled = n;
     }
     if (maxLabelled > 1) return maxLabelled;
-    var maxLyric = 0;
-    for (final n in lyric.values) {
-      if (n > maxLyric) maxLyric = n;
-    }
-    return maxLyric > 0 ? maxLyric : fallback;
+    if (hasLyric) return 1; // 无节号 / 仅 1 个节号 ⇒ 单节
+    return fallback;
   }
 
   /// 四部合唱谱（S,A,词,T,B）只保留**第一声部**：每块第一个

@@ -193,7 +193,7 @@ void main() {
       expect(score.blocks[2].sharesLyricsAcrossStanzas(1), isFalse);
     });
 
-    test('节数推导：无节号时回退「块内最大歌词行数」', () {
+    test('节数推导：无节号 ⇒ 单节（印刷本对单节诗不标节号）', () {
       JianpuRow lyric(int line, int block) => JianpuRow(
           lineNo: line,
           blockNo: block,
@@ -210,7 +210,8 @@ void main() {
         rows: [lyric(0, 0), lyric(1, 0), lyric(2, 1), lyric(3, 1)],
         stanzaCount: 9,
       );
-      expect(score.stanzaCount, 2);
+      // 无节号 = 单节（第 460 首形态）→ 不分页、歌词全部同页显示
+      expect(score.stanzaCount, 1);
     });
 
     test('空网格判定', () {
@@ -337,7 +338,7 @@ void main() {
     });
   }, skip: dbFile == null ? '缺 data/tjc_hymn.db' : null);
 
-  group('实库数据：副歌 / 重复句的按节显示（2026-10-12 修复「副歌块没词」）', () {
+  group('实库数据：副歌 / 块内叠句的按节显示（2026-10-12 修复「副歌块没词」）', () {
     /// 逐节渲染（与实机同参数：单声部 + 一页一节）
     Future<void> pump(
         WidgetTester tester, JianpuScore score, int? stanza) async {
@@ -390,23 +391,50 @@ void main() {
       expect(find.text('(3)'), findsOneWidget);
     });
 
-    testWidgets('第 18 首：块内重复句按位置归节（节数 3，不虚增为 6）',
-        (tester) async {
+    testWidgets('第 18 首：块内叠句一律抛弃（节数 3，不虚增为 6）', (tester) async {
       final db = sqlite3.open(dbFile!.path);
       final score = loadScore(db, '18', firstVoiceOnly: true);
       db.dispose();
-      expect(score.stanzaCount, 3, reason: '块 2 有 6 行 = 3 节 + 3 行重复句');
+      expect(score.stanzaCount, 3, reason: '块 2 有 6 行 = 3 节 + 3 行叠句');
       expect(score.blocks[1].lyricCount, 6);
 
-      // 第 1 节：正歌第 2 句含「安」，其重复句「安宅要再来」也含「安」→ 2 次
+      // 第 1 节：只显示第 1 行正歌；叠句「安宅要再来」抛弃 →「安」仅 1 次
       await pump(tester, score, 1);
-      expect(find.text('安'), findsNWidgets(2));
+      expect(find.text('安'), findsOneWidget);
       expect(find.text('叹'), findsNothing);
 
-      // 第 2 节：正歌第 2 句 + 其重复句「叹息和忧苦」→「叹」2 次
+      // 第 2 节：只显示第 2 行正歌；叠句「叹息和忧苦」抛弃 →「叹」仅 1 次
       await pump(tester, score, 2);
-      expect(find.text('叹'), findsNWidgets(2));
+      expect(find.text('叹'), findsOneWidget);
       expect(find.text('安'), findsNothing);
+    });
+
+    testWidgets('第 242 首：块内叠句（四声部合唱歌词）不显示', (tester) async {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '242', firstVoiceOnly: true);
+      db.dispose();
+      expect(score.stanzaCount, 3);
+      expect(score.blocks[0].lyricCount, 4, reason: '3 节 + 1 行叠句');
+
+      await pump(tester, score, 1);
+      expect(find.text('贵'), findsOneWidget, reason: '第 1 节正歌「有贵客今在门外」');
+      expect(find.text('救'), findsNothing, reason: '叠句「请救主进来…」已抛弃');
+      expect(find.text('进'), findsNothing, reason: '叠句「请救主进来…」已抛弃');
+    });
+
+    testWidgets('第 460 首：源数据只有一节 → 不分页、歌词全部显示', (tester) async {
+      final db = sqlite3.open(dbFile!.path);
+      final score = loadScore(db, '460', firstVoiceOnly: true);
+      db.dispose();
+      // 无节号 ⇒ 单节（该首谱面 4 块，歌词按乐句分散在多块）
+      expect(score.stanzaCount, 1);
+      expect(score.blocks.map((b) => b.lyricCount).toList(), [2, 2, 2, 1]);
+
+      await pump(tester, score, null);
+      expect(find.text('福'), findsOneWidget, reason: '首块首句');
+      expect(find.text('仰'), findsOneWidget, reason: '第 2 块');
+      expect(find.text('并'), findsOneWidget, reason: '第 3 块');
+      expect(find.text('阿'), findsOneWidget, reason: '末块「…阿们。」');
     });
 
     testWidgets('第 111 首：首块节号全是 (1)，按位置归节且不显示错节号',

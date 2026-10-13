@@ -36,8 +36,8 @@ class JianpuGridView extends StatelessWidget {
   /// 因此按节过滤只会让歌词行数变化，**谱面行不随节变化**。
   ///
   /// **两类歌词行**（2026-10-12 修正）：
-  /// - 分节块（歌词行数 ≥ 节数）：按行位置取该节那一行（超出节数的行 = 重复句，
-  ///   归入对应节，见 [_visibleRows] 第 4 条）；
+  /// - 分节块（歌词行数 ≥ 节数）：取**第 k 行**（行位置 = 节号）；位置超出节数的
+  ///   行是**块内叠句**（四声部合唱歌词，不属任何一节）→ **抛弃**；
   /// - 副歌 / 各节共用的块（歌词行数 < 节数，印刷本只写一遍）：**每节都显示**。
   final int? stanza;
 
@@ -156,15 +156,17 @@ class JianpuGridView extends StatelessWidget {
 
   /// 该块在当前节下要显示的行（保持原行序）
   ///
-  /// **按节过滤规则（`stanza == null` 时全部显示）**：
+  /// **按节过滤规则（`stanza == null` 时全部显示 = 印刷本整页形态）**：
   /// 1. 非歌词行（音符/记号/小节线）恒显示 —— 一段旋律被该块全部节共用；
   /// 2. 该块歌词**各节共用**（[JianpuBlock.sharesLyricsAcrossStanzas]：副歌 /
   ///    各节完全相同的句子，印刷本只写一遍）⇒ **每节都显示**；
   ///    修订前只认节号 → 第 2 节起副歌块整块无词（2026-10-12 用户实机反馈的 bug）；
   /// 3. 歌词行缺节号（旧库/异常数据）⇒ 照旧显示，避免丢词；
-  /// 4. 其余按**歌词行在块内的位置**归节：第 i 行 = 第 `((i-1) mod 节数)+1` 节。
-  ///    位置比行上记的节号可靠：源数据里第 111 首首块每行都印 `(1)`，
-  ///    第 18 首块 2 有 6 行（后 3 行是前三节句尾的重复句）。
+  /// 4. 其余按**歌词行在块内的位置**归节：第 i 行 = 第 i 节；**位置 > 节数的行
+  ///    （块内叠句）直接抛弃**（用户 2026-10-12 裁定：这类叠句是四声部合唱的歌词，
+  ///    不属于任何单独一节 —— 第 242 首「请救主进来…」即此类；全库 65 行）。
+  ///
+  /// 位置比行上记的节号可靠：源数据里第 111 首首块每行都印 `(1)`。
   List<JianpuRow> _visibleRows(JianpuBlock block) {
     final n = score.stanzaCount;
     final s = stanza;
@@ -179,7 +181,8 @@ class JianpuGridView extends StatelessWidget {
         continue;
       }
       lyricPos++;
-      if (row.stanzaNo == null || ((lyricPos - 1) % n) + 1 == s) out.add(row);
+      if (lyricPos > n) continue; // 块内叠句（四声部合唱歌词）→ 抛弃
+      if (row.stanzaNo == null || lyricPos == s) out.add(row);
     }
     return out;
   }
