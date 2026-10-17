@@ -47,6 +47,7 @@ docs/
 | 文档 | 用途 |
 | --- | --- |
 | [SESSION_SUMMARY.md](Android/SESSION_SUMMARY.md) | 📋 **Android 开发总结**（续接必读）：里程碑、阶段 0 环境操作留档、Windows 主线已做的 Android 铺垫、进度与待办 |
+| [UI_CONFIRMATION_ANDROID.md](Android/UI_CONFIRMATION_ANDROID.md) | ✅ **Android UI 确认单 v1.0**（像素级验收基准）：13 个界面稿 + 平板草图；令牌/五态/导航/深色/缩放等规则见计划 §3.0、§3.9~§3.11 |
 | [ANDROID_PLAN.md](Android/ANDROID_PLAN.md) | 🚧 **Android 开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）**：目标系统基线（Android 16 / API 36 五项硬要求）、双分支形态与三大参照基线（TJC APK / Windows 定稿 / 代码资产）、**UI 设计**、**功能实现**（阶段 A~E）、**代码管理**、**模拟测试**、**软件发布**、风险清单、里程碑 M0~M6 |
 | ~~ANDROID_PLAN_2026-09-11_初版.md~~ | 已删除（阶段 0 全流程并入 `ANDROID_PLAN.md` 附录 A；需要时从 git 历史取回） |
 
