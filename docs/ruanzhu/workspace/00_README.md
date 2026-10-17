@@ -49,7 +49,7 @@
 
 ## 新会话续接方式
 
-读本文件 + `docs/ruanzhu/workspace/progress_state.json`（若存在）+ 最近一篇 `docs/sessions/*.md`，然后按 02 的"读档 SOP"向用户复述断点后继续。
+读本文件 + `docs/ruanzhu/workspace/progress_state.json`（若存在）+ 最近一篇 `docs/sessions/*/*.md`，然后按 02 的"读档 SOP"向用户复述断点后继续。
 
 > 2026-09-24 起：**现行版本材料**的续接入口是 `docs/ruanzhu/README.md`（索引现行 `v<版本>/` 材料与生成器）；
 > 本文件只涵盖 V1.5 期工作区状态。

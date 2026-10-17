@@ -90,7 +90,7 @@ MCP 工具定义开销排行：
 
 在项目 `.clinerules` 固化「会话日志强制流程」：
 
-- 每个会话在 `docs/sessions/YYYY-MM-DD_HH-MM-SS.md` 记录：提问 / 解决思路 / 最终结果
+- 每个会话在 `docs/sessions/<YYYY-MM>/YYYY-MM-DD_HH-MM-SS.md` 记录（**按月归档**，月份 = 会话开始时间的年月）：提问 / 解决思路 / 最终结果
 - 结果必须含三要素：**改了什么文件 / 验证了什么 / 遗留什么**
 - 日志随代码 `git add docs/sessions/` 提交
 
@@ -106,7 +106,7 @@ MCP 工具定义开销排行：
 | 启动三步 | 读 SESSION_SUMMARY → 读 UI_CONFIRMATION 最终定稿章节 → git log -15 |
 | 规则职责 | 全局只放通用原则；项目专属路径全在项目 `.clinerules` |
 | 实测启动消耗 | **~22K tokens**（约为优化前 1/6） |
-| 会话日志 | 已建立 `docs/sessions/` 目录 + 模板 + 强制流程 |
+| 会话日志 | 已建立 `docs/sessions/` 目录 + 模板 + 强制流程（2026-10-17 起按月归档 `YYYY-MM/`） |
 
 ---
 
@@ -153,7 +153,7 @@ MCP 工具定义开销排行：
 - <目标平台 / 构建命令 / 发布机制等关键信息，控制在 10 行内>
 
 ## 会话日志强制流程
-- 每会话在 docs/sessions/ 下创建 YYYY-MM-DD_HH-MM-SS.md
+- 每会话在 docs/sessions/<YYYY-MM>/ 下创建 YYYY-MM-DD_HH-MM-SS.md（按月归档）
 - 记录：提问 / 解决思路 / 最终结果（改了什么 / 验证了什么 / 遗留什么）
 - 日志随代码一起 git 提交
 ```

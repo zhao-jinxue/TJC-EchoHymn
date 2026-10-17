@@ -457,7 +457,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools\publish_windows.ps1
 
 ### 2026-10-13 会话追加决策（v1.8.3 单声部/字号两项优化）
 
-用户两条实机反馈及其裁定依据（详见会话日志 `docs/sessions/2026-10-13_20-56-34.md`）：
+用户两条实机反馈及其裁定依据（详见会话日志 `docs/sessions/2026-10/2026-10-13_20-56-34.md`）：
 
 1. **首/末歌词行上下各多出一行简谱**（第 1 首）→ 查印刷本确认源数据是
    **「S/A 在歌词上方、T/B 在歌词下方」的四声部排版**，旧 `_firstVoiceRows` 按

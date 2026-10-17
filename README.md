@@ -262,7 +262,7 @@ flutter build windows --release   # 期望构建成功
 | [docs/OpenHarmony/](docs/OpenHarmony/README.md) | 📦 鸿蒙占位：接入前提与待办 |
 | [docs/iOS/](docs/iOS/README.md) | 📦 苹果平台占位：接入前提与待办 |
 | [docs/knowledge/](docs/knowledge/) | 🛠 跨平台通用知识（Cline 上下文最小化 · **TJC APK 简谱渲染逆向复用**） |
-| [docs/sessions/](docs/sessions/) | 🗂 逐会话开发档案（提问 / 解决思路 / 最终结果） |
+| [docs/sessions/](docs/sessions/) | 🗂 逐会话开发档案（提问 / 解决思路 / 最终结果，按月归档 `YYYY-MM/`） |
 
 ## ⚠️ 说明与当前遗留
 
