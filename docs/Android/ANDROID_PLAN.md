@@ -1,6 +1,6 @@
 # EchoHymn Android 版开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）
 
-> **文档定位**：Android 平台**路线图与阶段任务的唯一准绳**（历史与进度口径见同目录 [SESSION_SUMMARY.md](SESSION_SUMMARY.md)；2026-09-11 立项初版全文归档于 [ANDROID_PLAN_2026-09-11_初版.md](ANDROID_PLAN_2026-09-11_初版.md)）。
+> **文档定位**：Android 平台**路线图与阶段任务的唯一准绳**（历史与进度口径见同目录 [SESSION_SUMMARY.md](SESSION_SUMMARY.md)；2026-09-11 立项初版已于 2026-10-11 **删除**——其内容并入本文章节，需要时从 git 历史取回）。
 > **本次重订（2026-10-11）**：原版只有「环境 → 最小可跑 → 数据链路 → UI 移动化」四阶段；
 > 现按新需求重订为 **双分支（手机 / 平板）+ 手机优先**，并把 **UI 设计 / 功能实现 / 代码管理 / 模拟测试 / 软件发布** 五大环节写成可执行清单。
 > **三大参照基线**：① 第三方参照物 `com.tinanlin.tjc_hymn_cn_v2.4.2.apk`（逆向机制见 `docs/knowledge/TJC_APK_JIANPU_RENDER.md`）；
@@ -1463,7 +1463,7 @@ Hymn_Downloads/<曲目>/ ──checksums.json──▶ 素材完整性基线
 
 ---
 
-## 附录 A：阶段 0 环境搭建实况摘要（2026-09-11，全文见初版归档）
+## 附录 A：阶段 0 环境搭建实况摘要（2026-09-11）
 
 | 项 | 实况 |
 | --- | --- |
@@ -1479,7 +1479,7 @@ Hymn_Downloads/<曲目>/ ──checksums.json──▶ 素材完整性基线
 | 文档 | 用途 |
 | --- | --- |
 | [SESSION_SUMMARY.md](SESSION_SUMMARY.md) | Android 开发总结（里程碑 / 决策 / 教训）——**续接必读** |
-| [ANDROID_PLAN_2026-09-11_初版.md](ANDROID_PLAN_2026-09-11_初版.md) | 立项初版计划（阶段 0 全流程与风险清单原文） |
+| ~~ANDROID_PLAN_2026-09-11_初版.md~~ | 已删除（内容并入附录 A 与阶段 A~F / §八 风险；需要时从 git 历史取回） |
 | `docs/Windows/UI_CONFIRMATION.md` | Windows 定稿 v1.8.0（**功能与交互语义的权威来源**） |
 | `docs/Windows/UI_DESIGN_TEMPLATE.md` | UI 设计规范（组件 / 主题 / 间距） |
 | `docs/Windows/CODE_REFERENCE.md` | 代码说明（类 / 函数 / SQLite 契约 / 时序图） |
