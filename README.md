@@ -258,7 +258,7 @@ flutter build windows --release   # 期望构建成功
 | --- | --- |
 | [docs/README.md](docs/README.md) | 📍 文档总纲：目录索引 + 平台导航 + 附录（C++ `hymn_engine` 历史组件构建/恢复 FFI 路径） |
 | [docs/Windows/](docs/Windows/) | 🖥 **Windows 开发全集**：开发总结（续接必读）· UI 定稿确认单 · UI 设计规范 · **简谱谱面自测方案** · 配色效果图预览 · 打包迁移 · 安装/发布规范 · 诊断报告 · VS/CMake 环境安装 · 推荐工具 |
-| [docs/Android/](docs/Android/) | 🚧 Android 开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）：目标系统基线、UI 设计、功能实现阶段 A~E、代码管理、模拟测试、软件发布、风险清单、里程碑 M0~M6（立项初版见 `ANDROID_PLAN_2026-09-11_初版.md`） |
+| [docs/Android/](docs/Android/) | 🚧 Android 开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）：**9 环节 × 阶段 A~F**（需求基线 · UI 设计 · 功能实现 · 代码管理 · 数据治理 · 模拟测试 · 安全合规 · 软件发布 · 运维闭环）+ 四变体（全量 / 钢琴 / 人声 / 无音频）+ 风险 R1~R15 + 里程碑 M0~M7 |
 | [docs/OpenHarmony/](docs/OpenHarmony/README.md) | 📦 鸿蒙占位：接入前提与待办 |
 | [docs/iOS/](docs/iOS/README.md) | 📦 苹果平台占位：接入前提与待办 |
 | [docs/knowledge/](docs/knowledge/) | 🛠 跨平台通用知识（Cline 上下文最小化 · **TJC APK 简谱渲染逆向复用**） |
