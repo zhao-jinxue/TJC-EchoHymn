@@ -1,4 +1,4 @@
-package com.example.echo_hymn
+package com.echohymn.app
 
 import io.flutter.embedding.android.FlutterActivity
 

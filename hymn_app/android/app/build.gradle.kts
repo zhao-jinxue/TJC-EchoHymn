@@ -5,8 +5,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.echo_hymn"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.echohymn.app"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,20 +15,37 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.echo_hymn"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.echohymn.app"
+        minSdk = 26
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // 四个发布变体（与 --dart-define=AUDIO_VARIANT=<id> 一一对应）
+    // full / piano / vocal / lite —— applicationId 互异，可同时安装
+    flavorDimensions += "audio"
+    productFlavors {
+        create("full") {
+            dimension = "audio"
+        }
+        create("piano") {
+            dimension = "audio"
+            applicationIdSuffix = ".piano"
+        }
+        create("vocal") {
+            dimension = "audio"
+            applicationIdSuffix = ".vocal"
+        }
+        create("lite") {
+            dimension = "audio"
+            applicationIdSuffix = ".lite"
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // TODO: 阶段 F 换成正式 keystore（当前沿用 debug 签名，便于 flutter run --release）
             signingConfig = signingConfigs.getByName("debug")
         }
     }
