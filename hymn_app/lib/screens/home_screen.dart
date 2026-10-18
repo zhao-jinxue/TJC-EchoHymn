@@ -1,8 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../app.dart';
 import '../models/hymn.dart';
@@ -11,6 +9,7 @@ import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
+import '../services/window_controls.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../widgets/hymn_display.dart';
@@ -23,8 +22,7 @@ import '../widgets/user_manual_dialog.dart';
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
 
-/// Windows 窗口尺寸控制通道（native 侧 flutter_window.cpp 注册）
-const MethodChannel _windowChannel = MethodChannel('echo_hymn/window');
+/// 桌面窗口能力（Windows 走通道 / Android 空实现，见 services/window_controls.dart）
 
 /// 基座画面物理像素尺寸（用户屏幕实际像素，不受 DPI 缩放影响）
 const int kBaseWindowWidth = 850; // 基座宽度
@@ -100,13 +98,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     LogService.instance.info(LogTag.ui, 'HomeScreen 初始化（initState）');
     WidgetsBinding.instance.addObserver(this);
-    // 接收 native 推送的窗口最大化/还原状态（切换自定义标题栏按钮图标）
-    _windowChannel.setMethodCallHandler((call) async {
-      if (call.method == 'onWindowMaximizedChanged') {
-        final zoomed = call.arguments is bool && call.arguments as bool;
-        if (mounted && zoomed != _windowMaximized) {
-          setState(() => _windowMaximized = zoomed);
-        }
+    // 接收 native 推送的窗口最大化/还原状态（Android：空实现，不回调）
+    WindowControls.instance.listenMaximizedChanged((zoomed) {
+      if (mounted && zoomed != _windowMaximized) {
+        setState(() => _windowMaximized = zoomed);
       }
     });
     _init();
@@ -116,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     // 注销窗口事件回调：防止已销毁 State 被 handler 闭包滞留（泄漏），
     // 且应用退出流程中 native 不再向死对象推送最大化状态
-    _windowChannel.setMethodCallHandler(null);
+    WindowControls.instance.disposeListener();
     WidgetsBinding.instance.removeObserver(this);
     _saveState(); // 关闭时保存
     _repo?.dispose();
@@ -341,19 +336,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 保证 scale 按新窗口尺寸计算，避免【收缩/展开侧栏后画面与窗口
   /// 比例不匹配】的时序竞态）。
   Future<void> _syncWindowSize() async {
-    if (kIsWeb) return; // Web 无原生窗口
+    if (!WindowControls.instance.isSupported) return; // 移动端无窗口能力
     try {
       // 侧栏宽度处理（v1.5.0）：
       // - 左栏宽度随字号等比缩放（350×系数，列表需更大空间）；
       // - 右栏宽度**固定 600 不缩放**（用户 2026-08-31：有滚动条无需加宽），
       //   native 扩展等宽窗口，Flutter 侧画布内反向缩放保持一致。
       final s = AppFonts.scale;
-      await _windowChannel.invokeMethod<void>('setClientSize', {
-        'width': kBaseWindowWidth,
-        'height': kBaseWindowHeight,
-        'leftPanelWidth': _showLeft ? (kLeftPanelWidth * s).round() : 0,
-        'rightPanelWidth': _showRight ? kRightPanelWidth : 0,
-      });
+      await WindowControls.instance.setClientSize(
+        width: kBaseWindowWidth,
+        height: kBaseWindowHeight,
+        leftPanelWidth: _showLeft ? (kLeftPanelWidth * s).round() : 0,
+        rightPanelWidth: _showRight ? kRightPanelWidth : 0,
+      );
       // native 窗口 resize 完成后强制重建：
       // LayoutBuilder 拿到最新 constraints，scale = 新窗口/新画布，等比正确。
       if (mounted) setState(() {});
@@ -754,10 +749,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             '${c.g.toInt().toRadixString(16).padLeft(2, '0')}'
             '${c.b.toInt().toRadixString(16).padLeft(2, '0')}',
       );
-      await _windowChannel.invokeMethod<void>('setWindowAppearance', {
-        'isDark': isDark,
-        'borderColor': (c.r.toInt() << 16) | (c.g.toInt() << 8) | c.b.toInt(),
-      });
+      await WindowControls.instance.setWindowAppearance(
+        isDark: isDark,
+        borderColor: (c.r.toInt() << 16) | (c.g.toInt() << 8) | c.b.toInt(),
+      );
     } catch (e) {
       LogService.instance.error(LogTag.error, '同步窗口外观失败', detail: '$e');
     }
@@ -767,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _minimizeWindow() async {
     LogService.instance.info(LogTag.action, '窗口最小化');
     try {
-      await _windowChannel.invokeMethod<void>('minimize');
+      await WindowControls.instance.minimize();
     } catch (_) {
       // 非 Windows 平台无此通道，忽略
     }
@@ -778,7 +773,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     LogService.instance
         .info(LogTag.action, _windowMaximized ? '窗口还原' : '窗口最大化');
     try {
-      await _windowChannel.invokeMethod<void>('maximizeToggle');
+      await WindowControls.instance.maximizeToggle();
     } catch (_) {
       // 非 Windows 平台无此通道，忽略
     }
@@ -788,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _closeWindow() async {
     LogService.instance.info(LogTag.action, '点击关闭按钮');
     try {
-      await _windowChannel.invokeMethod<void>('close');
+      await WindowControls.instance.close();
     } catch (_) {
       // 非 Windows 平台无此通道，忽略
     }
@@ -845,7 +840,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _hideToTray() async {
     LogService.instance.info(LogTag.action, '关闭按钮：进入系统托盘');
     try {
-      await _windowChannel.invokeMethod<void>('hideToTray');
+      await WindowControls.instance.hideToTray();
     } catch (_) {
       // 非 Windows 平台无托盘通道：退化为直接关闭
       await _closeWindow();
@@ -871,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 标题栏拖拽：native 进入系统标题栏拖拽循环（ReleaseCapture + HTCAPTION）
   Future<void> _startWindowDrag() async {
     try {
-      await _windowChannel.invokeMethod<void>('startWindowDrag');
+      await WindowControls.instance.startWindowDrag();
     } catch (_) {
       // 非 Windows 平台无此通道，忽略
     }

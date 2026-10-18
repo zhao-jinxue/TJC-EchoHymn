@@ -11,6 +11,10 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        // 国内镜像优先（阿里云；2026-10-18 实测具体 artifact 200），官方源兜底
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
         google()
         mavenCentral()
         gradlePluginPortal()

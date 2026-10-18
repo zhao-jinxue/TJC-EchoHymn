@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import '../models/hymn.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
+import 'window_controls.dart';
 
-/// Windows 窗口/系统通道（复用 `echo_hymn/window`，native flutter_window.cpp 统一处理）
-const MethodChannel _windowChannel = MethodChannel('echo_hymn/window');
+/// 桌面系统能力（系统音量通道；Android 空实现）
 
 /// 播放器状态
 enum PlayerStatus { idle, loading, playing, paused, error }
@@ -359,12 +358,10 @@ class AudioService {
   /// 由 HomeScreen 启动时调用；非 Windows 平台无该通道时保持默认 100%。
   Future<void> loadSystemVolume() async {
     try {
-      final result = await _windowChannel
-          .invokeMethod<Map<dynamic, dynamic>>('getSystemVolume');
-      if (result == null) return;
-      final v = (result['volume'] as num?)?.toDouble();
-      final m = result['muted'] as bool? ?? false;
-      if (v == null) return;
+      final snapshot = await WindowControls.instance.getSystemVolume();
+      if (snapshot == null) return;
+      final v = snapshot.volume;
+      final m = snapshot.muted;
       _volume = v.clamp(0.0, 1.0);
       volumeNotifier.value = _volume; // 通知播放条音量控件刷新
       _muted = m;
@@ -393,12 +390,10 @@ class AudioService {
 
   Future<void> _pollSystemVolume() async {
     try {
-      final result = await _windowChannel
-          .invokeMethod<Map<dynamic, dynamic>>('getSystemVolume');
-      if (result == null) return;
-      final v = (result['volume'] as num?)?.toDouble();
-      final m = result['muted'] as bool? ?? false;
-      if (v == null) return;
+      final snapshot = await WindowControls.instance.getSystemVolume();
+      if (snapshot == null) return;
+      final v = snapshot.volume;
+      final m = snapshot.muted;
       // 仅当系统值与应用显著不同（±2%）或静音状态不同才同步，
       // 避免与应用自身写回系统产生的回读冲突。
       if ((v - _volume).abs() > 0.02 || m != _muted) {
@@ -419,11 +414,9 @@ class AudioService {
 
   /// 应用音量/静音变化 → 写回系统（双向同步；非 Windows 平台忽略失败）
   void _syncToSystem() {
-    unawaited(_windowChannel
-        .invokeMethod<void>('setSystemVolume', <String, dynamic>{
-      'volume': _volume,
-      'muted': _muted,
-    }).catchError((_) {}));
+    unawaited(WindowControls.instance
+        .setSystemVolume(volume: _volume, muted: _muted)
+        .catchError((_) {}));
   }
 
   Future<void> stop() async {
