@@ -1337,7 +1337,10 @@ Hymn_Downloads/<曲目>/ ──checksums.json──▶ 素材完整性基线
 
 | 文档 | 用途 |
 | --- | --- |
-| [SESSION_SUMMARY.md](SESSION_SUMMARY.md) | Android 开发总结（里程碑 / 决策 / 教训）——**续接必读** |
+| [SESSION_SUMMARY.md](SESSION_SUMMARY.md) | Android 开发总结（里程碑 / 决策 / 教训） | 
+| [STATE.md](STATE.md) | 📍 **开发状态（唯一续接入口）**：当前阶段 / 下一工单 / 阻塞 / 验收命令 —— 每会话先读、离开前更新 |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | 🧭 **实施计划**：工单拆分 / 验收与自检 / 会话轮换与压缩恢复 / 资料分层与不读清单 |
+| [UI_CONFIRMATION_ANDROID.md](UI_CONFIRMATION_ANDROID.md) | ✅ UI 确认单 v1.0（13 个界面稿 + 平板草图） |
 | ~~ANDROID_PLAN_2026-09-11_初版.md~~ | 已删除（内容并入附录 A 与阶段 A~F / §八 风险；需要时从 git 历史取回） |
 | `docs/Windows/UI_CONFIRMATION.md` | Windows 定稿 v1.8.0（**功能与交互语义的权威来源**） |
 | `docs/Windows/UI_DESIGN_TEMPLATE.md` | UI 设计规范（组件 / 主题 / 间距） |

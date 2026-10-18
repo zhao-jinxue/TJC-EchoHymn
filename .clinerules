@@ -7,9 +7,21 @@
 
 新会话开始时按以下顺序加载上下文（目的：最小化消耗，约 30~40K）：
 
-1. 读 `docs/Windows/SESSION_SUMMARY.md`（项目开发总结，续接开发）——按需全文或关键章节
-2. 读 `docs/Windows/UI_CONFIRMATION.md` 的「最终定稿」各节（可按需读全文）
-3. 执行 `git log --oneline -15` 查看提交历史
+**先判断续接哪条主线：**
+
+### A. Android 开发（当前主线）
+1. 读 `docs/Android/STATE.md`（**唯一续接入口**，≤40 行）—— 阶段 / 下一工单 / 阻塞 / 验收命令
+2. 读 `docs/Android/IMPLEMENTATION_PLAN.md` 的「三、阶段与工单」**当前阶段那一节**（用 `start_line/end_line`）
+3. 按 STATE 的「必读章节」读 `docs/Android/ANDROID_PLAN.md` 的**相关片段**（**禁止整读**，≈78K）
+4. 读 `docs/sessions/<YYYY-MM>/` **最近 1 条**日志的「最终结果」段
+5. 执行 `git log --oneline -3` 与 `git status --short`
+
+### B. Windows 开发（已完成 v1.8.0）
+1. 读 `docs/Windows/SESSION_SUMMARY.md`——按需章节
+2. 读 `docs/Windows/UI_CONFIRMATION.md` 的「最终定稿」各节
+3. 执行 `git log --oneline -15`
+
+**禁止整读**（会耗尽上下文）：`docs/Android/ANDROID_PLAN.md`（≈78K）· `docs/Windows/SESSION_SUMMARY.md`（≈53K）· `docs/Windows/UI_CONFIRMATION.md`（≈42K）· 历史会话日志（45 条 ≈390K，**只读最近 1 条**）· `release/` · `data/` · `docs/ruanzhu/`
 
 > docs 目录按平台归档（2026-09-13）：`docs/Windows/` · `docs/Android/` · `docs/OpenHarmony/` · `docs/iOS/` · `docs/knowledge/`；
 > **软著材料唯一归档到 `docs/ruanzhu/`（入口 `docs/ruanzhu/README.md`，工作区在其 `workspace/` 下——禁止另建）**；总索引见 `docs/README.md`。

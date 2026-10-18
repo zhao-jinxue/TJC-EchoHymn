@@ -46,9 +46,11 @@ docs/
 
 | 文档 | 用途 |
 | --- | --- |
-| [SESSION_SUMMARY.md](Android/SESSION_SUMMARY.md) | 📋 **Android 开发总结**（续接必读）：里程碑、阶段 0 环境操作留档、Windows 主线已做的 Android 铺垫、进度与待办 |
+| [SESSION_SUMMARY.md](Android/SESSION_SUMMARY.md) | 📋 **Android 开发总结**（里程碑 / 决策 / 教训）：阶段 0 环境留档、计划演进、进度与待办 |
+| [STATE.md](Android/STATE.md) | 📍 **开发状态（唯一续接入口，≤40 行）**：当前阶段 / 下一工单 / 阻塞 / 验收命令 —— **每会话先读、离开前更新** |
+| [IMPLEMENTATION_PLAN.md](Android/IMPLEMENTATION_PLAN.md) | 🧭 **实施计划（按阶段执行）**：阶段→工单（WP）拆解 + 每工单验收标准与自检命令 + **会话轮换 / 压缩恢复协议** + 资料分层与不读清单 |
 | [UI_CONFIRMATION_ANDROID.md](Android/UI_CONFIRMATION_ANDROID.md) | ✅ **Android UI 确认单 v1.0**（像素级验收基准）：13 个界面稿 + 平板草图；令牌/五态/导航/深色/缩放等规则见计划 §3.0、§3.9~§3.11 |
-| [ANDROID_PLAN.md](Android/ANDROID_PLAN.md) | 🚧 **Android 开发计划（2026-10-11 重订 · 手机 / 平板双分支，手机优先）**：目标系统基线（Android 16 / API 36 五项硬要求）、双分支形态与三大参照基线（TJC APK / Windows 定稿 / 代码资产）、**UI 设计**、**功能实现**（阶段 A~E）、**代码管理**、**模拟测试**、**软件发布**、风险清单、里程碑 M0~M6 |
+| [ANDROID_PLAN.md](Android/ANDROID_PLAN.md) | 🚧 **Android 开发计划（规则与结果）**：系统基线（API 36 五项硬要求）· 四变体（全量/钢琴/人声/无音频）· 设计基础与 16 张规则/设计稿索引 · **曲谱按小节分页 §3.14** · 46 项任务（A~F）· 代码管理 · 模拟测试 · 软件发布 · 风险 R1~R15 · 里程碑 M0~M7 · 数据治理 · 安全合规 · 运维闭环 · 需求基线 |
 | ~~ANDROID_PLAN_2026-09-11_初版.md~~ | 已删除（阶段 0 全流程并入 `ANDROID_PLAN.md` 附录 A；需要时从 git 历史取回） |
 
 ### OpenHarmony 鸿蒙（`OpenHarmony/`，占位）
