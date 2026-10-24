@@ -41,6 +41,7 @@
   - **顺带修 `AppStateService`**（即 ANDROID_PLAN「`state.json` mobile 验证」）：原用 `Platform.resolvedExecutable` 目录，
     Android 上不可写 → 状态永远存不住；改移动端走应用私有目录（`ensurePath()`）。实测 `files/state.json` 生成，
     且重启后能恢复 `displayMode=staff`（这也是本轮扫描图验证的入口）
+  - **变体体积**（commit `c28d9d4`，含 24 张扫描图 9.3 MB）：**lite 62.90 / vocal 66.62 / piano 77.94 / full 81.66 MB**
 - **下一工单**：**B-4 曲谱小节切分（B9）** —— 页数 = 各块页数之和；切页 ≤16 ms
 - **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B4~B9）+ §3.14（曲谱按小节分页）
 
@@ -52,7 +53,7 @@
 | `kotlin.incremental` | **false**（`android/gradle.properties`）—— 跨盘符 Kotlin 增量编译抛 `different roots` |
 | native-assets | **保持启用** —— `objective_c` 强制要求 |
 | NDK / CMake | `D:\Android\Sdk\ndk\28.2.13676358` · `cmake\3.22.1` |
-| APK 产物 | `hymn_app\build\app\outputs\flutter-apk\`（release：lite 53.6 / vocal 57.3 / piano 68.6 / full 72.4 MB；debug 172.4 MB） |
+| APK 产物 | `hymn_app\build\app\outputs\flutter-apk\`（release：lite 62.9 / vocal 66.6 / piano 77.9 / full 81.7 MB，含库+样本；debug 172.4 MB） |
 
 ## 阻塞 / 待确认
 
