@@ -171,9 +171,9 @@
 | 扫描图 `.png`（948 个） | 487.5 MB |
 | `tjc_hymn.db` | 25.5 MB |
 | 随包静态资产（字体等） | **34.5 MB**（`NotoSansSC` 29.5 + `lyric_kai` 4.94 + `jianpu_mmp2005` 0.06；`assets/opencc/*` 未被 `pubspec.yaml` 声明 → **不进包**） |
-| APK 本体（引擎 + 代码 + 内嵌字体） | **46.5 MB（实测）** —— `flutter build apk --release --flavor full --target-platform android-arm64`；debug 为 172.4 MB（含全 ABI + 调试符号） |
+| APK 本体（引擎 + 代码 + 内嵌字体 + 内置数据库） | **53.6 MB（实测）** —— B-1 把 `assets/data/tjc_hymn.db`（25.54 MB，压缩后约 +7.1 MB）打进包后由 46.5 → 53.6 MB；debug 172.4 MB（全 ABI + 调试符号） |
 
-> APK 本体已**实测 46.5 MB**（arm64 release；原估算 25 MB）→ 各变体合计约 +21 MB：**全量 ≈3.02 / 钢琴 1.74 / 人声 1.50 / 无音频 0.60 GB**（其余口径不变）。
+> APK 本体已**实测 53.6 MB**（arm64 release，含 474 首内置数据库；原估算 25 MB）→ 各变体合计约 +28 MB：**全量 ≈3.03 / 钢琴 1.75 / 人声 1.51 / 无音频 0.61 GB**（其余口径不变）。
 > 只留鋼琴版相较全量**省 1283.3 MB（≈44%）**（人聲版 884.8 MB + 合唱类 9 种 398.5 MB）。各变体体积见 ⑤。
 
 **⑤ 发布变体与音频覆盖（手机版为例，平板同构）**

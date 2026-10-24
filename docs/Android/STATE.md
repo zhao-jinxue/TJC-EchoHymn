@@ -32,7 +32,7 @@
 | `kotlin.incremental` | **false**（`android/gradle.properties`）—— 跨盘符 Kotlin 增量编译抛 `different roots` |
 | native-assets | **保持启用** —— `objective_c` 强制要求 |
 | NDK / CMake | `D:\Android\Sdk\ndk\28.2.13676358` · `cmake\3.22.1` |
-| APK 产物 | `hymn_app\build\app\outputs\flutter-apk\`（release 46.5 MB / debug 172.4 MB） |
+| APK 产物 | `hymn_app\build\app\outputs\flutter-apk\`（release 53.6 MB 含库 / debug 172.4 MB） |
 
 ## 阻塞 / 待确认
 
