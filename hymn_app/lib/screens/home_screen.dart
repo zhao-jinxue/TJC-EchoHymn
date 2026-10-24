@@ -30,6 +30,9 @@ const int kBaseWindowWidth = 850; // 基座宽度
 /// 手机竖屏断点（dp）：宽度小于此值走移动壳（ANDROID_PLAN §3.1）。
 /// 桌面最小客户区 850 宽，永不会落入此分支。
 const double kMobileBreakpoint = 600;
+
+/// 手机横屏 / 小平板的左栏常驻宽度（ANDROID_PLAN §3.0.6：600~839dp 左栏常驻 260dp）
+const double kLandscapeLeftWidth = 260;
 const int kBaseWindowHeight = 890; // 基座高度
 const int kLeftPanelWidth = 350; // 歌单列表展开宽度（物理像素）
 const int kRightPanelWidth = 600; // 诗歌源考展开宽度（物理像素）
@@ -61,6 +64,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // 默认收起两侧栏 = 基座画面（最简播放画面，窗口 850 宽）；
   // 需要歌单/源考时再展开（展开时窗口可手动加宽容纳）。
   bool _showLeft = false;
+
+  /// 当前布局模式（桌面三栏 / 手机横屏双栏 / 手机竖屏单列）——仅变化时记日志
+  String? _layoutMode;
   bool _showRight = false;
 
   // 窗口是否最大化（自定义标题栏「最大化/还原」按钮图标切换，native 推送）
@@ -383,11 +389,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return ValueListenableBuilder<AppPalette>(
           valueListenable: ThemeController.instance.notifier,
           builder: (context, _, __) {
-            // 断点判据用**宽度**（ANDROID_PLAN §1000：不用设备型号）：
-            // < 600dp = 手机竖屏壳；Windows 最小客户区 850 宽，永不落入此分支。
-            final isNarrow =
-                MediaQuery.sizeOf(context).width < kMobileBreakpoint;
-            if (isNarrow) {
+            // 断点判据（ANDROID_PLAN §3.0.6）：**最短边 < 600dp = 手机**（竖屏与横屏都算）。
+            // 平板/桌面最短边 ≥ 600（Windows 最小 850×890）→ 走桌面三栏，永不进移动壳。
+            // 注意不能用「宽度 < 600」——手机横屏宽度 914dp 会被误判成桌面。
+            final mq = MediaQuery.sizeOf(context);
+            final isPhone = mq.shortestSide < kMobileBreakpoint;
+            // 布局模式切换日志（仅在变化时记录）：C-2 旋屏验证的确定性证据
+            final layoutMode = !isPhone
+                ? '桌面三栏'
+                : (mq.width >= kMobileBreakpoint ? '手机横屏双栏' : '手机竖屏单列');
+            if (_layoutMode != layoutMode) {
+              _layoutMode = layoutMode;
+              LogService.instance.info(
+                LogTag.ui,
+                '布局模式切换',
+                detail: '$layoutMode（${mq.width.round()}×${mq.height.round()}dp，'
+                    '最短边 ${mq.shortestSide.round()}dp）',
+              );
+            }
+            if (isPhone) {
               // 手机竖屏骨架（ANDROID_PLAN §3.1）：
               //   系统状态栏（SafeArea.top）→ 顶栏 56 → 合并行 44 + 主体 + 播放条（HymnDisplay 内）
               //   → 系统导航栏（播放条自吃 SafeArea.bottom）
@@ -1005,11 +1025,56 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
 
     if (mobile) {
-      // 手机（ANDROID_PLAN §3.1.1）：内容区**始终满宽**，左/右栏改为覆盖层——
-      // 若沿用桌面 Row 挤压式布局，411dp 屏上内容区只剩 ~60dp（B 阶段实测溢出）。
       final size = MediaQuery.sizeOf(context);
-      final leftW = (size.width * 0.84).clamp(240.0, 420.0);
       final rightW = (size.width * 0.92).clamp(260.0, 480.0);
+
+      // ---------- 横屏 / 小平板（width ≥ 600，ANDROID_PLAN §3.1.10）----------
+      // 双栏：左栏**常驻 260dp**（可关），内容占余；源考仍为覆盖层。
+      if (size.width >= kMobileBreakpoint) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_showLeft) ...[
+                    SizedBox(
+                      width: kLandscapeLeftWidth,
+                      child: _buildLeftPanel(repo, audio,
+                          width: kLandscapeLeftWidth),
+                    ),
+                    VerticalDivider(width: 1, color: AppColors.divider),
+                  ],
+                  Expanded(child: display),
+                ],
+              ),
+            ),
+            if (_showRight) ...[
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _showRight = false);
+                    _saveState();
+                  },
+                  child: Container(color: Colors.black45),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: rightW,
+                child: _buildRightPanel(width: rightW),
+              ),
+            ],
+          ],
+        );
+      }
+
+      // ---------- 竖屏（ANDROID_PLAN §3.1.1）----------
+      // 内容区**始终满宽**，左/右栏为覆盖层——桌面 Row 挤压式在 411dp 屏上只剩 ~60dp。
+      final leftW = (size.width * 0.84).clamp(240.0, 420.0);
       return Stack(
         children: [
           Positioned.fill(child: display),

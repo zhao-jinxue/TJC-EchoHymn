@@ -758,9 +758,32 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   // ============ 播放条（两层） ============
   Widget _buildPlayerBar(Hymn? hymn) {
+    // 手机判定与 HomeScreen 保持一致：最短边 < 600dp = 手机（横屏也算）
+    final size = MediaQuery.sizeOf(context);
+    final isPhone = size.shortestSide < 600;
+    // 手机横屏（ANDROID_PLAN §3.1.10）：播放条 **64dp 单行**（进度 + 控制同行）
+    if (isPhone && size.width > size.height) {
+      return Container(
+        color: AppColors.playBarBg,
+        padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              children: [
+                Expanded(child: _buildProgress()),
+                const SizedBox(width: 8),
+                _buildControlsCompact(hymn),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     // 手机竖屏（ANDROID_PLAN §3.1）：播放条 72dp 目标，横向留白收紧；
     // 底部手势条 inset 由 SafeArea 吃掉（HomeScreen 的 SafeArea 只管到顶栏）。
-    final isNarrow = MediaQuery.sizeOf(context).width < 600;
+    final isNarrow = size.width < 600;
     return Container(
       color: AppColors.playBarBg,
       padding: EdgeInsets.fromLTRB(
@@ -842,6 +865,65 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 : const SizedBox.shrink(),
           ),
         ),
+      ],
+    );
+  }
+
+  /// 手机横屏播放条（64dp 单行）用的紧凑控制组：
+  /// 只保留图标（静音 / 上一首 / 播放·暂停 / 下一首 / 人声版本），不含滑轨与百分比
+  /// —— 横向空间要留给进度条（`ANDROID_PLAN §3.1.10`）。
+  Widget _buildControlsCompact(Hymn? hymn) {
+    final voices = hymn == null ? <String>[] : voiceVersions(hymn);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ValueListenableBuilder<bool>(
+          valueListenable: widget.audio.mutedNotifier,
+          builder: (context, muted, _) => IconButton(
+            iconSize: 24,
+            tooltip: muted ? '取消静音' : '静音',
+            icon: Icon(
+              muted ? Icons.volume_off : Icons.volume_up,
+              color: AppColors.textPrimary,
+            ),
+            onPressed: () => widget.audio.toggleMute(),
+          ),
+        ),
+        IconButton(
+          iconSize: 26,
+          tooltip: '上一首',
+          icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
+          onPressed: () => widget.audio.playPrev(),
+        ),
+        StreamBuilder<PlayerStatus>(
+          stream: widget.audio.statusStream,
+          builder: (context, snap) {
+            final playing =
+                (snap.data ?? PlayerStatus.idle) == PlayerStatus.playing;
+            return IconButton(
+              iconSize: 38,
+              icon: Icon(
+                playing ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                color: AppColors.primary,
+              ),
+              tooltip: playing ? '暂停' : '播放',
+              onPressed: () {
+                LogService.instance.info(
+                  LogTag.action,
+                  playing ? '点击播放条：暂停' : '点击播放条：播放',
+                );
+                widget.audio.togglePlayPause();
+              },
+            );
+          },
+        ),
+        IconButton(
+          iconSize: 26,
+          tooltip: '下一首',
+          icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
+          onPressed: () => widget.audio.playNext(),
+        ),
+        if (voices.length > 1) _buildVoiceListButton(hymn!, voices),
       ],
     );
   }
