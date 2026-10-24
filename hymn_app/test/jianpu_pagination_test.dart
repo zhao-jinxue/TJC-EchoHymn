@@ -176,6 +176,39 @@ void main() {
     });
   });
 
+  group('页内子谱面（pageScore）', () {
+    test('切片：列数 = 页宽，小节线随切片平移，行数保留', () {
+      final score = _score([
+        _block(blockNo: 1, colCount: 20, barCols: [4, 9, 14, 19]),
+      ]);
+      final pg = JianpuPagination.build(score, barsPerPage: 2);
+      expect(pg.pages.length, 2);
+      final sub = JianpuPagination.pageScore(score, pg.pages[1]);
+      expect(sub.blocks.length, 1);
+      expect(sub.blocks.single.colCount, 10); // 列 10..19
+      // 原块小节线 4/9/14/19 → 页内只剩 14/19，平移为 4/9
+      expect(sub.blocks.single.bars.map((b) => b.col).toList(), [4, 9]);
+      expect(sub.blocks.single.rows.length, score.blocks.single.rows.length);
+      expect(sub.stanzaCount, score.stanzaCount);
+    });
+
+    test('块号不存在 → 空谱面（不抛异常）', () {
+      final score = _score([
+        _block(blockNo: 1, colCount: 10, barCols: [4, 9]),
+      ]);
+      const ghost = JianpuPage(
+        blockNo: 99,
+        indexInBlock: 0,
+        startCol: 0,
+        endCol: 5,
+        firstBar: 1,
+        lastBar: 1,
+        barCount: 1,
+      );
+      expect(JianpuPagination.pageScore(score, ghost).isEmpty, isTrue);
+    });
+  });
+
   group('性能（验收：切页 ≤16ms）', () {
     test('24 块 × 8 小节 / 每页 2 小节 = 96 页，单次 ≤16ms', () {
       final blocks = [

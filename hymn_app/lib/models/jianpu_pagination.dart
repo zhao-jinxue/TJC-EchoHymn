@@ -155,9 +155,57 @@ class JianpuPagination {
     final fit = (availCols / colsPerBar).floor();
     return fit.clamp(2, 4);
   }
-}
+  /// 取出某页的**独立子谱面**（单块、列从 0 起）——供 `JianpuGridView` 直接渲染。
+  ///
+  /// 设计意图：渲染层**不需要知道"页"的概念**。页内列数铺满可用宽 → 天然满足
+  /// 「页内同列同 x」；小节线 / 记号的列随切片平移，**记号不丢**（§3.14 判据 ④）。
+  /// 歌词行原样保留（按节过滤仍由 `JianpuGridView.stanza` 负责）。
+  static JianpuScore pageScore(JianpuScore score, JianpuPage page) {
+    JianpuBlock? block;
+    for (final b in score.blocks) {
+      if (b.blockNo == page.blockNo) {
+        block = b;
+        break;
+      }
+    }
+    if (block == null) return JianpuScore.empty;
 
-/// 块内小节（列范围；[startCol]..[endCol] 含该小节右小节线）
+    final start = page.startCol;
+    final span = page.endCol - page.startCol + 1;
+    if (span <= 0) return JianpuScore.empty;
+
+    final rows = <JianpuRow>[];
+    for (final r in block.rows) {
+      final cells = <int, JianpuCell>{};
+      r.cells.forEach((col, cell) {
+        if (col >= start && col <= page.endCol) cells[col - start] = cell;
+      });
+      rows.add(JianpuRow(
+        lineNo: r.lineNo,
+        blockNo: 0,
+        kind: r.kind,
+        colCount: span,
+        cells: cells,
+        stanzaNo: r.stanzaNo,
+      ));
+    }
+
+    final bars = <JianpuBarSpan>[
+      for (final b in block.bars)
+        if (b.col >= start && b.col <= page.endCol)
+          JianpuBarSpan(b.col - start, b.startLine, b.span),
+    ];
+
+    return JianpuScore(
+      hymnNumber: score.hymnNumber,
+      source: score.source,
+      blocks: [
+        JianpuBlock(blockNo: 0, rows: rows, colCount: span, bars: bars),
+      ],
+      stanzaCount: score.stanzaCount,
+    );
+  }
+}
 class _BarSpan {
   const _BarSpan(this.startCol, this.endCol);
   final int startCol;

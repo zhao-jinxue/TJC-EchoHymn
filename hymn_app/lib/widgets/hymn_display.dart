@@ -9,6 +9,7 @@ import 'package:flutter/services.dart' show HardwareKeyboard;
 import '../app.dart';
 import '../models/hymn.dart';
 import '../models/jianpu_grid.dart';
+import '../models/jianpu_pagination.dart';
 import '../services/audio_service.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
@@ -68,6 +69,12 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   /// 当前歌词页（0 基节号）
   int _page = 0;
+
+  /// 曲谱分页结果（按小节；`_jianpu` 装载后计算，`ANDROID_PLAN §3.14`）
+  JianpuPagination? _pagination;
+
+  /// 「曲谱页渲染」日志去重键（每页只记一次，避免 build 刷屏）
+  String? _lastPageLogKey;
 
   /// 翻页模式：true=自动（跟随播放进度），false=手动（按钮翻页）
   late bool _auto;
@@ -141,11 +148,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   // ============ 分页（歌词模式按节翻页；简谱网格同页展示全部节） ============
 
-  /// 当前诗歌的页数（歌词/曲谱模式 = 节数；简谱/五线谱 = 整页，翻页条不显示）
+  /// 当前诗歌的页数
+  ///
+  /// - **曲谱模式**：按**小节分页**（`ANDROID_PLAN §3.14` / B9 / C15）—— 页数来自 `JianpuPagination`；
+  /// - 歌词模式：按节（`hymn.lyricPages.length`）。
   int _pageCount(Hymn? hymn) {
     if (hymn == null) return 0;
     if (_mode == DisplayMode.score) {
-      return _jianpu.stanzaCount > 1 ? _jianpu.stanzaCount : 1;
+      final pg = _pagination;
+      return (pg == null || pg.isEmpty) ? 1 : pg.pageCount;
     }
     return hymn.lyricPages.length;
   }
@@ -175,6 +186,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
         _jianpuLoading = false;
         _scoreLoadedFor = number;
         _jianpu = score;
+        // 曲谱按小节分页（§3.14）：每页 2 小节（可在 C-6 设置项里改 2/3/4 或自适应）
+        _pagination = JianpuPagination.build(score, barsPerPage: 2);
       });
     });
   }
@@ -220,10 +233,19 @@ class _HymnDisplayState extends State<HymnDisplay> {
     if (pages == 0) return;
     final next = (_page + delta).clamp(0, pages - 1);
     if (next == _page) return;
-    LogService.instance.info(
-      LogTag.action,
-      delta > 0 ? '歌词翻到下一页（第 ${next + 1} 节）' : '歌词翻到上一页（第 ${next + 1} 节）',
-    );
+    if (_mode == DisplayMode.score) {
+      final pg = _pagination;
+      final bar = (pg != null && !pg.isEmpty)
+          ? '，${pg.pages[next].barRangeLabel}'
+          : '';
+      LogService.instance
+          .info(LogTag.action, '曲谱翻到第 ${next + 1}/$pages 页$bar');
+    } else {
+      LogService.instance.info(
+        LogTag.action,
+        delta > 0 ? '歌词翻到下一页（第 ${next + 1} 节）' : '歌词翻到上一页（第 ${next + 1} 节）',
+      );
+    }
     setState(() => _page = next);
   }
 
@@ -462,8 +484,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 节数 > 1 时叠加「上一节/下一节 + 手自切换」控件，自动模式复用
   /// `autoPageIndexFor` 跟随播放进度。
   Widget _buildJianpu(Hymn hymn) {
-    final stanzas = _jianpu.stanzaCount;
-    final perStanza = stanzas > 1;
+    final pg = _pagination;
+    final total = (pg == null || pg.isEmpty) ? 1 : pg.pageCount;
+    final perPage = total > 1;
+    final page =
+        (pg == null || pg.isEmpty) ? null : pg.pages[_page.clamp(0, total - 1)];
     return Container(
       color: AppColors.lyricsBg,
       child: Stack(
@@ -484,22 +509,40 @@ class _HymnDisplayState extends State<HymnDisplay> {
                     ),
                   );
                 }
+                // 页内子谱面（列切片 + 平移）：渲染层无需知道"页"的概念，
+                // 页内列数铺满宽度 → 「页内同列同 x」自然成立（§3.14 判据 ②）。
+                final sub =
+                    page == null ? _jianpu : JianpuPagination.pageScore(_jianpu, page);
+                // 每页只记一次（诊断 C15 分页渲染是否真的取到内容）
+                final key = '${page?.blockNo}|${page?.startCol}|${page?.endCol}';
+                if (_lastPageLogKey != key) {
+                  _lastPageLogKey = key;
+                  LogService.instance.info(
+                    LogTag.ui,
+                    '曲谱页渲染',
+                    detail: '块 ${page?.blockNo} 列 ${page?.startCol}~${page?.endCol}'
+                        '（${page?.barRangeLabel}）→ 子谱 blocks=${sub.blocks.length}'
+                        ' rows=${sub.blocks.isEmpty ? 0 : sub.blocks.first.rows.length}'
+                        ' colCount=${sub.blocks.isEmpty ? 0 : sub.blocks.first.colCount}',
+                  );
+                }
                 return JianpuGridView(
-                  score: _jianpu,
+                  score: sub,
                   constraints: constraints,
-                  stanza: perStanza ? _page + 1 : null,
+                  // 歌词行仍同页全显示（每行横跨页宽，与音符同列）；按节过滤留给歌词模式
+                  stanza: null,
                 );
               },
             ),
           ),
-          if (perStanza)
+          if (perPage)
             Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
-          if (perStanza)
+          if (perPage)
             Positioned(
               left: 0,
               right: 0,
               bottom: 6,
-              child: _buildPageNav(stanzas),
+              child: _buildPageNav(total, byBar: true),
             ),
         ],
       ),
@@ -675,8 +718,12 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 底部翻页条：◀ 上一页 · 第 N / M 节 · 下一页 ▶
   ///
   /// 自带歌词区底色背景：内容超高时翻页条浮在文字之上，无背景会压字难读。
-  Widget _buildPageNav(int total) {
+  Widget _buildPageNav(int total, {bool byBar = false}) {
     final current = _page.clamp(0, total - 1);
+    final unit = byBar ? '页' : '节';
+    final barText = (byBar && _pagination != null && !_pagination!.isEmpty)
+        ? '（${_pagination!.pages[current].barRangeLabel}）'
+        : '';
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -690,14 +737,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
           children: [
             _pageBtn(
               icon: Icons.chevron_left,
-              tooltip: current > 0 ? '上一页：第 $current 节' : '已是第一节',
+              tooltip: current > 0 ? '上一页：第 $current $unit' : '已是第一$unit',
               enabled: current > 0,
               onTap: () => _turnPage(-1),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                '第 ${current + 1} / $total 节',
+                '第 ${current + 1} / $total $unit$barText',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -707,8 +754,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
             ),
             _pageBtn(
               icon: Icons.chevron_right,
-              tooltip:
-                  current < total - 1 ? '下一页：第 ${current + 2} 节' : '已是最后一节',
+              tooltip: current < total - 1
+                  ? '下一页：第 ${current + 2} $unit'
+                  : '已是最后一$unit',
               enabled: current < total - 1,
               onTap: () => _turnPage(1),
             ),

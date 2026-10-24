@@ -302,7 +302,16 @@ class AudioService {
   }
 
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    // 未加载音轨时拖动进度条（刚启动 / 未选曲）会走这里 —— 直接忽略。
+    // audioplayers 在无 source 时 seek 会抛异常（C 阶段实机实测：日志出现异步异常栈，
+    // 「谱面/进度条」类自动化点击很容易碰到，属真实缺陷而非测试噪声）。
+    if (_currentHymn == null) return;
+    try {
+      await _player.seek(position);
+    } catch (e, st) {
+      LogService.instance.exception('跳转播放位置失败', e, st);
+      return;
+    }
     LogService.instance.info(
       LogTag.play,
       '跳转播放位置',
