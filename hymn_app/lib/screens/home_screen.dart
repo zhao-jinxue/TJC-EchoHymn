@@ -9,7 +9,7 @@ import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
-import '../services/window_controls.dart';
+import '../platform/window_controls.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../widgets/hymn_display.dart';
@@ -22,7 +22,7 @@ import '../widgets/user_manual_dialog.dart';
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
 
-/// 桌面窗口能力（Windows 走通道 / Android 空实现，见 services/window_controls.dart）
+/// 桌面窗口能力（Windows 走通道 / Android 空实现，见 platform/window_controls.dart）
 
 /// 基座画面物理像素尺寸（用户屏幕实际像素，不受 DPI 缩放影响）
 const int kBaseWindowWidth = 850; // 基座宽度

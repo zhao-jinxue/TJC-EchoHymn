@@ -71,6 +71,7 @@
 | **A-2** | **`WindowControls` 抽象**（头号阻塞点） | `window_controls.dart` + `_windows.dart` + `_stub.dart`；`home_screen.dart`/`audio_service.dart` 改条件导入 | Android 启动无 `MissingPluginException`；Windows 不退化 | `flutter analyze` 0 + `flutter test` 全绿 + Windows 实机一次 |
 | **A-3** | 工程标识 + 4 flavor 骨架 | `applicationId=com.echohymn.app`；`productFlavors{full/piano/vocal/lite}`；`kAudioVariant` | 4 条构建命令全过；4 个包名互异 | `flutter build apk --debug --flavor <V>` ×4 |
 | **A-4** | 启动不崩 + 首个 APK | 模拟器画面 + 日志落盘 + APK 产物 | 启动无异常；`AppPaths` 走 mobile；日志文件生成 | `flutter run -d echohymn_phone36`、`adb shell run-as … ls files/`、`flutter build apk --analyze-size`（实测体积回填） |
+| **A-5** | **目录与发布治理**（计划外，2026-10-24 插入） | `release/{windows,android,ohos}` 分层；新增 `tools/publish_android.ps1`（4 变体）+ `tools/publish_all.ps1`（双平台一次产出）；钩子入库 `tools/git-hooks/` + `tools/install_git_hooks.ps1`；`lib/platform/` 定为平台能力唯一落点 | 一次 commit 同时产出 Windows 与 Android（4 变体）产物；`analyze` 0 / `test` 全绿 | `pwsh tools\publish_all.ps1` + 检查 `release\auto-release-summary.log`；`aapt2 dump badging` 校验 4 包名 |
 
 **M1 出口**：V2（API 36）启动出画面；analyze 0 / test 全绿；**APK 体积实测值**写入开发计划 §1.4 ④（替换估算）。
 

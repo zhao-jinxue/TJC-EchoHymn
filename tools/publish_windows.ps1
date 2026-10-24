@@ -11,8 +11,15 @@
     行为：
       1. 仅当当前分支为 master/main 时才自动发布（避免特性分支误触发）
       2. flutter build windows --release 构建桌面版
-      3. 将产物拷贝到 release\echohymn_win_<时间戳>_<短commitHash>\ 版本化目录
-      4. 删除 release\ 下多余的旧版本目录，只保留最近 [KeepCount] 个
+      3. 将产物拷贝到 release\windows\echohymn_win_<时间戳>_<短commitHash>\ 版本化目录
+      4. 删除 release\windows\ 下多余的旧版本目录，只保留最近 [KeepCount] 个
+
+    平台产物布局（2026-10-18 起按平台分层，互不覆盖）：
+      release\windows\  ← 本脚本（Windows 桌面版）
+      release\android\  ← tools\publish_android.ps1（4 变体 APK）
+      release\ohos\     ← OpenHarmony 预留
+    通常由 tools\publish_all.ps1 统一调度（post-commit 钩子），保证同一 commit
+    的 Windows / Android 产物对齐。
 
     版本名自动生成：时间戳_短commitHash，如 20260814-214507_e26cb8c
     （时间戳前置、下划线分隔，目录名可直接按名称排序定位最新版本）
@@ -37,7 +44,7 @@ $ErrorActionPreference = 'Stop'
 
 # ---- 仓库根目录 ----
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$ReleaseDir = Join-Path $Root 'release'
+$ReleaseDir = Join-Path $Root 'release\windows'
 $AppDir = Join-Path $Root 'hymn_app'
 $BuildOut = Join-Path $AppDir 'build\windows\x64\runner\Release'
 $LogFile = Join-Path $ReleaseDir 'auto-release.log'

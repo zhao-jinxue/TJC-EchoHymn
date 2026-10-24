@@ -60,8 +60,12 @@ data/Hymn_Downloads/step7_progress.json
 # 本地验收截图（临时取证用，不入库）
 _shots/
 
-# 发布产物（每次 commit 自动重新生成）
-release/
+# 发布产物（每次 commit 自动重新生成，按平台分层）
+# release/windows/ ← Windows 桌面版；release/android/ ← 4 变体 APK；release/ohos/ ← 鸿蒙预留
+release/*
+!release/README.md
+!release/ohos/
+!release/ohos/README.md
 
 # 安装包工程产物（大文件与可再生物，源码脚本正常入库）
 installer/payload.7z

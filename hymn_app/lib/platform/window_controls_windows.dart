@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 
-import 'log_service.dart';
+import '../services/log_service.dart';
 import 'window_controls.dart';
 
 /// Windows 实现：走原生 `echo_hymn/window` 通道

@@ -1,21 +1,29 @@
 #!/bin/sh
-# EchoHymn - post-commit auto release hook (Windows)
-# Runs after every git commit: builds Windows release + keeps last 5.
-# Uses Git Bash's sh (Git for Windows ships sh.exe).
+# EchoHymn - post-commit 多平台自动发布钩子（Windows + Android）
 #
-# 日志：publish_windows.ps1 自身将输出写入 release/auto-release.log
-# （UTF-8 with BOM，PowerShell 5.1/7 均可正确识别中文）。
-# 不再使用 `>` 重定向，避免编码导致的乱码。
+# 安装：pwsh -NoProfile -ExecutionPolicy Bypass -File tools/install_git_hooks.ps1
+#      （设置 core.hooksPath = tools/git-hooks，钩子随仓库入库，换机执行一次即可）
+#
+# 行为：后台调度 tools/publish_all.ps1 → 依次跑
+#        tools/publish_windows.ps1  → release/windows/echohymn_win_<ts>_<sha>/
+#        tools/publish_android.ps1  → release/android/echohymn_android_<ts>_<sha>/
+#      保证同一 commit 的 Windows / Android 产物始终对齐。
+#
+# installer（Inno Setup 安装包）不在此流程内：
+#       仅在定版本打 tag 后手动执行 tools/build_installer.ps1。
+#
+# 注意：本文件必须以 LF 换行保存（sh 不接受 CRLF）；
+#       日志见 release/<platform>/auto-release.log 与 release/auto-release-summary.log。
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 if [ -z "$REPO_ROOT" ]; then
   exit 0
 fi
 
-# Launch the release pipeline in background so it does NOT block git commit.
+# 后台启动，不阻塞 git commit（钩子失败也不影响提交结果）
 mkdir -p "$REPO_ROOT/release"
 nohup pwsh -NoProfile -ExecutionPolicy Bypass \
-  -File "$REPO_ROOT/tools/publish_windows.ps1" \
+  -File "$REPO_ROOT/tools/publish_all.ps1" \
   > /dev/null 2>&1 &
 
 exit 0

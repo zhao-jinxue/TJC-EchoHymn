@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/hymn.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
-import 'window_controls.dart';
+import '../platform/window_controls.dart';
 
 /// 桌面系统能力（系统音量通道；Android 空实现）
 

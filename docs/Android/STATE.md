@@ -9,6 +9,12 @@
   - **A-2 `WindowControls` 抽象 ✅** —— 三件套；13 处调用收敛；analyze 0 / test 62 通过；**实机 logcat 无 `MissingPluginException`**
   - **A-3 工程标识 + 4 flavor ✅** —— `com.echohymn.app[.piano|.vocal|.lite]`；4 变体 APK 全部构建通过（aapt2 校验包名互异）
   - **A-4 启动不崩 + 体积实测 ✅** —— 装 `full` 到模拟器：**pid 存活、Impeller 渲染正常、无 FATAL/未捕获异常**；**release arm64 APK = 46.5 MB**（debug 172.4 MB）；`files/tjc_hymn.db` 已落点但为**空库 12 KB**（B-1 未做 → 首屏显示"数据加载失败"，预期行为）
+- **A-5 目录与发布治理 ✅**（计划外工单，2026-10-24）——
+  `release/` 按平台分层（`windows/` · `android/` · `ohos/` 预留）；
+  新增 `tools/publish_android.ps1`（4 变体 APK + SHA256SUMS + BUILD-INFO）与 `tools/publish_all.ps1`（一次 commit 双平台对齐）；
+  post-commit 钩子入库存放 `tools/git-hooks/`，配 `tools/install_git_hooks.ps1`（`core.hooksPath` 已启用）；
+  `lib/platform/` 成为平台能力唯一落点（`window_controls*` 三件套迁入，2 处 import 收敛）；
+  installer 明确「仅打 tag 产出」；边界与职责见 `docs/knowledge/PROJECT_LAYOUT.md`
 - **下一工单**：**B-1 DB asset 首启拷贝** —— 把 25.53 MB `tjc_hymn.db` 打进 assets，首启校验（长度/版本戳）后拷到 `getApplicationSupportDirectory()`，替换现在的空库
 - **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B1~B9）+ §12.2（数据基线 474 / 21819 / 321703）
 

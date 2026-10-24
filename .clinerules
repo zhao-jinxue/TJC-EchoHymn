@@ -33,7 +33,16 @@
 ## 重要须知（项目）
 
 - **目标平台**：Windows（已开发）+ Android（2026-09-11 立项，阶段 0 环境完成）+ OpenHarmony（占位）+ 苹果 iOS/macOS（占位）。Web 已移除。
-- **自动发布**：每次 git commit 到 master/main 会自动触发 Windows 发布（`tools/publish_windows.ps1`），提交后核对 `release/auto-release.log`。
+- **自动发布（多平台对齐）**：每次 git commit 到 master/main，post-commit 钩子后台执行 `tools/publish_all.ps1`
+  → 同时产出 `release/windows/echohymn_win_<时间戳>_<sha>/`（桌面版）与
+  `release/android/echohymn_android_<时间戳>_<sha>/`（4 变体 APK + `SHA256SUMS.txt` + `BUILD-INFO.txt`），
+  保证同一 commit 的 Windows / Android 产物对齐。提交后核对 `release/auto-release-summary.log`。
+- **installer（Inno Setup 安装包）不在 commit 流程内**：仅在定版本打 tag 后跑 `tools/build_installer.ps1`
+  （+ `tools/verify_installer.ps1` 校验），产物在 `installer/output/`（不入库）。
+- **换机后启用钩子**：`pwsh -NoProfile -File tools/install_git_hooks.ps1`（设置 `core.hooksPath=tools/git-hooks`）。
+- **目录职责**：`hymn_app/` 是唯一应用工程（`windows/`、`android/`、`ohos/` 宿主目录互不参与对方构建）；
+  `lib/platform/` 是平台专属能力的唯一落点；`release/` 按平台分层；`installer/` 仅 Windows 且仅 tag 产出。
+  详见 `docs/knowledge/PROJECT_LAYOUT.md`（**改目录结构前必读**）。
 - **状态文件**：`echo_hymn.exe` 同级目录 `state.json`（便携、原子写、自动迁移老数据）。
 - **架构**：左栏三栏目 = `LeftPanel` 抽象基类 + 三个子类（`HymnListPanel` / `DefaultPlaylistsPanel` / `MyPlaylistsPanel`），`HomeScreen` 为协调者。
 - **软著材料（支线）**：唯一归档位置 = `docs/ruanzhu/`（总入口 `docs/ruanzhu/README.md`；材料在 `v<版本>/`、编辑工作区在 `workspace/`）。
