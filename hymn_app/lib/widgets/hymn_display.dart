@@ -262,27 +262,33 @@ class _HymnDisplayState extends State<HymnDisplay> {
     return Container(
       height: 44,
       color: AppColors.versionBarBg,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          _versionBtn(
-            label: '钢琴版',
-            icon: Icons.piano,
-            active:
-                hymn != null && widget.audio.currentAudioVersion.contains('鋼琴'),
-            onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
-          ),
-          const SizedBox(width: 8),
-          _buildVoiceButton(hymn),
-          const Spacer(),
-          _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
-          const SizedBox(width: 4),
-          _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
-          const SizedBox(width: 4),
-          _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
-          const SizedBox(width: 4),
-          _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
-        ],
+      // 手机竖屏（ANDROID_PLAN §3.1 合并行 44）：版本 chips + 4 个模式按钮 + ⟳
+      // 在 360~411dp 宽度下必然放不下 → 横向可滚动，避免 RenderFlex overflow
+      // 把最后一两个按钮挤成不可点（B 阶段实机验证曾被此问题阻塞）。
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            _versionBtn(
+              label: '钢琴版',
+              icon: Icons.piano,
+              active: hymn != null &&
+                  widget.audio.currentAudioVersion.contains('鋼琴'),
+              onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
+            ),
+            const SizedBox(width: 8),
+            _buildVoiceButton(hymn),
+            const SizedBox(width: 16),
+            _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
+            const SizedBox(width: 4),
+            _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
+            const SizedBox(width: 4),
+            _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
+            const SizedBox(width: 4),
+            _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+          ],
+        ),
       ),
     );
   }
@@ -752,18 +758,29 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   // ============ 播放条（两层） ============
   Widget _buildPlayerBar(Hymn? hymn) {
+    // 手机竖屏（ANDROID_PLAN §3.1）：播放条 72dp 目标，横向留白收紧；
+    // 底部手势条 inset 由 SafeArea 吃掉（HomeScreen 的 SafeArea 只管到顶栏）。
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
     return Container(
       color: AppColors.playBarBg,
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 上层：进度条
-          _buildProgress(),
-          const SizedBox(height: 6),
-          // 下层：控制按钮 + 人声版本列表（>1 时显示）
-          _buildControls(hymn),
-        ],
+      padding: EdgeInsets.fromLTRB(
+        isNarrow ? 10 : 24,
+        isNarrow ? 2 : 4,
+        isNarrow ? 10 : 24,
+        isNarrow ? 0 : 8,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 上层：进度条
+            _buildProgress(),
+            SizedBox(height: isNarrow ? 2 : 6),
+            // 下层：控制按钮 + 人声版本列表（>1 时显示）
+            _buildControls(hymn),
+          ],
+        ),
       ),
     );
   }
@@ -855,7 +872,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
               builder: (context, constraints) {
                 final s = AppFonts.scale;
                 final iconW = 48 / s; // 视觉恒 48
-                final pctW = 38 / s; // 视觉恒 38
+                // 手机竖屏（ANDROID_PLAN §3.1 播放条）：不显示百分比，把 38 画布让给滑轨——
+                // 否则左 Expanded 仅 ~119dp，图标 48 + 滑轨下限 40 + 百分比 38 = 126 → Row 溢出 7.3px（实测）。
+                final isNarrow = MediaQuery.sizeOf(context).width < 600;
+                final pctW = isNarrow ? 0.0 : 38 / s; // 视觉恒 38（桌面）
                 // 滑轨可用画布宽 = 左 Expanded 实分配宽 - 图标 - 百分比；
                 // 上限 150 画布（默认档保持 150 视觉零回归）。
                 // 方案 B 下限调整：旧下限 150/s（视觉恒≥150）在最大档
@@ -903,19 +923,20 @@ class _HymnDisplayState extends State<HymnDisplay> {
                         ),
                       ),
                     ),
-                    SizedBox(
-                      width: pctW,
-                      child: Center(
-                        child: Text(
-                          '${(effective * 100).round()}%',
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            fontSize: 12 / s, // 视觉恒 12
-                            color: AppColors.textSecondary,
+                    if (!isNarrow)
+                      SizedBox(
+                        width: pctW,
+                        child: Center(
+                          child: Text(
+                            '${(effective * 100).round()}%',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              fontSize: 12 / s, // 视觉恒 12
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 );
               },

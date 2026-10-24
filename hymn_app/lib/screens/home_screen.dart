@@ -26,6 +26,10 @@ enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
 
 /// 基座画面物理像素尺寸（用户屏幕实际像素，不受 DPI 缩放影响）
 const int kBaseWindowWidth = 850; // 基座宽度
+
+/// 手机竖屏断点（dp）：宽度小于此值走移动壳（ANDROID_PLAN §3.1）。
+/// 桌面最小客户区 850 宽，永不会落入此分支。
+const double kMobileBreakpoint = 600;
 const int kBaseWindowHeight = 890; // 基座高度
 const int kLeftPanelWidth = 350; // 歌单列表展开宽度（物理像素）
 const int kRightPanelWidth = 600; // 诗歌源考展开宽度（物理像素）
@@ -379,6 +383,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return ValueListenableBuilder<AppPalette>(
           valueListenable: ThemeController.instance.notifier,
           builder: (context, _, __) {
+            // 断点判据用**宽度**（ANDROID_PLAN §1000：不用设备型号）：
+            // < 600dp = 手机竖屏壳；Windows 最小客户区 850 宽，永不落入此分支。
+            final isNarrow =
+                MediaQuery.sizeOf(context).width < kMobileBreakpoint;
+            if (isNarrow) {
+              // 手机竖屏骨架（ANDROID_PLAN §3.1）：
+              //   系统状态栏（SafeArea.top）→ 顶栏 56 → 合并行 44 + 主体 + 播放条（HymnDisplay 内）
+              //   → 系统导航栏（播放条自吃 SafeArea.bottom）
+              // 桌面自绘的 30px 标题栏 / 30px 状态栏是窗口语义（最小化·最大化·关闭），手机不出现。
+              return Scaffold(
+                body: SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      _buildMobileTopBar(),
+                      Divider(height: 1, color: AppColors.divider),
+                      Expanded(child: _buildBody(mobile: true)),
+                    ],
+                  ),
+                ),
+              );
+            }
             return Scaffold(
               body: Column(
                 children: [
@@ -562,6 +588,76 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _saveState();
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------- 手机顶栏（56dp，ANDROID_PLAN §3.1） ----------
+  // ≡（诗歌列表）/ 标题（当前诗歌；无则应用名）/ ⋮（更多：手册·配色·字号·源考）
+  // 桌面自绘标题栏/功能栏/状态栏一律不出现（它们是窗口语义）。
+  Widget _buildMobileTopBar() {
+    final hymn = _audio?.currentHymn;
+    final title = hymn != null
+        ? '第 ${hymn.hymnNumber} 首《'
+            '${ChineseConvertService.instance.toSimplified(hymn.title)}》'
+        : 'EchoHymn · 聆听赞美诗';
+    return Container(
+      height: 56,
+      color: AppColors.topBarBg,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          IconButton(
+            iconSize: 24,
+            icon: Icon(_showLeft ? Icons.close : Icons.menu,
+                color: AppColors.textPrimary),
+            tooltip: _showLeft ? '关闭诗歌列表' : '打开诗歌列表',
+            onPressed: () {
+              LogService.instance.info(
+                LogTag.action,
+                _showLeft ? '收起左侧栏目' : '展开左侧栏目',
+              );
+              setState(() => _showLeft = !_showLeft);
+              _saveState();
+            },
+          ),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: AppColors.textPrimary),
+            tooltip: '更多',
+            onSelected: (v) {
+              if (v == 'manual') {
+                _showManual();
+              } else if (v == 'theme') {
+                _showThemeMenu();
+              } else if (v == 'font') {
+                _showFontSizeMenu();
+              } else if (v == 'source') {
+                LogService.instance.info(LogTag.action,
+                    _showRight ? '收起右侧栏目' : '展开右侧栏目');
+                setState(() => _showRight = !_showRight);
+                _saveState();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'manual', child: Text('用户手册')),
+              PopupMenuItem(value: 'theme', child: Text('切换配色')),
+              PopupMenuItem(value: 'font', child: Text('切换字号')),
+              PopupMenuItem(value: 'source', child: Text('诗歌源考')),
+            ],
           ),
         ],
       ),
@@ -877,7 +973,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ---------- 主体 ----------
-  Widget _buildBody() {
+  Widget _buildBody({bool mobile = false}) {
     if (_initError) {
       return const Center(child: Text('数据加载失败，请检查 data/tjc_hymn.db'));
     }
@@ -887,8 +983,78 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final repo = _repo!;
     final audio = _audio!;
-    // K10：歌词区不再固定 850 逻辑宽，改 Expanded 填满剩余空间——
+    // K10：歌词区不再固定 850 逻辑宽，改填满剩余空间——
     // 窗口放大时歌词区随之变宽变高（配合 HymnDisplay 的 LayoutBuilder 自适应字号）。
+    final display = HymnDisplay(
+      audio: audio,
+      repo: repo,
+      initialMode: _currentDisplayMode,
+      initialAutoPaging: _lyricAutoMode,
+      onModeChanged: (mode) {
+        _currentDisplayMode = mode;
+        _saveState();
+      },
+      onAutoPagingChanged: (auto) {
+        _lyricAutoMode = auto;
+        _saveState();
+      },
+      onAudioVersionChanged: (v) {
+        _currentAudioVersion = v;
+        _saveState();
+      },
+    );
+
+    if (mobile) {
+      // 手机（ANDROID_PLAN §3.1.1）：内容区**始终满宽**，左/右栏改为覆盖层——
+      // 若沿用桌面 Row 挤压式布局，411dp 屏上内容区只剩 ~60dp（B 阶段实测溢出）。
+      final size = MediaQuery.sizeOf(context);
+      final leftW = (size.width * 0.84).clamp(240.0, 420.0);
+      final rightW = (size.width * 0.92).clamp(260.0, 480.0);
+      return Stack(
+        children: [
+          Positioned.fill(child: display),
+          if (_showLeft) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() => _showLeft = false);
+                  _saveState();
+                },
+                child: Container(color: Colors.black45),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: leftW,
+              child: _buildLeftPanel(repo, audio, width: leftW),
+            ),
+          ],
+          if (_showRight) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() => _showRight = false);
+                  _saveState();
+                },
+                child: Container(color: Colors.black45),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: rightW,
+              child: _buildRightPanel(width: rightW),
+            ),
+          ],
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -896,26 +1062,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _buildLeftPanel(repo, audio),
           VerticalDivider(width: 1, color: AppColors.divider),
         ],
-        Expanded(
-          child: HymnDisplay(
-            audio: audio,
-            repo: repo,
-            initialMode: _currentDisplayMode,
-            initialAutoPaging: _lyricAutoMode,
-            onModeChanged: (mode) {
-              _currentDisplayMode = mode;
-              _saveState();
-            },
-            onAutoPagingChanged: (auto) {
-              _lyricAutoMode = auto;
-              _saveState();
-            },
-            onAudioVersionChanged: (v) {
-              _currentAudioVersion = v;
-              _saveState();
-            },
-          ),
-        ),
+        Expanded(child: display),
         if (_showRight) ...[
           VerticalDivider(width: 1, color: AppColors.divider),
           _buildRightPanel(),
@@ -925,9 +1072,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ---------- 左侧栏：tab + 对应面板 ----------
-  Widget _buildLeftPanel(SqliteRepository repo, AudioService audio) {
-    // 物理 350px ÷ devicePixelRatio = 逻辑宽度（保证各 DPI 下物理宽度恒为 350）
-    final leftWidth = kLeftPanelWidth / MediaQuery.devicePixelRatioOf(context);
+  Widget _buildLeftPanel(SqliteRepository repo, AudioService audio,
+      {double? width}) {
+    // 桌面：物理 350px ÷ devicePixelRatio（保证各 DPI 下物理宽度恒为 350）
+    // 手机：调用方按屏宽比例传入（84%），作为覆盖层浮在内容之上
+    final leftWidth =
+        width ?? (kLeftPanelWidth / MediaQuery.devicePixelRatioOf(context));
     return SizedBox(
       width: leftWidth,
       child: Container(
@@ -1050,14 +1200,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ---------- 右侧栏（源考） ----------
-  Widget _buildRightPanel() {
+  Widget _buildRightPanel({double? width}) {
     final hymn = _audio?.currentHymn;
     // 右栏宽度**不随字号缩放**（用户 2026-08-31：右栏有滚动条，无需加宽）。
     // 全局 Transform.scale 会把整树视觉放大为 画布宽×系数，这里用
     // 反向系数抵消：画布宽 = 600 / 系数 / dpr → 视觉物理宽恒为 600。
-    final rightWidth = kRightPanelWidth /
-        AppFonts.scale /
-        MediaQuery.devicePixelRatioOf(context);
+    // 手机（覆盖层）：调用方按屏宽比例传入（92%）。
+    final rightWidth = width ??
+        (kRightPanelWidth /
+            AppFonts.scale /
+            MediaQuery.devicePixelRatioOf(context));
     return SizedBox(
       width: rightWidth,
       child: Container(

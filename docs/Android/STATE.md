@@ -66,8 +66,19 @@
   - **负向实测**（构造含 `.pdf` + `assets/secret/leak.txt` 的假 APK）：两项均被检出，退出码 1 ✓（证明不是"永远通过"）
 - **M2 出口**：**数据链路全通 + §12.2 基线一致 ✅**（474 / 21819 / 321703 在 Android 侧 APK 内实测一致）；
   剩余「UI 确认单像素校准 ±2dp」随 M3 完成
-- **下一工单**：**C-1 手机布局壳**（竖屏：顶栏 56 + 合并行 44 + 主体 + 播放条 72）—— 顺带解决当前窄屏 `RenderFlex overflowed`
-- **必读章节**：`ANDROID_PLAN.md` §3.1（布局）/ §3.1.1（确认单）/ `UI_CONFIRMATION_ANDROID.md`
+- **C-1 手机布局壳（竖屏）✅**（2026-10-24）—— `home_screen.dart` 按**宽度断点 600dp** 分流：
+  窄屏走「`SafeArea` → 顶栏 56 → 主体」，桌面（最小 850 宽）走原有 30px 标题栏 + 40px 功能栏 + 30px 状态栏，**桌面代码路径零改动**
+  - 新增 `_buildMobileTopBar()`（56dp：≡ 诗歌列表 / 标题（当前诗歌）/ ⋮ 更多 → 手册·配色·字号·源考）
+  - `_buildBody(mobile: true)`：内容区**始终满宽**，左/右栏改为**覆盖层**（84% / 92% + 半透明遮罩点击关闭）——
+    原桌面 Row 挤压式布局在 411dp 屏上会把内容压到 ~60dp
+  - `_buildLeftPanel` / `_buildRightPanel` 增加可选 `width` 参数（桌面仍按物理宽 ÷ dpr）
+  - `hymn_display`：合并行 44 改**横向滚动**（原 `Spacer` 固定 Row 在窄屏溢出、末尾按钮不可点）；
+    播放条 padding 收紧 + `SafeArea(bottom)`；窄屏隐藏音量百分比把 38dp 让给滑轨
+  - **实测**：`RenderFlex overflowed` **从 4~6 条降为 0**；顶栏 ≡ 可点（`展开左侧栏目`）；
+    模式按钮可点（`切换歌词显示模式: jianpu` → `1_简谱.png → 1984x3025`）；遮罩点击关闭（回写 `showLeft:false`）
+  - **桌面回归**：`flutter build windows --release` 成功（32.8s）；`analyze` 0 / `test` 75 —— **Windows 实机运行仍待你验证**
+- **下一工单**：**C-2 横屏布局**（双栏 + 合并行 44 + 播放条 64 单行；旋屏切换正常）
+- **必读章节**：`ANDROID_PLAN.md` §3.1.10（横屏主界面）/ §3.1.14（横竖屏策略）
 
 ## 环境变更（换机/清缓存时需复原）
 
