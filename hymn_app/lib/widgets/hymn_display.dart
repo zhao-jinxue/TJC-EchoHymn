@@ -1144,6 +1144,22 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
           _resolve(decodeW);
         });
       }
+      else if (_stream != null && !_resolveScheduled && _decodeWidth > 0) {
+        // 视口宽度**显著变化**（旋屏 / 收起侧栏 / 改字号等级）→ 重新按新宽度解码。
+        // 实测：字号 ×1.9 + 左栏展开时内容区仅 ~82dp，解码宽被压到 432px；
+        // 若此后视口变宽而沿用该图，放大查看会明显模糊。
+        final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
+        final decodeW = (vpW * dpr * _decodeScale).round().clamp(320, 2048);
+        if ((decodeW - _decodeWidth).abs() > _decodeWidth * 0.5) {
+          _resolveScheduled = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _resolveScheduled = false;
+            if (!mounted) return;
+            _detachStream();
+            _resolve(decodeW);
+          });
+        }
+      }
 
       final natural = _natural;
 

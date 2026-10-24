@@ -22,10 +22,16 @@ Future<void> main() async {
     // 移动端状态目录需先初始化（桌面端为 exe 同级）
     await AppStateService.ensurePath();
     final state = await AppStateService().load();
-    ThemeController.instance.switchTo(themeById(state.appTheme));
+    final theme = themeById(state.appTheme);
+    final font = fontSizeLevelById(state.fontSizeLevel);
+    ThemeController.instance.switchTo(theme);
     // 恢复上次字号等级（state.json 的 fontSizeLevel；缺失/非法回退默认）
-    FontScaleController.instance
-        .switchTo(fontSizeLevelById(state.fontSizeLevel));
+    FontScaleController.instance.switchTo(font);
+    LogService.instance.info(
+      LogTag.system,
+      '恢复上次状态',
+      detail: '配色 ${theme.id} / 字号 ${font.id}（×${font.scale}）',
+    );
   } catch (e) {
     LogService.instance.error(LogTag.error, '恢复配色/字号失败，使用默认', detail: '$e');
   }

@@ -226,7 +226,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       LogService.instance.info(
         LogTag.ui,
         'HomeScreen 初始化完成',
-        detail: '诗歌总数: ${_allHymns.length}',
+        detail: '诗歌总数: ${_allHymns.length}'
+            ' / 锚点: ${state.hymnNumber.isEmpty ? '（无）' : '第 ${state.hymnNumber} 首'}'
+            ' / 版本: ${_currentAudioVersion.isEmpty ? '（默认）' : _currentAudioVersion}'
+            ' / 模式: ${_currentDisplayMode.isEmpty ? '（默认）' : _currentDisplayMode}'
+            ' / 左侧栏: ${state.showLeft ? '展开' : '收起'}',
       );
       LogService.instance.info(LogTag.ui, 'HomeScreen 首帧构建完成');
       // 启动自动弹出用户手册（偏好为"启动时显示"时；手册底部勾选框可关闭/恢复）
