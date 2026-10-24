@@ -1151,6 +1151,12 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
   /// 是否已排入首帧后的解码调度（防重复）
   bool _resolveScheduled = false;
 
+  /// 缩放上限（ANDROID_PLAN §3.11：`maxScale = 3.0×`，相对 contain 宽度）
+  static const double _maxScale = 3.0;
+
+  /// 手机触摸缩放/平移的变换控制器（桌面走原有滚轮 + 滚动逻辑，不受影响）
+  final TransformationController _ivController = TransformationController();
+
   bool get _isNetwork => widget.path.startsWith('http');
 
   @override
@@ -1225,7 +1231,58 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
   void dispose() {
     _detachStream();
     _scroll.dispose();
+    _ivController.dispose();
     super.dispose();
+  }
+
+  // ============ 手机缩放包络（§3.11） ============
+
+  /// 双击复位到 contain（§3.11「双击 → 复位到 contain」）
+  void _resetZoom() {
+    _ivController.value = Matrix4.identity();
+    LogService.instance
+        .info(LogTag.ui, '谱面缩放复位', detail: '双击/按钮 → 1.00×（contain）');
+  }
+
+  /// `＋ / －` 按钮缩放：以**视口中心**为不动点（§3.11）
+  void _zoomBy(double factor) {
+    final size = MediaQuery.sizeOf(context);
+    final center = Offset(size.width / 2, size.height / 2);
+    final current = _ivController.value.getMaxScaleOnAxis();
+    final target = (current * factor).clamp(1.0, _maxScale);
+    final f = target / current;
+    if ((f - 1).abs() < 0.001) return;
+    final next = Matrix4.identity()
+      ..translateByDouble(center.dx, center.dy, 0, 1)
+      ..scaleByDouble(f, f, 1, 1)
+      ..translateByDouble(-center.dx, -center.dy, 0, 1)
+      ..multiply(_ivController.value.clone());
+    _ivController.value = next;
+    _logZoom();
+  }
+
+  void _logZoom() {
+    final s = _ivController.value.getMaxScaleOnAxis();
+    LogService.instance.info(
+      LogTag.ui,
+      '谱面缩放',
+      detail: '${s.toStringAsFixed(2)}×（范围 1.00~${_maxScale.toStringAsFixed(2)}×）',
+    );
+  }
+
+  Widget _zoomButton(IconData icon, String tooltip, double factor) {
+    return Material(
+      color: AppColors.controlBg,
+      shape: const CircleBorder(),
+      child: IconButton(
+        iconSize: 20,
+        tooltip: tooltip,
+        padding: const EdgeInsets.all(6),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        icon: Icon(icon, color: AppColors.textPrimary),
+        onPressed: () => _zoomBy(factor),
+      ),
+    );
   }
 
   @override
@@ -1266,13 +1323,58 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
 
       final natural = _natural;
 
-      // 初始显示宽度 baseW：图片 contain 进歌词区且不放大的结果。
-      // 纵向长图 → 受高度限制，baseW < vpW（两侧留白，可滚轮放大填充）；
-      // 横向宽图 → 受宽度限制，baseW = vpW（缩放区间退化为 1）。
+      // 初始显示宽高：图片 contain 进可视区且不放大的结果。
+      // 纵向长图 → 受高度限制，baseW < vpW（两侧留白）；横向宽图 → 受宽度限制。
       double baseW = vpW;
+      double baseH = vpH;
       if (natural != null && natural.width > 0 && natural.height > 0) {
         final fit = math.min(vpW / natural.width, vpH / natural.height);
-        baseW = natural.width * math.min(fit, 1.0);
+        final f = math.min(fit, 1.0);
+        baseW = natural.width * f;
+        baseH = natural.height * f;
+      }
+
+      // ---------- 手机：标准触摸缩放包络（ANDROID_PLAN §3.11）----------
+      // minScale = contain 宽（1.0×）；maxScale = 3.0×；双击复位到 contain；
+      // 边界回弹 24dp；横竖屏切换时交互矩阵保持不变（比例自然延续）。
+      // 桌面仍走下方的「滚轮缩放 + 纵向滚动」逻辑，行为零改动。
+      final mq = MediaQuery.sizeOf(context);
+      if (mq.shortestSide < 600 && natural != null) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onDoubleTap: _resetZoom,
+                child: InteractiveViewer(
+                  transformationController: _ivController,
+                  minScale: 1.0,
+                  maxScale: _maxScale,
+                  boundaryMargin: const EdgeInsets.all(24), // §3.11 边界回弹 24dp
+                  onInteractionEnd: (_) => _logZoom(),
+                  child: SizedBox(
+                    width: baseW,
+                    height: baseH,
+                    child: _buildImage(baseW, baseH),
+                  ),
+                ),
+              ),
+            ),
+            // ＋/－（§3.11「以视口中心」缩放）：为不便双指的场合与自动化验证留入口。
+            // 放**右上角横排**：位置随内容区顶部固定，便于稳定点中（右下角会随曲目/播放条浮动）。
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _zoomButton(Icons.remove, '缩小', 0.8),
+                  const SizedBox(width: 8),
+                  _zoomButton(Icons.add, '放大', 1.25),
+                ],
+              ),
+            ),
+          ],
+        );
       }
       // 放大上限：图片宽度恰好铺满歌词区当前显示宽度
       final maxZoom = baseW > 0 ? vpW / baseW : 1.0;

@@ -95,8 +95,16 @@
   - **踩坑修正**：首版用 `FocusManager.primaryFocus.hasFocus` 判「键盘弹起」——Flutter 的 FocusScope **恒有焦点**，
     导致返回键永远只"收键盘"、抽屉永远关不掉；改用 `MediaQuery.viewInsetsOf(context).bottom > 0`
   - **桌面回归**：`flutter build windows --release` ✓；`analyze` 0 / `test` 75
-- **下一工单**：**C-4 四模式页**（歌词 / 曲谱分页（接 B-4 的 `JianpuPagination`）/ 简谱 / 五线谱；扫描图缩放包络 §3.11）
-- **必读章节**：`ANDROID_PLAN.md` §3.11（缩放包络）/ §3.14（曲谱分页）/ `UI_CONFIRMATION_ANDROID.md` §3.1.x
+- **C-4 四模式页（进行中）**（2026-10-24）—— 分两半做：
+  - **① 扫描图缩放包络 ✅**（§3.11）：手机改用 `InteractiveViewer`（`minScale 1.0` / **`maxScale 3.0×`** /
+    `boundaryMargin 24dp` 回弹 / 双击复位到 contain）+ 右上角 **＋/－ 按钮**（以视口中心缩放，兼作自动化验证入口）；
+    桌面仍走原有「滚轮缩放 + 纵向滚动」，**行为零改动**
+    - 实测：双击 → `谱面缩放复位 1.00×`；＋×2 → `1.25× → 1.56×`；－×1 → `1.25×`
+    - 桌面回归：`flutter build windows --release` ✓；`analyze` 0 / `test` 75
+  - **② 曲谱按小节分页接入** ⬜（下一步）—— 把 B-4 的 `JianpuPagination` 接进 `JianpuGridView`
+    （页窗口 = 列范围切片 + 翻页条「第 k/N 页（第 a~b 小节）」+ 手动/自动翻页）
+- **下一工单**：**C-4 后半 — 曲谱分页渲染接入**（B-4 已备好纯计算层；注意每块小节中位 5 > 每页上限 4 → 块内必然多页）
+- **必读章节**：`ANDROID_PLAN.md` §3.14 / §3.11（已做）/ `JianpuGridView` 现有渲染入口
 
 ## 环境变更（换机/清缓存时需复原）
 
