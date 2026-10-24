@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path_provider/path_provider.dart';
+
 /// 日志级别
 enum LogLevel { info, warning, error }
 
@@ -61,7 +63,13 @@ class LogService {
 
     try {
       String base;
-      if (ensureExeDir) {
+      // 移动端（Android / 鸿蒙）：`Platform.resolvedExecutable` 指向系统进程路径
+      //（/system/bin/app_process*），在那里创建 logs/ 会被权限拒绝 → 日志全丢。
+      // 改用应用私有目录（Android = /data/data/<pkg>/files），与数据库同根，
+      // 可用 `adb shell run-as <pkg> cat files/logs/app_*.log` 取证（B-1 验收依赖）。
+      if (Platform.isAndroid) {
+        base = (await getApplicationSupportDirectory()).path;
+      } else if (ensureExeDir) {
         try {
           final exe = Platform.resolvedExecutable;
           base = File(exe).parent.path;

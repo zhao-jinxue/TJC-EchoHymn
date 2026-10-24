@@ -8,6 +8,7 @@ import '../models/hymn_ref.dart';
 import '../models/jianpu_grid.dart';
 import '../models/playlist.dart';
 import 'app_paths.dart';
+import 'db_bootstrap.dart';
 import 'log_service.dart';
 
 /// 歌单名称最大长度（与 `CreatePlaylistDialog` 的 `TextField.maxLength` 对齐）。
@@ -53,6 +54,9 @@ class SqliteRepository {
   /// 打开数据库并确保个人歌单表存在（含旧双表结构自动迁移）
   static Future<SqliteRepository> open() async {
     await AppPaths.init();
+    // 移动端：先把打包进 APK 的内置库（474 首）装到应用私有目录；
+    // 桌面端为 no-op（直接用安装目录 data/tjc_hymn.db）。见 DbBootstrap。
+    await DbBootstrap.ensureDatabase();
     final path = AppPaths.databasePath ?? '';
     final db = sqlite3.open(path);
     LogService.instance.info(LogTag.lib, '打开 SQLite 数据库', detail: path);

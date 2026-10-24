@@ -15,8 +15,14 @@
   post-commit 钩子入库存放 `tools/git-hooks/`，配 `tools/install_git_hooks.ps1`（`core.hooksPath` 已启用）；
   `lib/platform/` 成为平台能力唯一落点（`window_controls*` 三件套迁入，2 处 import 收敛）；
   installer 明确「仅打 tag 产出」；边界与职责见 `docs/knowledge/PROJECT_LAYOUT.md`
-- **下一工单**：**B-1 DB asset 首启拷贝** —— 把 25.53 MB `tjc_hymn.db` 打进 assets，首启校验（长度/版本戳）后拷到 `getApplicationSupportDirectory()`，替换现在的空库
-- **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B1~B9）+ §12.2（数据基线 474 / 21819 / 321703）
+- **B-1 DB asset 首启拷贝 ✅**（2026-10-24）—— 新增 `lib/services/db_bootstrap.dart`（版本戳 `assetVersion=1` + `.tmp` 原子写 + 失败不崩）、
+  `tools/sync_db_asset.ps1`（**单一数据源** `data/tjc_hymn.db` → assets，资产本身不入库，避免仓库存两份 25 MB）、
+  `SqliteRepository.open()` 接入；顺带修复 `LogService` 在 Android 落盘（原用 `Platform.resolvedExecutable` 目录 → 系统路径不可写，日志全丢）
+  - **实测**（`pm clear` 模拟首装，日志 `files/logs/app_2026-10-24.log`）：
+    `首启安装内置数据库完成｜26775552 字节 → /data/user/0/com.echohymn.app/files/tjc_hymn.db（版本 1）` →
+    `数据库数据加载完成｜诗歌 474 首 / 分类 47 条` → `HomeScreen 初始化完成｜诗歌总数: 474` → `加载诗歌：第 1 首《頌讚獨一真神》`
+- **下一工单**：**B-2 素材样本（10~20 首）+ 路径复测** —— 音频样本进 assets，移动端素材根落应用私有目录
+- **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B2~B9）+ §12.2（数据基线 474 / 21819 / 321703）
 
 ## 环境变更（换机/清缓存时需复原）
 
@@ -36,6 +42,9 @@
 | Windows 实机不退化验证（A-2 仅 analyze/test） | A-2 收尾 | 你抽空开一次 exe |
 | 349「救主正在等待」歌词/作者/源考是否更新 | B-1（不阻塞） | 你 |
 | 素材体积方案（样本内置 + SAF 导入）落地细节 | B-2/B-3 | 可先按计划执行 |
+
+| 窄屏布局溢出（`RenderFlex overflowed 75 / 21 px`，首屏右侧） | M3 UI 适配 | 计划内，M3 处理 |
+| 日志文案「音频播放库加载完成（audioplayers / Windows Media Foundation）」在 Android 上不准确 | 小瑕疵 | B-2 顺手改 |
 
 ## 最近里程碑
 

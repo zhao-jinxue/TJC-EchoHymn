@@ -67,6 +67,9 @@ release/*
 !release/ohos/
 !release/ohos/README.md
 
+# Android 内置数据库资产（单一数据源：由 tools/sync_db_asset.ps1 从 data/tjc_hymn.db 同步，不入库）
+hymn_app/assets/data/tjc_hymn.db
+
 # 安装包工程产物（大文件与可再生物，源码脚本正常入库）
 installer/payload.7z
 installer/staging/

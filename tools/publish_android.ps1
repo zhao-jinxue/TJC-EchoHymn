@@ -86,6 +86,22 @@ $PkgOutDir = Join-Path $ReleaseDir $PkgName
 if (Test-Path $PkgOutDir) { Remove-Item $PkgOutDir -Recurse -Force }
 New-Item -ItemType Directory -Path $PkgOutDir -Force | Out-Null
 
+# ---- 3.5. 同步内置数据库资产（单一数据源 data/tjc_hymn.db → assets）----
+$sync = Join-Path $Root 'tools\sync_db_asset.ps1'
+if (Test-Path $sync) {
+    Write-Step '同步内置数据库资产（assets/data/tjc_hymn.db）...'
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $sync
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorL '数据库资产同步失败（APK 内可能是旧库），继续构建'
+    }
+    else {
+        Write-OK '数据库资产已同步'
+    }
+}
+else {
+    Write-ErrorL "缺少 $sync，APK 内将不含最新数据库"
+}
+
 # ---- 4. 逐变体构建 ----
 $built = New-Object System.Collections.ArrayList
 foreach ($v in $Variants) {
