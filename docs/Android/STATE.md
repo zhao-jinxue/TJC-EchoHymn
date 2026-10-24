@@ -85,8 +85,18 @@
   - **实测**：`手机横屏双栏（914×411dp）` → 旋回 `手机竖屏单列（411×914dp）`，全程 `overflow 0`；
     截图 `_shots/android/c2_landscape.png`、`c2_portrait_after.png`
   - **桌面回归**：`flutter build windows --release` ✓（32.5s）；`analyze` 0 / `test` 75
-- **下一工单**：**C-3 双抽屉**（左三 Tab / 右源考；互斥规则 §3.9 + 6 条返回路径）
-- **必读章节**：`ANDROID_PLAN.md` §3.9（导航状态机）/ §3.1.2~3.1.5（抽屉稿）
+- **C-3 双抽屉 + 返回栈 ✅**（2026-10-24）—— 按 §3.9 实现**系统返回六条优先级**（`PopScope(canPop:false)` 统一裁决）：
+  ① 软键盘弹起 → 先收键盘 ② 弹层（Flutter 自带）③ **抽屉打开 → 只关抽屉** ④ 页面栈（未落地）
+  ⑤ 沉浸态（未落地）⑥ 主界面 → `SystemNavigator.pop()` 交系统退后台
+  - **左右互斥**：开左抽屉自动关右、开右自动关左（§3.9 表）
+  - 顶栏高度按令牌 `bar.top`：竖屏 56 / **横屏 48**
+  - **实测**：点 ≡ → `展开左侧栏目` → 按返回 → `系统返回：关闭抽屉` + 回写 `showLeft:false`；
+    再按返回（无抽屉）→ activity 退到后台、进程保留（`pid 6260`）
+  - **踩坑修正**：首版用 `FocusManager.primaryFocus.hasFocus` 判「键盘弹起」——Flutter 的 FocusScope **恒有焦点**，
+    导致返回键永远只"收键盘"、抽屉永远关不掉；改用 `MediaQuery.viewInsetsOf(context).bottom > 0`
+  - **桌面回归**：`flutter build windows --release` ✓；`analyze` 0 / `test` 75
+- **下一工单**：**C-4 四模式页**（歌词 / 曲谱分页（接 B-4 的 `JianpuPagination`）/ 简谱 / 五线谱；扫描图缩放包络 §3.11）
+- **必读章节**：`ANDROID_PLAN.md` §3.11（缩放包络）/ §3.14（曲谱分页）/ `UI_CONFIRMATION_ANDROID.md` §3.1.x
 
 ## 环境变更（换机/清缓存时需复原）
 

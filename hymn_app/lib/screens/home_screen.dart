@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 
 import '../app.dart';
 import '../models/hymn.dart';
@@ -407,12 +408,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     '最短边 ${mq.shortestSide.round()}dp）',
               );
             }
+            Widget shell;
             if (isPhone) {
-              // 手机竖屏骨架（ANDROID_PLAN §3.1）：
-              //   系统状态栏（SafeArea.top）→ 顶栏 56 → 合并行 44 + 主体 + 播放条（HymnDisplay 内）
+              // 手机骨架（ANDROID_PLAN §3.1）：
+              //   系统状态栏（SafeArea.top）→ 顶栏 56/48 → 合并行 44 + 主体 + 播放条
               //   → 系统导航栏（播放条自吃 SafeArea.bottom）
               // 桌面自绘的 30px 标题栏 / 30px 状态栏是窗口语义（最小化·最大化·关闭），手机不出现。
-              return Scaffold(
+              shell = Scaffold(
                 body: SafeArea(
                   bottom: false,
                   child: Column(
@@ -425,19 +427,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               );
             }
-            return Scaffold(
-              body: Column(
-                children: [
-                  // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
-                  // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
-                  _buildTitleBar(),
-                  Divider(height: 1, color: AppColors.divider),
-                  _buildTopBar(),
-                  Expanded(child: _buildBody()),
-                  Divider(height: 1, color: AppColors.divider),
-                  _buildStatusBar(),
-                ],
-              ),
+            else {
+              shell = Scaffold(
+                body: Column(
+                  children: [
+                    // 自上而下：自绘窗口标题栏(30) → 顶栏(40) → 内容区 → 底部状态栏(30)
+                    // 窗口最小客户区 850×890 不变，四部分在此高度内分配。
+                    _buildTitleBar(),
+                    Divider(height: 1, color: AppColors.divider),
+                    _buildTopBar(),
+                    Expanded(child: _buildBody()),
+                    Divider(height: 1, color: AppColors.divider),
+                    _buildStatusBar(),
+                  ],
+                ),
+              );
+            }
+
+            // 系统返回优先级（ANDROID_PLAN §3.9，6 条）：
+            // 1 软键盘 → 2 弹层（Flutter 弹层自带返回处理）→ 3 抽屉 → 4 页面栈
+            // （搜索/设置/手册等尚未落地）→ 5 沉浸态（未落地）→ 6 主界面交给系统。
+            // canPop 恒 false ⇒ 全部由这里裁决；无拦截项时手动 SystemNavigator.pop() 回桌面。
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, result) {
+                if (didPop) return;
+                // 优先级 1：软键盘弹起 → 先收键盘。
+                // **不能用 `focus.hasFocus` 判断**：Flutter 的 FocusScope 恒有焦点，
+                // 那样会让返回键永远只"收键盘"、抽屉永远关不掉（C-3 实测踩到）。
+                if (MediaQuery.viewInsetsOf(context).bottom > 0) {
+                  FocusScope.of(context).unfocus();
+                  LogService.instance.info(LogTag.action, '系统返回：收起软键盘');
+                  return;
+                }
+                if (_showLeft || _showRight) {
+                  LogService.instance.info(LogTag.action, '系统返回：关闭抽屉');
+                  setState(() {
+                    _showLeft = false;
+                    _showRight = false;
+                  });
+                  _saveState();
+                  return;
+                }
+                // 优先级 6：主界面 → 交给系统（回桌面 / 退到后台）
+                SystemNavigator.pop();
+              },
+              child: shell,
             );
           },
         );
@@ -623,8 +658,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ? '第 ${hymn.hymnNumber} 首《'
             '${ChineseConvertService.instance.toSimplified(hymn.title)}》'
         : 'EchoHymn · 聆听赞美诗';
+    // 顶栏高度：竖屏 56 / 横屏 48（ANDROID_PLAN §3.0.1 令牌 bar.top）
+    final mq = MediaQuery.sizeOf(context);
+    final isLandscape = mq.width > mq.height;
     return Container(
-      height: 56,
+      height: isLandscape ? 48 : 56,
       color: AppColors.topBarBg,
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
@@ -639,7 +677,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 LogTag.action,
                 _showLeft ? '收起左侧栏目' : '展开左侧栏目',
               );
-              setState(() => _showLeft = !_showLeft);
+              setState(() {
+                _showLeft = !_showLeft;
+                if (_showLeft) _showRight = false; // 左右抽屉互斥（§3.9）
+              });
               _saveState();
             },
           ),
@@ -668,7 +709,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               } else if (v == 'source') {
                 LogService.instance.info(LogTag.action,
                     _showRight ? '收起右侧栏目' : '展开右侧栏目');
-                setState(() => _showRight = !_showRight);
+                setState(() {
+                  _showRight = !_showRight;
+                  if (_showRight) _showLeft = false; // 左右抽屉互斥（§3.9）
+                });
                 _saveState();
               }
             },

@@ -1338,7 +1338,7 @@ Hymn_Downloads/<曲目>/ ──checksums.json──▶ 素材完整性基线
 
 | 文档 | 用途 |
 | --- | --- |
-| [SESSION_SUMMARY.md](SESSION_SUMMARY.md) | Android 开发总结（里程碑 / 决策 / 教训） | 
+| [SESSION_SUMMARY.md](SESSION_SUMMARY.md) | Android 开发总结（里程碑 / 决策 / 教训） |
 | [STATE.md](STATE.md) | 📍 **开发状态（唯一续接入口）**：当前阶段 / 下一工单 / 阻塞 / 验收命令 —— 每会话先读、离开前更新 |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | 🧭 **实施计划**：工单拆分 / 验收与自检 / 会话轮换与压缩恢复 / 资料分层与不读清单 |
 | [UI_CONFIRMATION_ANDROID.md](UI_CONFIRMATION_ANDROID.md) | ✅ UI 确认单 v1.0（13 个界面稿 + 平板草图） |
