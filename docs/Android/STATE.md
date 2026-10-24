@@ -21,8 +21,18 @@
   - **实测**（`pm clear` 模拟首装，日志 `files/logs/app_2026-10-24.log`）：
     `首启安装内置数据库完成｜26775552 字节 → /data/user/0/com.echohymn.app/files/tjc_hymn.db（版本 1）` →
     `数据库数据加载完成｜诗歌 474 首 / 分类 47 条` → `HomeScreen 初始化完成｜诗歌总数: 474` → `加载诗歌：第 1 首《頌讚獨一真神》`
-- **下一工单**：**B-2 素材样本（10~20 首）+ 路径复测** —— 音频样本进 assets，移动端素材根落应用私有目录
-- **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B2~B9）+ §12.2（数据基线 474 / 21819 / 321703）
+- **B-2 素材样本 + 路径复测 ✅**（2026-10-24）—— 新增 `tools/sync_audio_samples.ps1`（固定 12 首样本、**按变体裁剪**：
+  full 双版本 / piano 仅钢琴 / vocal 仅人声 / lite 零音频）+ `lib/services/media_bootstrap.dart`
+  （按 `assets/media/index.json` 把扁平 asset 还原为 `files/Hymn_Downloads/<中文目录>/<中文文件名>`；只补齐不清理，大小一致即跳过）
+  - **实测（模拟器 full）**：`内置音频样本安装完成｜新增 22 / 跳过 0 / 失败 0（共 22 条，版本 1）`；
+    落点 `files/Hymn_Downloads/001_1頌讚獨一真神/1_鋼琴版.m4a`（2 209 669 B）与 `1_人聲版.mp3`（670 746 B）与索引一致；
+    特殊命名 `052_51_b萬古靈磐乙/51_b_*.mp3` 正常
+  - **播放 / seek**：`播放诗歌 → 文件路径 /data/user/0/com.echohymn.app/files/Hymn_Downloads/001_1頌讚獨一真神/1_鋼琴版.m4a` → `播放成功`；
+    拖动进度条 → `跳转播放位置 → 125.6 秒`
+  - **lite 验收**：`index.json` = `[]`（2 B）；lite APK 内 `assets/media` **仅 1 条目**，无任何音频文件
+  - 顺手：`AudioService.seek` 补日志（原无记录，不便取证）；播放库日志文案改平台中立
+- **下一工单**：**B-3 扫描图链路 + 大图解码** —— 简谱/五线谱扫描图显示，无 OOM
+- **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B3~B9）+ §12.2（数据基线 474 / 21819 / 321703）
 
 ## 环境变更（换机/清缓存时需复原）
 

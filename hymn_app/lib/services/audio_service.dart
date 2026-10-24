@@ -60,7 +60,7 @@ class AudioService {
   AudioService() {
     instance = this;
     LogService.instance
-        .info(LogTag.lib, '音频播放库加载完成（audioplayers / Windows Media Foundation）');
+        .info(LogTag.lib, '音频播放库加载完成（audioplayers 6.x / 系统原生解码器）');
     _init();
   }
 
@@ -303,6 +303,11 @@ class AudioService {
 
   Future<void> seek(Duration position) async {
     await _player.seek(position);
+    LogService.instance.info(
+      LogTag.play,
+      '跳转播放位置',
+      detail: '→ ${(position.inMilliseconds / 1000).toStringAsFixed(1)} 秒',
+    );
   }
 
   /// 音量 / 静音状态（快捷键控制用）

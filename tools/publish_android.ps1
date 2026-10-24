@@ -106,6 +106,12 @@ else {
 $built = New-Object System.Collections.ArrayList
 foreach ($v in $Variants) {
     Write-Step "构建变体 $v ..."
+    # 按变体裁剪内置音频样本：full 双版本 / piano 仅钢琴 / vocal 仅人声 / lite 无音频
+    $syncSamples = Join-Path $Root 'tools\sync_audio_samples.ps1'
+    if (Test-Path $syncSamples) {
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $syncSamples -Variant $v | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-ErrorL "样本同步失败（变体 $v），继续构建" }
+    }
     Push-Location $AppDir
     try {
         # flutter 的正常提示会写 stderr，Stop 模式下会被误判为终止性错误

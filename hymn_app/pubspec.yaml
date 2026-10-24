@@ -33,6 +33,9 @@ flutter:
     # 内置诗歌库（474 首）：由 tools/sync_db_asset.ps1 从仓库 data/tjc_hymn.db 同步，
     # 不入库（避免仓库里存两份 25 MB）；移动端首启由 DbBootstrap 拷到私有目录。
     - assets/data/tjc_hymn.db
+    # 内置音频样本（12 首）：由 tools/sync_audio_samples.ps1 **按变体**生成，
+    # 不入库；lite 变体的 index.json 为空数组 → 包内不含任何音频（B3 验收口径）。
+    - assets/media/
   # 内置中文字体（Noto Sans SC 子集，OFL 许可）：
   # ① w500 有真实 Medium 字面，根治换肤菜单逐字字重不均；
   # ② 全应用字体自足，迁移到无雅黑环境（如 OpenHarmony/其他 Windows）不异常。
