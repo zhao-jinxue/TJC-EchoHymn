@@ -30,6 +30,7 @@
   - **播放 / seek**：`播放诗歌 → 文件路径 /data/user/0/com.echohymn.app/files/Hymn_Downloads/001_1頌讚獨一真神/1_鋼琴版.m4a` → `播放成功`；
     拖动进度条 → `跳转播放位置 → 125.6 秒`
   - **lite 验收**：`index.json` = `[]`（2 B）；lite APK 内 `assets/media` **仅 1 条目**，无任何音频文件
+  - **变体体积实证**（commit `4e79380`，arm64 release）：**lite 53.59 / vocal 57.32 / piano 68.64 / full 72.36 MB** —— 差异正好等于各变体音频（人声 3.7 / 钢琴 15.1 MB）
   - 顺手：`AudioService.seek` 补日志（原无记录，不便取证）；播放库日志文案改平台中立
 - **下一工单**：**B-3 扫描图链路 + 大图解码** —— 简谱/五线谱扫描图显示，无 OOM
 - **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B3~B9）+ §12.2（数据基线 474 / 21819 / 321703）
@@ -42,7 +43,7 @@
 | `kotlin.incremental` | **false**（`android/gradle.properties`）—— 跨盘符 Kotlin 增量编译抛 `different roots` |
 | native-assets | **保持启用** —— `objective_c` 强制要求 |
 | NDK / CMake | `D:\Android\Sdk\ndk\28.2.13676358` · `cmake\3.22.1` |
-| APK 产物 | `hymn_app\build\app\outputs\flutter-apk\`（release 53.6 MB 含库 / debug 172.4 MB） |
+| APK 产物 | `hymn_app\build\app\outputs\flutter-apk\`（release：lite 53.6 / vocal 57.3 / piano 68.6 / full 72.4 MB；debug 172.4 MB） |
 
 ## 阻塞 / 待确认
 
