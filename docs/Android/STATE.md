@@ -58,8 +58,16 @@
   - `manualOnStart=false` → 无「启动自动弹出用户手册」日志 ✓；状态文件回写路径 = `files/state.json` ✓
   - **顺带修**：字号 ×1.9 + 左栏展开时内容区仅 ~82dp，扫描图解码宽被压到 432px；若视口随后变宽会明显模糊 →
     `_ScoreImageView` 增加「视口宽变化 >50% 则重新解码」（实测 normal/收起侧栏时回到 2048×3028）
-- **下一工单**：**B-6 打包白名单校验脚本** —— 产物无 `.pdf/.exe/.mp4`、无库外路径；并顺带校验 M2 数据基线（474 / 21819 / 321703）
-- **必读章节**：`ANDROID_PLAN.md` §4.3 + §7.5（素材）+ §12.2（数据基线）
+- **B-6 打包白名单校验脚本 ✅**（2026-10-24）—— 新增 `tools/verify_android_package.ps1`：
+  ① 禁止类型（`.pdf/.exe/.mp4/.zip/...`）② `flutter_assets` 库外路径（白名单 `assets/data|media|fonts`、`shaders`、`packages`、`fonts`
+  + 框架根文件含 `NativeAssetsManifest.json`）③ **M2 数据基线** 474 / 21819 / 321703（解包内 DB 用 python 查）；
+  已接入 `publish_android.ps1`（每变体校验，基线只跑一次）
+  - **正向实测**（4 变体 APK）：禁止类型 0 / 库外路径 0；基线 **474 / 21819 / 321703 全部一致** → 退出码 0
+  - **负向实测**（构造含 `.pdf` + `assets/secret/leak.txt` 的假 APK）：两项均被检出，退出码 1 ✓（证明不是"永远通过"）
+- **M2 出口**：**数据链路全通 + §12.2 基线一致 ✅**（474 / 21819 / 321703 在 Android 侧 APK 内实测一致）；
+  剩余「UI 确认单像素校准 ±2dp」随 M3 完成
+- **下一工单**：**C-1 手机布局壳**（竖屏：顶栏 56 + 合并行 44 + 主体 + 播放条 72）—— 顺带解决当前窄屏 `RenderFlex overflowed`
+- **必读章节**：`ANDROID_PLAN.md` §3.1（布局）/ §3.1.1（确认单）/ `UI_CONFIRMATION_ANDROID.md`
 
 ## 环境变更（换机/清缓存时需复原）
 

@@ -173,6 +173,28 @@ $manifest = @(
 )
 Set-Content -Path (Join-Path $PkgOutDir 'BUILD-INFO.txt') -Value $manifest -Encoding utf8BOM
 
+# ---- 5.5 产物白名单校验（B-6）：禁止类型 / 库外路径 / 数据基线 ----
+$verify = Join-Path $Root 'tools\verify_android_package.ps1'
+if (Test-Path $verify) {
+    Write-Step '校验产物白名单与数据基线...'
+    $verifyFailed = $false
+    $isFirst = $true
+    foreach ($apkFile in (Get-ChildItem -Path $PkgOutDir -File -Filter '*.apk' | Sort-Object Name)) {
+        $vArgs = @{ Apk = $apkFile.FullName }
+        if (-not $isFirst) { $vArgs['SkipBaseline'] = $true } # 基线只校验一次（各变体同库）
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $verify @vArgs 2>&1 | ForEach-Object { Write-Log $_ }
+        if ($LASTEXITCODE -ne 0) { $verifyFailed = $true }
+        $isFirst = $false
+    }
+    if ($verifyFailed) {
+        Write-ErrorL '白名单/基线校验未通过（详见上方 FAIL 项）'
+    }
+    else {
+        Write-OK '白名单与数据基线校验通过（全部变体）'
+    }
+}
+
+
 # ---- 6. 只保留最近 KeepCount 个版本目录 ----
 Write-Step "清理旧版本（保留最近 $KeepCount 个）..."
 $versionDirs = Get-ChildItem -Path $ReleaseDir -Directory -ErrorAction SilentlyContinue |
