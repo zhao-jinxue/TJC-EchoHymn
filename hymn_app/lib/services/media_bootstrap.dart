@@ -117,7 +117,7 @@ class MediaBootstrap {
 
     LogService.instance.info(
       LogTag.lib,
-      '内置音频样本安装完成',
+      '内置样本素材安装完成',
       detail: '新增 $installed / 跳过 $skipped / 失败 $failed'
           '（共 ${entries.length} 条，版本 $mediaVersion，版本戳匹配=$versionMatches）',
     );

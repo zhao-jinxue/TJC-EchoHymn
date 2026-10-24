@@ -1030,33 +1030,61 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
   /// 滚轮缩放速度：每像素滚动量对应的指数缩放因子
   static const double _wheelZoomSpeed = 0.0015;
 
-  Size? _natural; // 图片自然像素尺寸（解码完成后有效）
+  /// 解码分辨率倍率：**视口宽 × 设备像素比 × 该系数**
+  ///
+  /// 扫描图常见 2480×3508（A4 300dpi），全尺寸解码 ≈35 MB/张；连开几首即 OOM。
+  /// 按 2 倍余量解码（手机约 4~8 MB/张）既够「铺满放大」查看，也不撑爆内存。
+  static const double _decodeScale = 2.0;
+
+  Size? _natural; // 解码后的像素尺寸（等比缩放，比例与原图一致）
   double _zoom = 1.0; // 1=初始宽度；上限=歌词区宽/初始宽（build 内钳制）
   final ScrollController _scroll = ScrollController();
   ImageStream? _stream;
   ImageStreamListener? _listener;
+
+  /// 当前解码宽度（0 = 尚未确定，见 build 的首帧调度）
+  int _decodeWidth = 0;
+
+  /// 是否已排入首帧后的解码调度（防重复）
+  bool _resolveScheduled = false;
 
   bool get _isNetwork => widget.path.startsWith('http');
 
   @override
   void initState() {
     super.initState();
-    _resolve();
+    // 解码在首帧布局后按视口宽度决定（需要 constraints 才能算出解码尺寸），见 build。
   }
 
-  void _resolve() {
-    late final ImageProvider provider;
-    if (_isNetwork) {
-      provider = NetworkImage(widget.path);
-    } else {
-      provider = FileImage(File(widget.path));
-    }
-    _stream = provider.resolve(ImageConfiguration.empty);
+  /// 按解码宽度构造 provider（`_resolve` 与 `_buildImage` **必须用同一参数**，
+  /// 否则 `ImageCache` 键不同 → 同一张图被解码两次，内存翻倍）。
+  ImageProvider _provider(int decodeW) {
+    if (_isNetwork) return NetworkImage(widget.path);
+    final file = File(widget.path);
+    if (decodeW <= 0) return FileImage(file);
+    return ResizeImage(FileImage(file), width: decodeW, allowUpscaling: false);
+  }
+
+  String _baseName() {
+    final p = widget.path;
+    final i = p.lastIndexOf(RegExp(r'[/\\]'));
+    return i >= 0 ? p.substring(i + 1) : p;
+  }
+
+  void _resolve(int decodeW) {
+    _decodeWidth = decodeW;
+    _stream = _provider(decodeW).resolve(ImageConfiguration.empty);
     _listener = ImageStreamListener(
       (info, _) {
         if (!mounted) return;
-        setState(() => _natural = Size(info.image.width.toDouble(),
-            info.image.height.toDouble()));
+        final w = info.image.width;
+        final h = info.image.height;
+        LogService.instance.info(
+          LogTag.ui,
+          '谱面图片解码完成',
+          detail: '${_baseName()} → ${w}x$h（目标宽 $decodeW）',
+        );
+        setState(() => _natural = Size(w.toDouble(), h.toDouble()));
       },
       onError: (e, s) {
         LogService.instance.error(LogTag.ui, '谱面图片解码失败',
@@ -1078,7 +1106,7 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
       });
-      _resolve();
+      // 重新解码交给 build 的首帧调度（_stream == null 时会按新视口宽重算）。
     }
   }
 
@@ -1102,6 +1130,21 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
     return LayoutBuilder(builder: (context, constraints) {
       final vpW = constraints.maxWidth;
       final vpH = constraints.maxHeight;
+
+      // 首帧后按视口宽决定解码尺寸。
+      // 不能在 build 里直接 resolve：若该图已在 ImageCache，listener 会**同步**回调
+      // setState → 触发 "setState() called during build"。
+      if (_stream == null && !_resolveScheduled && vpW > 0) {
+        final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
+        final decodeW = (vpW * dpr * _decodeScale).round().clamp(320, 2048);
+        _resolveScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _resolveScheduled = false;
+          if (!mounted) return;
+          _resolve(decodeW);
+        });
+      }
+
       final natural = _natural;
 
       // 初始显示宽度 baseW：图片 contain 进歌词区且不放大的结果。
@@ -1161,11 +1204,19 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
   }
 
   Widget _buildImage(double w, double h) {
-    return _isNetwork
-        ? Image.network(widget.path,
-            width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError)
-        : Image.file(File(widget.path),
-            width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError);
+    if (_isNetwork) {
+      return Image.network(widget.path,
+          width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError);
+    }
+    // 与 _resolve 使用同一 provider（ResizeImage 以解码宽为键）→ 共享 ImageCache，
+    // 同一张图只解码一次；`cacheWidth` 也在此生效，避免全尺寸解码撑爆内存。
+    return Image(
+      image: _provider(_decodeWidth),
+      width: w,
+      height: h,
+      fit: BoxFit.contain,
+      errorBuilder: _imageError,
+    );
   }
 
   Widget _imageError(BuildContext context, Object error, StackTrace? stack) =>

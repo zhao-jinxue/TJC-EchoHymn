@@ -72,19 +72,26 @@ foreach ($s in $samples) {
         Write-Warning "样本目录不存在，跳过: $s"
         continue
     }
-    $files = Get-ChildItem -Path (Join-Path $dir '*') -File |
-        Where-Object { $_.Extension -in '.m4a', '.mp3' }
+    $files = Get-ChildItem -Path (Join-Path $dir '*') -File
+    $audio = @($files | Where-Object { $_.Extension -in '.m4a', '.mp3' })
+    $images = @($files | Where-Object { $_.Extension -in '.png', '.jpg' })
 
-    $picked = switch ($Variant) {
+    $picked = @(switch ($Variant) {
         'lite' { @() }
-        'piano' { @($files | Where-Object { $_.Name -like '*鋼琴版*' }) }
-        'vocal' { @($files | Where-Object { $_.Name -like '*人聲版*' }) }
-        default { @($files) }
-    }
+        'piano' { @($audio | Where-Object { $_.Name -like '*鋼琴版*' }) }
+        'vocal' { @($audio | Where-Object { $_.Name -like '*人聲版*' }) }
+        default { @($audio) }
+    })
+    # 扫描图（简谱 / 五线谱 PNG）：**所有变体都内置**——
+    # 无音频版 = 扫描图 + 数据库（ANDROID_PLAN §1.4），故 lite 也带图。
+    $picked += $images
 
     foreach ($f in $picked) {
         $seq++
-        $kind = if ($f.Name -like '*鋼琴版*') { 'piano' } else { 'vocal' }
+        $kind = if ($f.Name -like '*鋼琴版*') { 'piano' }
+        elseif ($f.Name -like '*人聲版*') { 'vocal' }
+        elseif ($f.Name -like '*简谱*') { 'numbered' }
+        else { 'staff' }
         $assetName = ('s{0:D3}_{1}{2}' -f $seq, $kind, $f.Extension)
         Copy-Item -Path $f.FullName -Destination (Join-Path $dstDir $assetName) -Force
         [void]$index.Add([pscustomobject]@{
@@ -104,5 +111,5 @@ $jsonText = if ($index.Count -eq 0) { '[]' } else { ConvertTo-Json -InputObject 
 $mb = [math]::Round($totalBytes / 1MB, 2)
 Write-Host ("[OK] 样本同步完成：变体={0} 文件={1} 体积={2} MB → hymn_app\assets\media" -f $Variant, $index.Count, $mb) -ForegroundColor Green
 if ($Variant -eq 'lite') {
-    Write-Host '     lite 变体：index.json 为空数组，APK 内不含任何音频文件（B3 验收口径）' -ForegroundColor Yellow
+    Write-Host '     lite 变体：**不含任何音频文件**，仅内置扫描图（无音频版 = 扫描图 + 数据库）' -ForegroundColor Yellow
 }

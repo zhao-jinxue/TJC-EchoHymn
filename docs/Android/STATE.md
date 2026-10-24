@@ -32,8 +32,17 @@
   - **lite 验收**：`index.json` = `[]`（2 B）；lite APK 内 `assets/media` **仅 1 条目**，无任何音频文件
   - **变体体积实证**（commit `4e79380`，arm64 release）：**lite 53.59 / vocal 57.32 / piano 68.64 / full 72.36 MB** —— 差异正好等于各变体音频（人声 3.7 / 钢琴 15.1 MB）
   - 顺手：`AudioService.seek` 补日志（原无记录，不便取证）；播放库日志文案改平台中立
-- **下一工单**：**B-3 扫描图链路 + 大图解码** —— 简谱/五线谱扫描图显示，无 OOM
-- **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B3~B9）+ §12.2（数据基线 474 / 21819 / 321703）
+- **B-3 扫描图链路 + 大图解码 ✅**（2026-10-24）—— `tools/sync_audio_samples.ps1` 扩展：12 首的**简谱/五线谱 PNG 全变体内置**
+  （lite 也带图 —— 无音频版 = 扫描图 + DB）；`_ScoreImageView` 改为**按显示宽解码**
+  （`ResizeImage(width: 视口宽×dpr×2, clamp 320~2048)`，`_resolve` 与 `_buildImage` 共用同一 provider 以共享 ImageCache）
+  + 补「谱面图片解码完成」日志；`main()` 移动端把 `imageCache.maximumSizeBytes` 降到 80 MB
+  - **实测**：原图 2173×3213（全尺寸 26.6 MB）→ 解码 **2048×3028（24.8 MB）**；连续 3 首（第 1/2/9 首）全部
+    `谱面图片解码完成`，TOTAL PSS **311.8 / 303.0 / 321.4 MB**，无 OOM
+  - **顺带修 `AppStateService`**（即 ANDROID_PLAN「`state.json` mobile 验证」）：原用 `Platform.resolvedExecutable` 目录，
+    Android 上不可写 → 状态永远存不住；改移动端走应用私有目录（`ensurePath()`）。实测 `files/state.json` 生成，
+    且重启后能恢复 `displayMode=staff`（这也是本轮扫描图验证的入口）
+- **下一工单**：**B-4 曲谱小节切分（B9）** —— 页数 = 各块页数之和；切页 ≤16 ms
+- **必读章节**：`ANDROID_PLAN.md` §4.3（阶段 B：B4~B9）+ §3.14（曲谱按小节分页）
 
 ## 环境变更（换机/清缓存时需复原）
 

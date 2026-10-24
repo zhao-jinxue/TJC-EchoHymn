@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -18,6 +19,8 @@ Future<void> main() async {
 
   // 恢复上次配色（state.json 的 appTheme；缺失/非法回退默认晨光蓝）
   try {
+    // 移动端状态目录需先初始化（桌面端为 exe 同级）
+    await AppStateService.ensurePath();
     final state = await AppStateService().load();
     ThemeController.instance.switchTo(themeById(state.appTheme));
     // 恢复上次字号等级（state.json 的 fontSizeLevel；缺失/非法回退默认）
@@ -25,6 +28,12 @@ Future<void> main() async {
         .switchTo(fontSizeLevelById(state.fontSizeLevel));
   } catch (e) {
     LogService.instance.error(LogTag.error, '恢复配色/字号失败，使用默认', detail: '$e');
+  }
+
+  // 移动端限制图片缓存：扫描图按显示宽解码后单张约 25 MB（2048×3028），
+  // 默认 100 MB 缓存可容 4 张；降到 80 MB 让多首切换时更早淘汰，避免 OOM。
+  if (Platform.isAndroid) {
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 80 << 20;
   }
 
   // 全局异常捕获（Flutter 框架层）
