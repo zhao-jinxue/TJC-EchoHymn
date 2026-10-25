@@ -232,11 +232,26 @@
       `apksigner verify --print-certs` → **`CN=EchoHymn, OU=Mobile, O=EchoHymn, L=Local, ST=Local, C=CN`**
       （SHA-256 `39d686f0…ce131`），不再是 `CN=Android Debug` ✅
     - **口令**：见交付说明（**不入库、不入文档**，已单独告知用户，需自行另存）
-  - **F-2 裁剪库 + 构建前素材同步 ⬜（下一步）**：本轮实测再次撞到「**素材与变体错配**」——
-    full release 只有 63.5 MB（应为 ~81 MB），因为 `assets/media` 停留在别的变体状态。
-    必须在 Gradle 构建前按 flavor 自动 `sync_audio_samples.ps1`，否则会打出内容不对的包
-  - **F-3 发版清单 + tag** ⬜
-- **必读章节**：`ANDROID_PLAN.md` §7（发布）/ §7.4（发布前清单）/ §1.4 ⑤（裁剪库与替代）
+  - **F-2 构建治理 + 4 变体体积对齐 ✅（裁剪库延后）**：
+    - 新增 **`tools/build_android_release.ps1`（唯一推荐出包入口）**：`sync 素材 → touch pubspec → build → 体积下限校验 → 签名校验`
+    - **根治「素材与变体错配」两处根因**：
+      1. `flutter build apk` 不同步 `assets/media` → 脚本内先按变体 sync
+      2. **`flutter build` 的 asset bundle 增量缓存**：只改目录内容不失效 →
+         实测 full 与 lite 打出同样 63.52 MB；脚本内 **touch `pubspec.yaml`** 强制重打包 → full 恢复 82.29 MB
+    - **4 变体实测（arm64 release，正式签名）**：
+      | 变体 | 实测 | §1.4 预期 | 偏差 |
+      | --- | --- | --- | --- |
+      | full | **82.29 MB** | 81.66 | +0.8% |
+      | piano | **78.56 MB** | 77.94 | +0.8% |
+      | vocal | **67.24 MB** | 66.62 | +0.9% |
+      | lite | **63.52 MB** | 62.90 | +1.0% |
+      （+0.8~1.0% 来自 D-2 新增的 audio_service / Kotlin 代码）
+    - **裁剪库脚本（`build_android_variant_db.py`）延后**：它的用途是「**完整素材大包**」按变体裁剪素材与 DB
+      （§7.5 方案 ②）；当前试用包只内置 12 首样本，裁库反而会让其余曲目连"记录"都没有 → 等 SAF 导入或大包方案再落地
+  - **F-3 发版清单 + tag ⬜**
+  - ⚠️ **试用包能力边界（必须让用户知道）**：内置只有 **12 首样本音频**（B-2 冻结），
+    其余 462 首**暂时无法播放** —— §7.5 的「外部导入（SAF）」尚未实现，这是 M5 之后的首要缺口
+- **必读章节**：`ANDROID_PLAN.md` §7.4（发布前清单）/ §7.5（素材分发方案）
 
 ## 环境变更（换机/清缓存时需复原）
 
