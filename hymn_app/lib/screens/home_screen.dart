@@ -20,6 +20,8 @@ import '../widgets/panels/left_panel_base.dart';
 import '../widgets/panels/my_playlists_panel.dart';
 import '../widgets/user_manual_dialog.dart';
 
+import 'search_page.dart';
+
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
 
@@ -696,6 +698,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
+          IconButton(
+            iconSize: 24,
+            icon: Icon(Icons.search, color: AppColors.textPrimary),
+            tooltip: '搜索（编号 / 歌名 / 歌词）',
+            onPressed: _openSearch,
+          ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: AppColors.textPrimary),
             tooltip: '更多',
@@ -726,6 +734,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  /// 打开全屏搜索页（`ANDROID_PLAN §3.1.6`）：选中即**进入并播放**
+  Future<void> _openSearch() async {
+    if (_allHymns.isEmpty) return;
+    LogService.instance.info(LogTag.action, '打开搜索页');
+    final picked = await Navigator.of(context).push<Hymn>(
+      MaterialPageRoute(builder: (_) => SearchPage(hymns: _allHymns)),
+    );
+    if (!mounted || picked == null) return;
+    final audio = _audio;
+    if (audio == null) return;
+    final idx = _allHymns.indexWhere((h) => h.hymnNumber == picked.hymnNumber);
+    if (idx < 0) return;
+    LogService.instance.info(
+      LogTag.play,
+      '搜索命中播放：第 ${picked.hymnNumber} 首《${picked.title}》',
+      detail: '全库位置 $idx / ${_allHymns.length}',
+    );
+    setState(() => _leftTab = LeftTab.hymnList);
+    audio.setPlaylist(_allHymns, startIndex: idx);
+    await audio.playAt(idx);
+    _saveState();
   }
 
   Widget _toggleButton({
