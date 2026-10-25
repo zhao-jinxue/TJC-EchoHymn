@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../app_feature.dart';
 import '../models/hymn.dart';
+import '../platform/media_import.dart';
+import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../theme/app_fonts.dart';
@@ -56,6 +61,9 @@ class SettingsPage extends StatelessWidget {
                   _buildPreviewSection(context),
                   // 无音频版（lite）没有播放能力 → 不显示「播放」分组（§3.1.15）
                   if (kHasAudio) _buildPlaybackSection(),
+                  // 素材导入（SAF；仅 Android 且有音频能力的变体才有意义，
+                  // 但 lite 也需要扫描图 → 全部 Android 变体都显示）
+                  if (Platform.isAndroid) _buildImportSection(context),
                   _buildHelpSection(context),
                   _buildAboutSection(),
                 ],
@@ -447,6 +455,73 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  // ---------- 素材导入（SAF，§7.5）----------
+  Widget _buildImportSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionTitle('素材'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '包内只有 12 首样本音频。可把完整素材目录（Hymn_Downloads）拷到手机后从这里导入；'
+            '导入会**复制**到应用私有目录（约 2.9 GB，需数分钟，期间请保持应用在前台）。',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.5,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 48,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '导入完整素材',
+                    style:
+                        TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: () => _startImport(context),
+                  child: const Text('选择目录'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _divider(),
+      ],
+    );
+  }
+
+  /// 选目录 → 导入 → 进度对话框（进度/结束走 `MediaImport` 的流）
+  Future<void> _startImport(BuildContext context) async {
+    final target = AppPaths.dataRoot;
+    if (target == null || target.isEmpty) {
+      LogService.instance.warning(LogTag.action, '素材导入：数据根目录未就绪');
+      return;
+    }
+    final uri = await MediaImport.pickDirectory();
+    if (uri == null) {
+      LogService.instance.info(LogTag.action, '素材导入：用户取消选择目录');
+      return;
+    }
+    final started =
+        await MediaImport.startImport(treeUri: uri, targetRoot: target);
+    if (!started || !context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _ImportProgressDialog(),
+    );
+  }
+
   // ---------- 帮助 ----------
   Widget _buildHelpSection(BuildContext context) {
     return Column(
@@ -539,6 +614,79 @@ class SettingsPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
       ],
+    );
+  }
+}
+
+
+/// 素材导入进度对话框（SAF 复制过程）
+///
+/// 监听 `MediaImport.progressStream` / `doneStream`：每 20 个文件刷新一次；
+/// 完成后自动关闭并提示结果（**需重启应用**才会重新扫描素材）。
+class _ImportProgressDialog extends StatefulWidget {
+  const _ImportProgressDialog();
+
+  @override
+  State<_ImportProgressDialog> createState() => _ImportProgressDialogState();
+}
+
+class _ImportProgressDialogState extends State<_ImportProgressDialog> {
+  int _copied = 0;
+  int _failed = 0;
+  StreamSubscription<MediaImportProgress>? _p;
+  StreamSubscription<MediaImportResult>? _d;
+
+  @override
+  void initState() {
+    super.initState();
+    _p = MediaImport.progressStream.listen((e) {
+      if (!mounted) return;
+      setState(() {
+        _copied = e.copied;
+        _failed = e.failed;
+      });
+    });
+    _d = MediaImport.doneStream.listen((e) {
+      if (!mounted) return;
+      Navigator.of(context).maybePop();
+      LogService.instance.info(
+        LogTag.action,
+        '素材导入结束',
+        detail: '成功 ${e.copied} / 失败 ${e.failed} / 错误 ${e.error ?? '无'}',
+      );
+      final msg = e.success
+          ? '素材导入完成：${e.copied} 个文件（重启应用后生效）'
+          : '导入中断：${e.error}（已完成 ${e.copied}）';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    });
+  }
+
+  @override
+  void dispose() {
+    _p?.cancel();
+    _d?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('正在导入素材'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const LinearProgressIndicator(),
+          const SizedBox(height: 12),
+          Text('已复制 $_copied 个文件${_failed > 0 ? '（失败 $_failed）' : ''}'),
+          const SizedBox(height: 6),
+          Text(
+            '约 2.9 GB，请保持应用在前台',
+            style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+          ),
+        ],
+      ),
+      actions: const [],
     );
   }
 }

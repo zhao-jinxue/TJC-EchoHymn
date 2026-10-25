@@ -1,11 +1,16 @@
 package com.echohymn.app
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 /**
  * EchoHymn 主 Activity。
@@ -16,6 +21,15 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private val permissionChannel = "echohymn/permission"
+    private val importChannel = "echohymn/import"
+
+    private var pickResult: MethodChannel.Result? = null
+    private var importChannelRef: MethodChannel? = null
+
+    // 导入进度（字段便于在递归回调里累加）
+    private var copiedCount = 0
+    private var failedCount = 0
+    private var lastNotifyAt = 0
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -43,5 +57,110 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // ---- 素材导入（F-4 SAF）----
+        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, importChannel)
+        importChannelRef = ch
+        ch.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "pickDirectory" -> {
+                    pickResult = result
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                        addFlags(
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                        )
+                    }
+                    startActivityForResult(intent, REQ_TREE)
+                }
+                "importTree" -> {
+                    val uriStr = call.argument<String>("uri")
+                    val targetRoot = call.argument<String>("targetRoot")
+                    if (uriStr.isNullOrEmpty() || targetRoot.isNullOrEmpty()) {
+                        result.error("ARG", "缺少 uri / targetRoot", null)
+                    } else {
+                        result.success(null) // 进度走 importProgress 回调
+                        Thread { copyTree(Uri.parse(uriStr), File(targetRoot)) }.start()
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_TREE) {
+            val uri = data?.data
+            if (resultCode == Activity.RESULT_OK && uri != null) {
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (_: SecurityException) {
+                    // 部分 provider 不支持持久授权；本次导入仍可用
+                }
+                pickResult?.success(uri.toString())
+            } else {
+                pickResult?.success(null)
+            }
+            pickResult = null
+        }
+    }
+
+    // ================= 素材复制 =================
+
+    private fun copyTree(treeUri: Uri, targetRoot: File) {
+        copiedCount = 0
+        failedCount = 0
+        lastNotifyAt = 0
+        val root = DocumentFile.fromTreeUri(this, treeUri)
+        if (root == null) {
+            finishImport("无法读取所选目录")
+            return
+        }
+        targetRoot.mkdirs()
+        root.listFiles().forEach { child ->
+            copyNode(child, File(targetRoot, child.name ?: "unnamed"))
+        }
+        finishImport(null)
+    }
+
+    private fun copyNode(node: DocumentFile, target: File) {
+        if (node.isDirectory) {
+            target.mkdirs()
+            node.listFiles().forEach { child ->
+                copyNode(child, File(target, child.name ?: "unnamed"))
+            }
+            return
+        }
+        try {
+            contentResolver.openInputStream(node.uri)?.use { input ->
+                target.parentFile?.mkdirs()
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+            copiedCount++
+        } catch (_: Exception) {
+            failedCount++
+        }
+        // 每 20 个文件报一次进度（避免高频跨平台调用）
+        if (copiedCount - lastNotifyAt >= 20) {
+            lastNotifyAt = copiedCount
+            importChannelRef?.invokeMethod(
+                "importProgress",
+                mapOf("copied" to copiedCount, "failed" to failedCount)
+            )
+        }
+    }
+
+    private fun finishImport(error: String?) {
+        importChannelRef?.invokeMethod(
+            "importDone",
+            mapOf("copied" to copiedCount, "failed" to failedCount, "error" to error)
+        )
+    }
+
+    companion object {
+        private const val REQ_TREE = 2001
     }
 }

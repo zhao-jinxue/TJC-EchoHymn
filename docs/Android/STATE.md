@@ -258,9 +258,24 @@
     - **试用包已产出**：`release/android/echohymn_android_trial_<时间戳>_18fd6c0/`
       （full 82.29 / piano 78.56 / vocal 67.24 / lite 63.52 MB + `SHA256SUMS.txt`）
     - **试用说明**：`docs/Android/TRIAL_GUIDE.md`（安装方式 / 能力边界 / 重点验什么 / 已知问题 / 反馈分级）
+- **📌 已裁定（2026-10-25 用户）**：**不跟随系统深色** —— 配色**完全由软件 5 套色板决定**
+  （晨光蓝 / 暖阳金 / 静谧绿 / 典雅紫 / 暗夜墨），不引入 `ThemeMode.system`。
+  → 「跟随系统深色」开关**不做**；深色谱面（§3.10 dim）只在选中「暗夜墨」时生效。
 - **M5 状态**：F-1 ✅ · F-2 ✅（构建治理）· F-3 ⚠️（清单 6✅/4⚠️/2❌，tag 待试用验收）
-- **下一步**：**你试用** → 收集 P0/P1 → 修完后打 tag；**SAF 素材导入**是试用后第一优先（否则 462 首永远不能播）
-- **必读章节**：`docs/Android/TRIAL_GUIDE.md`（自己先过一遍）
+- **下一步（用户已定 B → A）**：先做 **SAF 素材导入**（让 474 首全可播）→ 再由用户试用
+- **F-4 SAF 素材导入（代码完成 / 实机未点通）**：
+  - **决策同步**：**不跟随系统深色** —— 配色完全由软件 5 套色板决定，`ThemeMode.system` 不引入；
+    已在 `ANDROID_PLAN`（§3.1.7 决策表 / §需求基线 9）与 `UI_CONFIRMATION_ANDROID` 标注「不做」
+  - `MainActivity.kt` 承载**双通道**：`echohymn/permission`（D-2 通知权限）+ **`echohymn/import`**
+    （`ACTION_OPEN_DOCUMENT_TREE` 选目录 → `DocumentFile` 递归复制到应用私有目录 → 每 20 个文件回调进度 → 结束回调）
+  - Dart：新增 `lib/platform/media_import.dart`（`pickDirectory` / `startImport` / `progressStream` / `doneStream`）
+  - 设置页新增「素材」分组：「导入完整素材 → 选择目录」+ 进度对话框（完成提示**重启应用后生效**）
+  - 依赖：`androidx.documentfile:documentfile:1.0.1`
+  - **设计取舍**：**复制**而非直接读 SAF URI —— `audioplayers` 的 `DeviceFileSource` 只接受文件绝对路径；
+    复制完成后 DB 里的相对路径（`Hymn_Downloads/<曲目>/<文件>`）自然生效，播放链路零改动
+  - **验证**：`analyze` 0；Android 构建 ✓（Kotlin + documentfile 编译通过）；
+    **实机点通未完成** —— 系统目录选择器需人工点击，自动坐标探测未命中「选择目录」按钮
+- **下一步**：**你试用**（试用时顺手点一次「设置 → 素材 → 选择目录」验证 SAF 导入）→ 收集 P0/P1 → 打 tag
 
 ## 环境变更（换机/清缓存时需复原）
 

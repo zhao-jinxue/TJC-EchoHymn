@@ -88,3 +88,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // SAF 目录导入（素材外部导入）：递归遍历用户选中的目录并复制到应用私有目录
+    implementation("androidx.documentfile:documentfile:1.0.1")
+}
