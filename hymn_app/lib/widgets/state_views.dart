@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app.dart';
@@ -11,13 +13,49 @@ import '../app.dart';
 /// - [EmptyView]：图标 + 文案（真空态：无歌词 / 无搜索结果 …）
 /// - [ErrorView]：图标 + 文案 + **重试按钮**（此前只有文字，用户无路可走）
 /// - [FallbackView]：静默灰字（无谱面等非错误降级，§3.0 明确"不弹错"）
-class LoadingView extends StatelessWidget {
-  const LoadingView({super.key, this.message = '正在载入…'});
+class LoadingView extends StatefulWidget {
+  const LoadingView({
+    super.key,
+    this.message = '正在载入…',
+    this.delay = const Duration(milliseconds: 300),
+  });
 
   final String message;
 
+  /// 延迟显示（§3.0：**">300ms 才显示"** 防闪烁）——本地查库常几十毫秒，
+  /// 立即显示会让转圈图标"闪一下"。测试可传 `Duration.zero`。
+  final Duration delay;
+
+  @override
+  State<LoadingView> createState() => _LoadingViewState();
+}
+
+class _LoadingViewState extends State<LoadingView> {
+  bool _visible = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.delay == Duration.zero) {
+      _visible = true;
+      return;
+    }
+    _timer = Timer(widget.delay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 未到 300ms：不占位也不画转圈（避免闪烁）
+    if (!_visible) return const SizedBox.shrink();
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -32,7 +70,7 @@ class LoadingView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            message,
+            widget.message,
             style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
           ),
         ],

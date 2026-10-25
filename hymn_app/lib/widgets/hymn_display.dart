@@ -1044,6 +1044,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
                         child: Slider(
                           value: effective,
                           onChanged: (v) => widget.audio.setVolume(v),
+                          semanticFormatterCallback: (v) =>
+                              '音量 ${(v * 100).round()}%',
                         ),
                       ),
                     ),
@@ -1117,6 +1119,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
                         : 1,
                     onChanged: (v) =>
                         widget.audio.seek(Duration(milliseconds: v.toInt())),
+                    // 无障碍（§3.0.5）：TalkBack 读到「播放进度 1 分 23 秒」
+                    semanticFormatterCallback: (v) =>
+                        '播放进度 ${formatTime(Duration(milliseconds: v.toInt()))}',
                   ),
                 ),
                 Text(formatTime(dur),
