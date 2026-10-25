@@ -89,11 +89,12 @@ class JianpuGridView extends StatelessWidget {
   static const double minSlot = 9.0;
   static const double maxSlot = 72.0;
 
-  /// **不足一屏时放大填满**（2026-10-25 用户要求 B）：
-  /// - [maxGrowScale]：最多放大到可用高的几倍（防止单句被放到荒谬的大）；
-  /// - [maxSlotGrow]：放大后的槽宽上限（会**超过**可用宽 → 由外层横向滚动承接）。
-  static const double maxGrowScale = 2.2;
-  static const double maxSlotGrow = 140.0;
+  /// **不足一屏时放大填满**（2026-10-25 用户先选 B，随后二次反馈关闭）：
+  /// - 放大到 2.2 倍后**列间距过大**，且一行歌词无法在竖屏宽度内完整显示
+  ///   （需横向滑动）→ 用户要求「一行歌词全部竖屏显示」，故**回退回不放大**
+  /// - 常量与横向滚动结构保留：将来若要「曲谱专属字号」，从 `maxGrowScale` 开启即可
+  static const double maxGrowScale = 1.0;
+  static const double maxSlotGrow = maxSlot;
 
   /// 是否启用「不足一屏放大填满」——**仅移动端**（2026-10-25）：
   /// 桌面窗口大、行数固定，放大填满会让字过大；桌面保持原有版式不变。
@@ -319,9 +320,11 @@ class JianpuGridView extends StatelessWidget {
           ),
         );
       case JianpuCellKind.stanza:
-        // 节号 `(k)` 只在它标示的那一节显示：源数据里第 111 首首块每行都印 `(1)`，
-        // 逐节显示时若不判断，第 2/3 节会显示错的节号（整页形态照旧全部显示）
-        if (stanza != null && cell.displayText != '($stanza)') return null;
+        // **逐节显示时不显示节号**（2026-10-25 用户要求：曲谱改为一页一节后，
+        // 每页只有一节，印刷本的行首节号 `(k)` 只占位、挤占音符宽度）；
+        // **整页形态（`stanza == null`，桌面印刷本视图）照旧显示** ——
+        // 那里靠 (1)(2)(3) 区分同一块内的各节歌词，去掉会造成歧义。
+        if (stanza != null) return null;
         return Align(
           alignment: Alignment.center,
           child: Text(

@@ -311,7 +311,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 active: true,
                 onTap: hymn == null ? null : () => _cycleAudioVersion(hymn),
               ),
-              const SizedBox(width: 6),
+              // 版本按钮与歌词模式一组之间留更大的间隔（2026-10-25 用户要求：
+              // 比四个模式按钮之间（3dp）明显更宽，形成"音频版本 | 显示模式"分组）
+              const SizedBox(width: 12),
             ],
             _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
             const SizedBox(width: 3),
@@ -330,11 +332,36 @@ class _HymnDisplayState extends State<HymnDisplay> {
   ///
   /// 原来的「鋼琴版 / 人聲版」两个 chip + 👥 占满一行；合并后点按钮即切，
   /// 宽度省下约 80dp，模式按钮得以全部显示。
+  ///
+  /// ⚠️ 2026-10-25 实机 bug：此处原先用 [voiceVersions]（**只含人声版**，已滤掉
+  /// 鋼琴版）→ 长度恒为 1 → 命中 `length < 2` 直接 return，点按钮**毫无反应**。
+  /// 现改用 [AudioService.availableVersions]（全部版本，含鋼琴版）。
   void _cycleAudioVersion(Hymn hymn) {
-    final versions = voiceVersions(hymn);
-    if (versions.length < 2) return;
+    final versions = widget.audio.availableVersions(hymn);
     final current = widget.audio.currentAudioVersion;
-    final idx = versions.indexOf(current);
+    if (versions.length < 2) {
+      // 只有一个版本时明确提示，避免"点了没反应"的错觉
+      final only = versions.isEmpty ? '鋼琴版' : versions.first;
+      LogService.instance.info(
+        LogTag.action,
+        '切换音频版本（合并按钮）：该首只有一个版本',
+        detail: '可用版本: ${versions.join(' / ')} / 当前: $current',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('该首只有「${_voiceLabel(only)}」音频'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    var idx = versions.indexOf(current);
+    if (idx < 0) {
+      // 记忆/实际版本不在列表里（降级替代、旧数据）→ 优先从人声版接着切
+      idx = versions.indexWhere((v) => !v.contains('鋼琴'));
+      if (idx < 0) idx = 0;
+    }
     final next = versions[(idx + 1) % versions.length];
     LogService.instance.info(
       LogTag.action,

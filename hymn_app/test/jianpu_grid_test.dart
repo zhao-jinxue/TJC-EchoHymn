@@ -461,7 +461,8 @@ void main() {
       expect(find.text('谨'), findsOneWidget);
       expect(find.text('伸'), findsOneWidget);
       expect(find.text('欣'), findsNothing);
-      expect(find.text('(1)'), findsOneWidget);
+      // 2026-10-25 用户要求：曲谱改「一页一节」后**逐节不显示节号 `(k)`**
+      expect(find.text('(1)'), findsNothing);
 
       // 第 3 节（用户截图那一页）：正歌「自…欣」+ 副歌两句仍在
       await pump(tester, score, 3);
@@ -470,7 +471,7 @@ void main() {
       expect(find.text('伸'), findsOneWidget, reason: '副歌「伸出鎌刀…」');
       expect(find.text('举'), findsNothing);
       expect(find.text('欠'), findsNothing);
-      expect(find.text('(3)'), findsOneWidget);
+      expect(find.text('(3)'), findsNothing);
     });
 
     testWidgets('第 18 首：块内叠句一律抛弃（节数 3，不虚增为 6）', (tester) async {
@@ -674,8 +675,9 @@ void main() {
 
       // 第 2 节：只剩第 2 节歌词行（其余节的音节与标签都不在树上）
       await pump(2);
-      expect(find.text('(2)'), findsNWidgets(labels(2)));
+      // 2026-10-25 用户要求：**逐节显示时不显示任何节号**（整页形态仍显示，见上）
       expect(find.text('(1)'), findsNothing);
+      expect(find.text('(2)'), findsNothing);
       expect(find.text('(3)'), findsNothing);
       // 谱行不随节变化（音符字形仍在），但总文本量变少
       expect(find.text(String.fromCharCode(0x4e52)).evaluate().isNotEmpty, isTrue);
