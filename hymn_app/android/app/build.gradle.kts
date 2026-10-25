@@ -1,7 +1,20 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// ==== 签名配置（F-1）====
+// key.properties 与 keystore/ 均已 gitignore；缺失时**回退 debug 签名**，
+// 保证新机 / CI 仍可构建（不会因为没密钥而失败）。
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hasReleaseKey = keystorePropertiesFile.exists()
+if (hasReleaseKey) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 }
 
 android {
@@ -43,10 +56,25 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: 阶段 F 换成正式 keystore（当前沿用 debug 签名，便于 flutter run --release）
-            signingConfig = signingConfigs.getByName("debug")
+            // F-1：有正式密钥就用它，否则回退 debug（新机/CI 可构建）
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

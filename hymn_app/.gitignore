@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# === Android 签名密钥与口令：绝不入库 ===
+android/keystore/
+android/key.properties
+android/local.properties
+*.jks
+*.keystore

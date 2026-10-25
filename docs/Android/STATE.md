@@ -221,8 +221,22 @@
     - 耳机线控走同一 `MEDIA_BUTTON`/transport 路径（机制已覆盖，真机待验）
     - 返回手势：C-3 的六条优先级 + Flutter Navigator 页面栈；**10 条逐条走查未做**
 - **M4 系统集成完成 ✅（D-1 音频焦点 · D-2 媒体通知/锁屏/后台播放 · D-3 媒体键）**
-- **下一阶段**：**M5 发布**（F-1 keystore 签名 → F-2 裁剪库脚本+4 变体 → F-3 发版清单+tag）→ **你试用**
-- **必读章节**：`ANDROID_PLAN.md` §7（发布）/ §7.4（发布前清单）/ §1.4（变体体积与替代规则）
+- **M5 发布（进行中）**
+  - **F-1 keystore + 签名配置 ✅**：
+    - 生成 `android/keystore/echohymn-release.jks`（RSA 2048 / 有效期 10000 天 / alias `echohymn`），
+      随机 24 位强口令写入 `android/key.properties`
+    - **两者已加 `hymn_app/.gitignore`**（`android/keystore/`、`android/key.properties`、`android/local.properties`、`*.jks`）
+    - `build.gradle.kts`：读 `key.properties` → `signingConfigs.create("release")`；
+      **缺失时回退 debug 签名**（新机 / CI 仍可构建）
+    - **实测**：`flutter build apk --release --flavor full --target-platform android-arm64` 成功；
+      `apksigner verify --print-certs` → **`CN=EchoHymn, OU=Mobile, O=EchoHymn, L=Local, ST=Local, C=CN`**
+      （SHA-256 `39d686f0…ce131`），不再是 `CN=Android Debug` ✅
+    - **口令**：见交付说明（**不入库、不入文档**，已单独告知用户，需自行另存）
+  - **F-2 裁剪库 + 构建前素材同步 ⬜（下一步）**：本轮实测再次撞到「**素材与变体错配**」——
+    full release 只有 63.5 MB（应为 ~81 MB），因为 `assets/media` 停留在别的变体状态。
+    必须在 Gradle 构建前按 flavor 自动 `sync_audio_samples.ps1`，否则会打出内容不对的包
+  - **F-3 发版清单 + tag** ⬜
+- **必读章节**：`ANDROID_PLAN.md` §7（发布）/ §7.4（发布前清单）/ §1.4 ⑤（裁剪库与替代）
 
 ## 环境变更（换机/清缓存时需复原）
 
