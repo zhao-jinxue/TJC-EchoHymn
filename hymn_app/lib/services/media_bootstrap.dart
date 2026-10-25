@@ -30,7 +30,17 @@ class MediaBootstrap {
   static const String _versionFileName = 'media_version.txt';
 
   /// 确保移动端私有目录里有内置样本音频；桌面端直接返回。
-  static Future<void> ensureSamples() async {
+  static Future<void>? _running;
+
+  /// 确保移动端私有目录里有内置样本；**并发调用复用同一次安装**。
+  ///
+  /// 背景（2026-10-25 实测）：`SqliteRepository.open()` 可能被多处触发 →
+  /// 两条协程同时跑安装，互相删除对方的 `.tmp` → 60 条 `PathNotFoundException`
+  /// （`Cannot rename ... path = ...tmp  No such file or directory`）。
+  static Future<void> ensureSamples() =>
+      _running ??= _ensureSamplesOnce().whenComplete(() => _running = null);
+
+  static Future<void> _ensureSamplesOnce() async {
     if (!AppPaths.isMobile) return;
 
     await AppPaths.init();
@@ -96,10 +106,11 @@ class MediaBootstrap {
         final raw =
             data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await file.parent.create(recursive: true);
-        final tmp = File('$targetPath.tmp');
-        await tmp.writeAsBytes(raw, flush: true);
-        if (file.existsSync()) file.deleteSync();
-        tmp.renameSync(targetPath);
+        // **直接覆盖写**（放弃 .tmp + rename 的原子性）：
+        // 素材是只读资源，写入中断的后果只是"下次启动按版本戳重拷"，能自愈；
+        // 而 .tmp + rename 在多协程/多进程场景下会互相删除对方临时文件 →
+        // `PathNotFoundException: Cannot rename ... path = ...tmp`（实测 88 条噪音）。
+        await file.writeAsBytes(raw, flush: true);
         installed++;
       } catch (err, st) {
         failed++;

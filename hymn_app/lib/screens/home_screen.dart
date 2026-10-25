@@ -7,6 +7,7 @@ import '../app.dart';
 import '../app_feature.dart';
 import '../models/hymn.dart';
 import '../services/app_state_service.dart';
+import '../services/audio_handler.dart';
 import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
@@ -153,6 +154,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       LogService.instance.info(LogTag.ui, 'HomeScreen 初始化数据中...');
       final repo = await SqliteRepository.open();
       final audio = AudioService();
+      // Android：关联媒体会话（通知栏/锁屏/蓝牙；D-2）
+      final mediaHandler = kMediaHandler;
+      if (mediaHandler != null) audio.attachMediaHandler(mediaHandler);
       // 初始音量为系统默认输出设备音量（Windows Core Audio；非 Windows 保持 100%）
       await audio.loadSystemVolume();
       final state = await _stateService.load().catchError((_) => const AppState(

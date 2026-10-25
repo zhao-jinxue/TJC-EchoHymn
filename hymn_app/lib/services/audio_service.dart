@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../models/hymn.dart';
 import '../app_feature.dart';
 import 'app_paths.dart';
+import 'audio_handler.dart';
 import 'log_service.dart';
 import '../platform/window_controls.dart';
 
@@ -47,6 +48,15 @@ class AudioService {
 
   String _currentAudioVersion = _variantDefaultVersion(); // 记忆版本（用户偏好，切歌选版本用）
   String _actualAudioVersion = _variantDefaultVersion(); // 实际播放版本（UI 高亮用，含降级场景）
+
+  /// 媒体会话（Android 通知栏/锁屏）；桌面为 null（D-2）
+  EchoHymnAudioHandler? _mediaHandler;
+
+  /// 最近一次播放位置（媒体会话进度用）
+  Duration _lastPosition = Duration.zero;
+
+  /// 上次向媒体会话推送的毫秒时间戳（**节流 1s**，避免高频跨平台调用）
+  int _lastPushMs = 0;
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
@@ -111,6 +121,30 @@ class AudioService {
     }
   }
 
+  /// 关联媒体会话并立即推送一次当前状态（Android；桌面为 null 时无操作）
+  void attachMediaHandler(EchoHymnAudioHandler handler) {
+    _mediaHandler = handler;
+    handler.attach(this);
+    _pushMediaSession();
+    LogService.instance.info(LogTag.play, '媒体会话已就绪（通知栏/锁屏可控）');
+  }
+
+  /// 把「当前曲目 + 播放状态 + 进度」推给系统（通知栏/锁屏/蓝牙）
+  void _pushMediaSession() {
+    final h = _mediaHandler;
+    if (h == null) return;
+    final hymn = _currentHymn;
+    if (hymn != null) {
+      h.pushItem(
+        id: hymn.hymnNumber,
+        title: hymn.title,
+        artist: _actualAudioVersion,
+        duration: null,
+      );
+    }
+    h.pushState(playing: isPlaying, position: _lastPosition);
+  }
+
   Future<void> _init() async {
     // D-1 音频焦点（ANDROID_PLAN §6）：先配置音频上下文，再挂事件监听
     await _applyAndroidAudioContext();
@@ -120,6 +154,15 @@ class AudioService {
     });
     _player.onPositionChanged.listen((p) {
       if (!_positionCtrl.isClosed) _positionCtrl.add(p);
+      _lastPosition = p;
+      // 通知栏/锁屏进度：**最多每秒推一次**（避免高频跨平台调用）
+      if (_mediaHandler != null) {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - _lastPushMs >= 1000) {
+          _lastPushMs = now;
+          _pushMediaSession();
+        }
+      }
     });
 
     // 状态
@@ -573,6 +616,8 @@ class AudioService {
 
   void _emitStatus(PlayerStatus status) {
     if (!_statusCtrl.isClosed) _statusCtrl.add(status);
+    // 同步到媒体会话（通知栏播放键状态）
+    _pushMediaSession();
   }
 
   Future<void> dispose() async {

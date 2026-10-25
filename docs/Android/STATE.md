@@ -189,10 +189,28 @@
     - **实测**：日志 `音频上下文已配置（Android）`；系统日志出现
       `MediaFocusControl: ... from uid/pid 10216/15087 clientId=android.media.AudioManager@...`
       （audioplayers 的 Android 侧已通过 `AudioManager` 申请焦点）✅
-  - **D-2 媒体通知 + 锁屏 + 后台播放 ⬜（下一步，需设计）**：需前台服务（`FOREGROUND_SERVICE_MEDIA_PLAYBACK`）+
-    MediaSession；候选方案：`audio_service` 包（标准，但要改 `AudioService` 架构）或自建 Kotlin MediaSession
-  - **D-3 媒体键 / 耳机线控 / 返回手势** ⬜
-- **必读章节**：`ANDROID_PLAN.md` §6（D2/D3）/ Android 14+ 前台服务类型要求
+  - **D-2 媒体通知 + 锁屏 + 后台播放 ✅（核心完成）**：
+    - 新增依赖 `audio_service ^0.18.19`（+ `audio_session 0.2.4` 传递依赖）与 `permission_handler ^11.3.1`
+      —— 后者**必须降到 11.x**：最新版要求 `compileSdk 37`，本项目是 36（实测 Gradle 直接失败）
+    - 新增 `lib/services/audio_handler.dart::EchoHymnAudioHandler extends BaseAudioHandler`（**App 主导、最小侵入**）：
+      播放内核仍在 `AudioService`，handler 只做系统侧门面 ——「系统→App」转发 play/pause/next/prev/seek，
+      「App→系统」由 `AudioService._pushMediaSession()` 推送 `mediaItem` + `playbackState`（进度**节流 1s**）
+    - `main.dart`（仅 Android）`await media.AudioService.init<EchoHymnAudioHandler>(...)` + **运行时请求
+      `POST_NOTIFICATIONS`**；`HomeScreen._init` 里 `audio.attachMediaHandler(handler)`
+    - `AndroidManifest` 增加 `WAKE_LOCK` / `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_MEDIA_PLAYBACK` /
+      `POST_NOTIFICATIONS` 权限 + `com.ryanheise.audioservice.AudioService`（`foregroundServiceType=mediaPlayback`）
+      + `MediaButtonReceiver`
+    - **实测**：`媒体会话已就绪（通知栏/锁屏可控）`；`dumpsys media_session` 出现
+      `media-session com.echohymn.app/media-session/9`；`dumpsys notification` 的 `importance` 从
+      **NONE → DEFAULT**（预授权 `pm grant POST_NOTIFICATIONS` 后）
+    - **顺带修掉 B-2 遗留的并发缺陷**：`MediaBootstrap` 的 `.tmp + rename` 在多协程下互相删除临时文件
+      → 88 条 `PathNotFoundException`；改为**直接覆盖写**（素材只读、可自愈）+ `ensureSamples()` 并发复用同一 Future
+      → 复测 `新增 46 / 失败 0`、**PathNotFound = 0**
+    - **未验证**：① 通知卡片/锁屏的**内容**未目视（只有 importance 与 MediaSession 证据）；
+      ② 30 分钟后台播放不被杀（§6.4 要求）；③ 首次 `media.AudioService.init` 会抛一次 `PlatformException`
+      随后重试成功（日志有噪声，未深究）
+  - **D-3 媒体键 / 耳机线控 / 返回手势** ⬜（媒体键接收器已随 D-2 落地，待实测）
+- **必读章节**：`ANDROID_PLAN.md` §6（D3）/ §6.4（性能基线）
 
 ## 环境变更（换机/清缓存时需复原）
 
