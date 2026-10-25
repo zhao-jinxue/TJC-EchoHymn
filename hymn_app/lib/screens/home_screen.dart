@@ -21,6 +21,7 @@ import '../widgets/panels/my_playlists_panel.dart';
 import '../widgets/user_manual_dialog.dart';
 
 import 'search_page.dart';
+import 'settings_page.dart';
 
 /// 左侧栏视图模式
 enum LeftTab { hymnList, defaultPlaylists, myPlaylists }
@@ -708,12 +709,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             icon: Icon(Icons.more_vert, color: AppColors.textPrimary),
             tooltip: '更多',
             onSelected: (v) {
-              if (v == 'manual') {
-                _showManual();
-              } else if (v == 'theme') {
-                _showThemeMenu();
-              } else if (v == 'font') {
-                _showFontSizeMenu();
+              LogService.instance.info(LogTag.action, '顶栏菜单：$v');
+              if (v == 'settings' || v == 'about') {
+                _openSettings();
               } else if (v == 'source') {
                 LogService.instance.info(LogTag.action,
                     _showRight ? '收起右侧栏目' : '展开右侧栏目');
@@ -724,16 +722,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _saveState();
               }
             },
+            // §3.1.7 定稿：⋮ 菜单 = 诗歌源考 / 设置 / 关于（手册·配色·字号已收进设置页）
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'manual', child: Text('用户手册')),
-              PopupMenuItem(value: 'theme', child: Text('切换配色')),
-              PopupMenuItem(value: 'font', child: Text('切换字号')),
               PopupMenuItem(value: 'source', child: Text('诗歌源考')),
+              PopupMenuItem(value: 'settings', child: Text('设置')),
+              PopupMenuItem(value: 'about', child: Text('关于')),
             ],
           ),
         ],
       ),
     );
+  }
+
+  /// 打开设置页（`ANDROID_PLAN §3.1.7`）：点选即生效，持久化走 `_saveState`
+  Future<void> _openSettings() async {
+    LogService.instance.info(LogTag.action, '打开设置页');
+    final preview = _audio?.currentHymn ??
+        (_allHymns.isNotEmpty ? _allHymns.first : null);
+    await Navigator.of(context).push<void>(MaterialPageRoute(
+      builder: (_) => SettingsPage(
+        previewHymn: preview,
+        audioVersion: _currentAudioVersion,
+        onAudioVersionChanged: (v) => setState(() => _currentAudioVersion = v),
+        onSaveState: _saveState,
+      ),
+    ));
+    if (mounted) setState(() {});
   }
 
   /// 打开全屏搜索页（`ANDROID_PLAN §3.1.6`）：选中即**进入并播放**
