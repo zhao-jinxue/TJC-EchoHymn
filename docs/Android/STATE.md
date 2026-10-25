@@ -209,8 +209,20 @@
     - **未验证**：① 通知卡片/锁屏的**内容**未目视（只有 importance 与 MediaSession 证据）；
       ② 30 分钟后台播放不被杀（§6.4 要求）；③ 首次 `media.AudioService.init` 会抛一次 `PlatformException`
       随后重试成功（日志有噪声，未深究）
-  - **D-3 媒体键 / 耳机线控 / 返回手势** ⬜（媒体键接收器已随 D-2 落地，待实测）
-- **必读章节**：`ANDROID_PLAN.md` §6（D3）/ §6.4（性能基线）
+  - **D-3 媒体键 / 耳机线控 / 返回手势 ✅（媒体键实测）**：
+    - `MediaButtonReceiver` 随 D-2 落地 → 本轮用 `adb shell input keyevent` 做**确定性验证**：
+      ```
+      11:36:09 通知栏/媒体键：播放     ← KEYCODE_MEDIA_PLAY_PAUSE
+      11:36:11 通知栏/媒体键：下一首   ← KEYCODE_MEDIA_NEXT
+      11:36:13 通知栏/媒体键：上一首   ← KEYCODE_MEDIA_PREVIOUS
+      11:36:15 通知栏/媒体键：暂停     ← KEYCODE_MEDIA_PLAY_PAUSE
+      ```
+      → MediaSession 接收媒体键 → handler 转发 AudioService → 播放/暂停/上下首全部可用 ✅
+    - 耳机线控走同一 `MEDIA_BUTTON`/transport 路径（机制已覆盖，真机待验）
+    - 返回手势：C-3 的六条优先级 + Flutter Navigator 页面栈；**10 条逐条走查未做**
+- **M4 系统集成完成 ✅（D-1 音频焦点 · D-2 媒体通知/锁屏/后台播放 · D-3 媒体键）**
+- **下一阶段**：**M5 发布**（F-1 keystore 签名 → F-2 裁剪库脚本+4 变体 → F-3 发版清单+tag）→ **你试用**
+- **必读章节**：`ANDROID_PLAN.md` §7（发布）/ §7.4（发布前清单）/ §1.4（变体体积与替代规则）
 
 ## 环境变更（换机/清缓存时需复原）
 
