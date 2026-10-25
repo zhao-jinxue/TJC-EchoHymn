@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../app_feature.dart';
 import '../models/hymn.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
@@ -53,7 +54,8 @@ class SettingsPage extends StatelessWidget {
                   _buildAppearanceSection(),
                   _buildDisplaySection(),
                   _buildPreviewSection(context),
-                  _buildPlaybackSection(),
+                  // 无音频版（lite）没有播放能力 → 不显示「播放」分组（§3.1.15）
+                  if (kHasAudio) _buildPlaybackSection(),
                   _buildHelpSection(context),
                   _buildAboutSection(),
                 ],

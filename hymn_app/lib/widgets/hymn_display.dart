@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard;
 
 import '../app.dart';
+import '../app_feature.dart';
 import '../models/hymn.dart';
 import '../models/jianpu_grid.dart';
 import '../models/jianpu_pagination.dart';
@@ -275,8 +276,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
           _buildVersionBar(hymn),
           Divider(height: 1, color: AppColors.divider),
           Expanded(child: _buildContent(hymn)),
-          Divider(height: 1, color: AppColors.divider),
-          _buildPlayerBar(hymn),
+          // 无音频版（lite）：**整条播放条不出现**（ANDROID_PLAN §3.1.15）
+          if (kHasAudio) ...[
+            Divider(height: 1, color: AppColors.divider),
+            _buildPlayerBar(hymn),
+          ],
         ],
       ),
     );
@@ -295,16 +299,20 @@ class _HymnDisplayState extends State<HymnDisplay> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            _versionBtn(
-              label: '钢琴版',
-              icon: Icons.piano,
-              active: hymn != null &&
-                  widget.audio.currentAudioVersion.contains('鋼琴'),
-              onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
-            ),
-            const SizedBox(width: 8),
-            _buildVoiceButton(hymn),
-            const SizedBox(width: 16),
+            // 版本 chips 与 👥 仅在**全量音频版**显示：
+            // 单音频版（钢琴/人声）与无音频版**没有版本选择**（§3.1.17 / §3.1.15）
+            if (kFullAudioVariant) ...[
+              _versionBtn(
+                label: '钢琴版',
+                icon: Icons.piano,
+                active: hymn != null &&
+                    widget.audio.currentAudioVersion.contains('鋼琴'),
+                onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
+              ),
+              const SizedBox(width: 8),
+              _buildVoiceButton(hymn),
+              const SizedBox(width: 16),
+            ],
             _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
             const SizedBox(width: 4),
             _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
