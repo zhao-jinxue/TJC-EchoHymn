@@ -100,6 +100,26 @@ class JianpuGridView extends StatelessWidget {
   /// 桌面窗口大、行数固定，放大填满会让字过大；桌面保持原有版式不变。
   static bool get _growToFill => Platform.isAndroid || Platform.isIOS;
 
+  // ---------- 移动端版式放开（2026-10-25 用户要求）----------
+  //
+  // 用户要求「左右留白 5%、字间更紧凑、字更大」。这三个目标**不能只调槽宽**：
+  // 槽宽同时是「列距」「块宽」和「字号基数」，调小会让字变小、块变窄、留白更多。
+  // 因此拆成两个独立旋钮，**只在手机/平板生效**（桌面 golden 基准保持不变）：
+  // - [maxSlotFor]：放开槽宽上限 → 块宽 = 可用宽（左右只剩 [padX] ≈ 4.4% ≈ 5%）；
+  // - [noteFontEmFor] / [lyricFontEmFor]：提高字号系数 → 字变大、列内空隙变小（视觉更紧凑）。
+
+  /// 是否移动端
+  static bool get _isMobile => Platform.isAndroid || Platform.isIOS;
+
+  /// 槽宽上限：桌面 72（原值）；移动端放开到 320 → 块宽铺满可用宽
+  static double get maxSlotFor => _isMobile ? 320.0 : maxSlot;
+
+  /// 记谱字号系数：桌面 0.50（原值）；移动端 **0.68**（音符明显更大 → 列内空隙变小）
+  static double get noteFontEmFor => _isMobile ? 0.68 : noteFontEm;
+
+  /// 歌词字号系数：桌面 0.54（原值）；移动端 **0.60**（仍 < 1 列宽，不挤压相邻音节）
+  static double get lyricFontEmFor => _isMobile ? 0.60 : lyricFontEm;
+
   @override
   Widget build(BuildContext context) {
     final availW = (constraints.maxWidth - padX * 2).clamp(60.0, 100000.0);
@@ -113,9 +133,13 @@ class JianpuGridView extends StatelessWidget {
     final slots = <double>[
       for (final block in score.blocks)
         (availW / (block.colCount > 0 ? block.colCount : 1))
-            .clamp(minSlot, maxSlot),
+            .clamp(minSlot, maxSlotFor),
     ];
-    // 高度约束：总像素高超过可用高时整体等比收缩（保持块间字号比例），否则纵向滚动
+    // 高度约束：
+    // - **桌面**：总像素高超过可用高时整体等比收缩（保持块间字号比例），避免滚动；
+    // - **移动端（2026-10-25 用户要求「左右留白只留 5%、字更大」）**：**不收缩**，
+    //   让槽宽保持「按列数铺满可用宽」→ 块宽 = 屏宽 − padX×2 ≈ 91%，字号随之最大；
+    //   内容超出时交给外层纵向滚动（用户看整节可上下滑，比缩小字更实用）。
     final visible = <List<JianpuRow>>[
       for (final block in score.blocks) _visibleRows(block),
     ];
@@ -126,17 +150,17 @@ class JianpuGridView extends StatelessWidget {
         totalH += slots[bi] * _rowEm(row.kind);
       }
     }
-    if (totalH > availH && totalH > 0) {
+    if (totalH > availH && totalH > 0 && !_isMobile) {
       final k = availH / totalH;
       for (var i = 0; i < slots.length; i++) {
-        slots[i] = (slots[i] * k).clamp(minSlot, maxSlot);
+        slots[i] = (slots[i] * k).clamp(minSlot, maxSlotFor);
       }
     } else if (totalH > 0 && totalH < availH && _growToFill) {
-      // 内容不足一屏：**放大填满**（2026-10-25 用户要求 B —— 字更大更易读）。
-      // 宽度方向已按列数铺满，放大后块宽会超出可用宽 → 外层横向滚动承接。
+      // 内容不足一屏：**放大填满**（`maxGrowScale` 现为 1.0 = 关闭，2026-10-25
+      // 用户要求"一行完整显示"后回退；此处保留结构以便将来重开）
       final k = (availH / totalH).clamp(1.0, maxGrowScale);
       for (var i = 0; i < slots.length; i++) {
-        slots[i] = (slots[i] * k).clamp(minSlot, maxSlotGrow);
+        slots[i] = (slots[i] * k).clamp(minSlot, maxSlotFor);
       }
     }
 
@@ -186,10 +210,10 @@ class JianpuGridView extends StatelessWidget {
 
   /// 行高（em：音符/记号行相对**记谱字号**；歌词/空行相对槽宽）
   double _rowEm(JianpuRowKind k) => switch (k) {
-        JianpuRowKind.note => noteRowEm * noteFontEm,
-        JianpuRowKind.markUp => markUpEm * noteFontEm,
-        JianpuRowKind.markDown => markDownEm * noteFontEm,
-        JianpuRowKind.lyric => lyricRowEm,
+        JianpuRowKind.note => noteRowEm * noteFontEmFor,
+        JianpuRowKind.markUp => markUpEm * noteFontEmFor,
+        JianpuRowKind.markDown => markDownEm * noteFontEmFor,
+        JianpuRowKind.lyric => lyricFontEmFor * 1.7,
         JianpuRowKind.blank => blankEm,
       };
 
@@ -502,12 +526,16 @@ class _Metrics {
   /// 网格总宽 = 槽宽 × 全曲最大列数
   final double gridW;
 
-  /// **记谱字号**（音符/记号字形大小）= 槽宽 × [JianpuGridView.noteFontEm]
-  double get noteSize => slot * JianpuGridView.noteFontEm;
+  /// **记谱字号**（音符/记号字形大小）= 槽宽 × [JianpuGridView.noteFontEmFor]
+  /// （移动端 0.68 / 桌面 0.50，2026-10-25）
+  double get noteSize => slot * JianpuGridView.noteFontEmFor;
 
   double get barW => (noteSize * 0.075).clamp(1.0, 3.5);
 
-  double get lyricSize => (slot * JianpuGridView.lyricFontEm).clamp(8.0, 40.0);
+  /// 歌词字号 = 槽宽 × [JianpuGridView.lyricFontEmFor]（移动端 0.60 / 桌面 0.54）。
+  /// 上限 46：移动端铺满后槽宽可达 ~90dp，0.60 × 90 = 54 需留出余量。
+  double get lyricSize =>
+      (slot * JianpuGridView.lyricFontEmFor).clamp(8.0, 46.0);
 
   Color get noteColor => AppColors.textPrimary;
   Color get lyricColor => AppColors.textPrimary;
