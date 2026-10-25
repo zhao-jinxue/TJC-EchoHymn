@@ -127,9 +127,14 @@
     - 实测：`顶栏菜单：settings` → `打开设置页`（页面渲染正常，截图 `_shots/android/c5_settings.png`）
     - **未取证**：配色/字号 chips 的点击坐标未命中（Flutter 无语义树 + 盲点），逻辑走的是桌面已验证多年的
       `ThemeController` / `FontScaleController`，风险低但需试用期人工点验
-  - ③ 歌单管理适配（§3.1.9）⬜ —— 手册全屏页暂以对话框形式从设置页打开（§3.1.8 的全屏化待做）
-- **下一工单**：**C-5 收尾**（歌单管理适配 + 手册全屏页）→ 随后 **C-6 设计基础** 与 **C-7 变体外壳**
-- **必读章节**：`ANDROID_PLAN.md` §3.1.8~3.1.9 / §3.0（设计基础）
+  - **③ 歌单管理全屏化 ✅**（§3.1.9）：`CreatePlaylistDialog` 增加 `fullscreen` 参数——
+    手机经 `playlist_editor_launcher.dart::showPlaylistEditor()` 以路由压栈呈现（`SafeArea + SizedBox.expand`），
+    桌面仍走原 520×420 弹窗，**编辑逻辑（名称 30 字 / 搜索添加 / 去重 / 移除 / 删除 + 二次确认 / Toast 就地提示）零分叉**
+    - 顺带修：`my_playlists_panel` 两处调用统一走 `showPlaylistEditor`（原来直接 `showDialog`）
+    - **未取证**：实机点击（入口在 左抽屉 → 我的歌单 Tab 深层，坐标探测成本过高）；`analyze` 0 / `test` 77 / Windows 构建 ✓
+  - ④ 手册全屏页（§3.1.8）⬜ —— 目前仍从设置页以对话框打开（功能可用，未全屏化）
+- **下一工单**：**C-5 收尾（手册全屏页）** → 随后 **C-6 设计基础** / **C-7 变体外壳** → **M5 发布**
+- **必读章节**：`ANDROID_PLAN.md` §3.1.8 / §3.0（设计基础）/ §7.4（发布前清单）
 
 ## 环境变更（换机/清缓存时需复原）
 

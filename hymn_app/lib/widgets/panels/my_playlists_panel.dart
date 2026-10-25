@@ -6,7 +6,7 @@ import '../../../services/app_state_service.dart';
 import '../../../services/chinese_convert_service.dart';
 import '../../../services/log_service.dart';
 import '../../app.dart';
-import '../playlist_dialog.dart';
+import '../playlist_editor_launcher.dart';
 import 'left_panel_base.dart';
 
 /// 个人歌单面板：歌单列表（新建/修改/删除）+ 点开歌单展示其诗歌列表
@@ -342,10 +342,8 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
 
   Future<void> _openCreateDialog() async {
     LogService.instance.info(LogTag.action, '打开「新建歌单」弹窗');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => CreatePlaylistDialog(repo: repo),
-    );
+    // 手机全屏 / 桌面弹窗统一入口（§3.1.9）
+    final result = await showPlaylistEditor(context, repo);
     LogService.instance.info(
       LogTag.playlist,
       '「新建歌单」弹窗关闭',
@@ -366,10 +364,7 @@ class _MyPlaylistsPanelState extends LeftPanelState<MyPlaylistsPanel> {
       '打开「修改歌单」弹窗',
       detail: '歌单ID: ${pl.id}\n歌单名称: ${pl.name}',
     );
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => CreatePlaylistDialog(repo: repo, existing: pl),
-    );
+    final result = await showPlaylistEditor(context, repo, existing: pl);
     if (!mounted) return;
     LogService.instance.info(
       LogTag.playlist,

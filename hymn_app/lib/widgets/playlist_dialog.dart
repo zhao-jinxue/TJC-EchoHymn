@@ -25,7 +25,17 @@ import '../services/sqlite_repository.dart';
 class CreatePlaylistDialog extends StatefulWidget {
   final SqliteRepository repo;
   final Playlist? existing; // 传入则为修改模式
-  const CreatePlaylistDialog({super.key, required this.repo, this.existing});
+
+  /// **手机全屏**（`ANDROID_PLAN §3.1.9`）：true 时铺满整屏 + 吃系统栏 inset；
+  /// false 时仍是桌面用的 520×420 弹窗。**内部逻辑完全共用，不分叉**。
+  final bool fullscreen;
+
+  const CreatePlaylistDialog({
+    super.key,
+    required this.repo,
+    this.existing,
+    this.fullscreen = false,
+  });
 
   @override
   State<CreatePlaylistDialog> createState() => _CreatePlaylistDialogState();
@@ -72,6 +82,14 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final inner = _buildInner();
+    // 手机：全屏编辑页（§3.1.9）；桌面：原 520×420 弹窗
+    if (widget.fullscreen) {
+      return ScaffoldMessenger(
+        key: _messengerKey,
+        child: SafeArea(child: SizedBox.expand(child: inner)),
+      );
+    }
     return ScaffoldMessenger(
       key: _messengerKey,
       // 弹窗内嵌 ScaffoldMessenger：Toast（SnackBar）显示在弹窗中，
@@ -79,13 +97,17 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
       child: Dialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: SizedBox(
-          width: 520,
-          height: 420,
-          // 内嵌透明 Scaffold：作为 ScaffoldMessenger 的宿主
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: Column(
+        child: SizedBox(width: 520, height: 420, child: inner),
+      ),
+    );
+  }
+
+  /// 编辑器主体：桌面弹窗与手机全屏页**共用同一份 UI 与逻辑**
+  Widget _buildInner() {
+    // 内嵌透明 Scaffold：作为 ScaffoldMessenger 的宿主
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 顶部：标题 + 右上角 ✕
@@ -268,9 +290,6 @@ class _CreatePlaylistDialogState extends State<CreatePlaylistDialog> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
     );
   }
 
