@@ -19,6 +19,7 @@ import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../theme/score_display_prefs.dart';
 import 'jianpu_grid_view.dart';
+import 'state_views.dart';
 
 /// 歌词显示模式
 ///
@@ -503,13 +504,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
                     return _buildScore(hymn.numberedPngPath,
                         isEmpty: '暂无简谱');
                   }
-                  return Center(
-                    child: Text(
-                      '简谱加载中…',
-                      style:
-                          TextStyle(fontSize: 14, color: AppColors.textTertiary),
-                    ),
-                  );
+                  return const LoadingView(message: '简谱加载中…');
                 }
                 // 页内子谱面（列切片 + 平移）：渲染层无需知道"页"的概念，
                 // 页内列数铺满宽度 → 「页内同列同 x」自然成立（§3.14 判据 ②）。
@@ -555,11 +550,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
   Widget _buildLyrics(Hymn hymn) {
     final pages = hymn.lyricPages;
     if (pages.isEmpty) {
-      return Center(
-        child: Text(
-          '暂无歌词',
-          style: TextStyle(color: AppColors.textTertiary),
-        ),
+      return const EmptyView(
+        icon: Icons.lyrics_outlined,
+        message: '暂无歌词',
       );
     }
     final page = pages[_page.clamp(0, pages.length - 1)];
@@ -791,9 +784,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // contains 会让中段含 "http" 的本地路径跳过存在性检查，显示破图
     // 而非「暂无谱面」空态
     if (abs.isEmpty || !(abs.startsWith('http') || _fileExists(abs))) {
-      return Center(
-        child: Text(isEmpty, style: TextStyle(color: AppColors.textTertiary)),
-      );
+      // §3.0 Fallback：无谱面属**静默降级**，不弹错、不给重试
+      return FallbackView(message: isEmpty);
     }
     return _ScoreImageView(path: abs);
   }

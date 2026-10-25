@@ -16,6 +16,7 @@ import '../theme/app_palette.dart';
 import '../theme/score_display_prefs.dart';
 import '../widgets/hymn_display.dart';
 import '../widgets/manual_launcher.dart';
+import '../widgets/state_views.dart';
 import '../widgets/panels/default_playlists_panel.dart';
 import '../widgets/panels/hymn_list_panel.dart';
 import '../widgets/panels/left_panel_base.dart';
@@ -1094,7 +1095,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 主体 ----------
   Widget _buildBody({bool mobile = false}) {
     if (_initError) {
-      return const Center(child: Text('数据加载失败，请检查 data/tjc_hymn.db'));
+      return ErrorView(
+        message: '数据加载失败',
+        detail: '未能打开诗歌数据库（data/tjc_hymn.db 或应用私有目录）',
+        onRetry: () {
+          LogService.instance.info(LogTag.action, '数据加载失败 → 用户点击重试');
+          setState(() => _initError = false);
+          _init();
+        },
+      );
     }
     if (_repo == null || _audio == null) {
       return const Center(child: CircularProgressIndicator());

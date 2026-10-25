@@ -149,9 +149,13 @@
     - **确定性验证**（像素平均亮度，`System.Drawing` 采样 y400~1700 / x50~1000）：
       `dim = 192.31` vs `original = 240.26` → **比值 0.800**（理论 0.80 = 精确 20% 黑遮罩）✅
       （截图 `dark_dim.png` / `dark_original.png` 在 `D:\Android\logs\`）
-  - ② 令牌抽查 / ③ 五态（Loading·Empty·Error·Fallback·Offline）/ ④ 动效 / ⑤ 无障碍标签 ⬜
-- **下一工单**：**C-6 余下项**（令牌一致性抽查 + 五态触发 + 无障碍标签）→ **C-7 变体外壳** → **M5**
-- **必读章节**：`ANDROID_PLAN.md` §3.0（令牌/五态/动效/图标/无障碍）/ §3.1.15（无音频版外壳）
+  - **② 五态统一 ✅**（§3.0）：新增 `lib/widgets/state_views.dart`（`LoadingView` / `EmptyView` / `ErrorView` /
+    `FallbackView`；Offline 对本地应用不适用，素材缺失归 Fallback）并替换关键 5 处：
+    - **数据加载失败 → `ErrorView` 带〔重试〕**（此前只有一行文字，用户无路可走；点击重试 → `_init()` 重来）
+    - 简谱加载 → `LoadingView`；无歌词 → `EmptyView`（带图标）；无谱面 → `FallbackView`（**静默不弹错**）
+  - ③ 令牌抽查 / ④ 动效 / ⑤ 无障碍标签 ⬜（令牌抽查建议放到最终验收批量做）
+- **下一工单**：**C-6 余项**（令牌抽查 · 动效 · 无障碍 Semantics）→ **C-7 变体外壳** → **M5**
+- **必读章节**：`ANDROID_PLAN.md` §3.0.1（令牌表）/ §3.0.2（五态，已做）/ §3.1.15（无音频版）
 
 ## 环境变更（换机/清缓存时需复原）
 
