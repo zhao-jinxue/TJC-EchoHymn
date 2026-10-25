@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemNavigator;
 
 import '../app.dart';
+import '../app_feature.dart';
 import '../models/hymn.dart';
 import '../services/app_state_service.dart';
 import '../services/audio_service.dart';
@@ -601,8 +602,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // 左右两侧 = 侧栏展开/收起按钮；中央 = 当前播放/选中歌曲（无则显示应用名）。
   Widget _buildTopBar() {
     final hymn = _audio?.currentHymn;
+    // 无音频版（lite）：语义是「当前浏览」（§3.1.15）
     final centerText = hymn != null
-        ? '第 ${hymn.hymnNumber} 首《'
+        ? '${kHasAudio ? '' : '浏览 · '}第 ${hymn.hymnNumber} 首《'
             '${ChineseConvertService.instance.toSimplified(hymn.title)}》'
         : 'EchoHymn · 聆听赞美诗';
     return Container(
@@ -671,8 +673,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final hymn = _audio?.currentHymn;
     // 单音频版的替代音频标记（§1.4 ⑤）：让用户知道这首不是本包的原生版本
     final substituted = _audio?.isSubstitutedVersion ?? false;
+    // 无音频版（lite）：标题语义是「当前浏览」，不是「正在播放」（§3.1.15）
+    final browsePrefix = kHasAudio ? '' : '浏览 · ';
     final title = hymn != null
-        ? '第 ${hymn.hymnNumber} 首《'
+        ? '$browsePrefix第 ${hymn.hymnNumber} 首《'
             '${ChineseConvertService.instance.toSimplified(hymn.title)}》'
             '${substituted ? '（替代音频）' : ''}'
         : 'EchoHymn · 聆听赞美诗';
