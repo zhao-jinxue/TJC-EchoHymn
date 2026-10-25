@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../app.dart';
@@ -87,6 +89,16 @@ class JianpuGridView extends StatelessWidget {
   static const double minSlot = 9.0;
   static const double maxSlot = 72.0;
 
+  /// **不足一屏时放大填满**（2026-10-25 用户要求 B）：
+  /// - [maxGrowScale]：最多放大到可用高的几倍（防止单句被放到荒谬的大）；
+  /// - [maxSlotGrow]：放大后的槽宽上限（会**超过**可用宽 → 由外层横向滚动承接）。
+  static const double maxGrowScale = 2.2;
+  static const double maxSlotGrow = 140.0;
+
+  /// 是否启用「不足一屏放大填满」——**仅移动端**（2026-10-25）：
+  /// 桌面窗口大、行数固定，放大填满会让字过大；桌面保持原有版式不变。
+  static bool get _growToFill => Platform.isAndroid || Platform.isIOS;
+
   @override
   Widget build(BuildContext context) {
     final availW = (constraints.maxWidth - padX * 2).clamp(60.0, 100000.0);
@@ -118,6 +130,13 @@ class JianpuGridView extends StatelessWidget {
       for (var i = 0; i < slots.length; i++) {
         slots[i] = (slots[i] * k).clamp(minSlot, maxSlot);
       }
+    } else if (totalH > 0 && totalH < availH && _growToFill) {
+      // 内容不足一屏：**放大填满**（2026-10-25 用户要求 B —— 字更大更易读）。
+      // 宽度方向已按列数铺满，放大后块宽会超出可用宽 → 外层横向滚动承接。
+      final k = (availH / totalH).clamp(1.0, maxGrowScale);
+      for (var i = 0; i < slots.length; i++) {
+        slots[i] = (slots[i] * k).clamp(minSlot, maxSlotGrow);
+      }
     }
 
     final children = <Widget>[];
@@ -133,25 +152,30 @@ class JianpuGridView extends StatelessWidget {
       }
     }
 
+    final viewH = (constraints.maxHeight - padTop - padBottom)
+        .clamp(0.0, double.infinity);
+
     return Container(
       color: AppColors.lyricsBg,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
         // 允许内容溢出单元格（汉字 + 标点占 2 字宽），横向不裁剪、不挤列；
         // 各块宽度不同（按块宽渲染）→ Column 宽度取最宽块，块间左对齐
-        child: ConstrainedBox(
-          // **垂直居中**（与歌词页「整块居中」同口径，2026-09-23 用户确认）：
-          // 内容不足一屏时整块垂直居中；超出一屏时 ConstrainedBox 被内容撑高
-          // → 正常从顶滚动、不裁顶
-          constraints: BoxConstraints(
-            minHeight: (constraints.maxHeight - padTop - padBottom)
-                .clamp(0.0, double.infinity),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
+        child: SingleChildScrollView(
+          // **横向滚动**（2026-10-25 用户要求 B）：内容不足一屏时被放大填满，
+          // 放大后块宽可能超出可用宽 → 由此层承接，可左右滑动看全，绝不裁切
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            // **垂直居中**（与歌词页「整块居中」同口径，2026-09-23 用户确认）：
+            // 内容不足一屏时整块垂直居中；超出一屏时 ConstrainedBox 被内容撑高
+            // → 正常从顶滚动、不裁顶。minWidth 让「未放大到超宽」时横向仍居中
+            constraints: BoxConstraints(minHeight: viewH, minWidth: availW),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
             ),
           ),
         ),
