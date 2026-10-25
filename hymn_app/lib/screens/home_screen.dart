@@ -13,6 +13,7 @@ import '../services/sqlite_repository.dart';
 import '../platform/window_controls.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
+import '../theme/score_display_prefs.dart';
 import '../widgets/hymn_display.dart';
 import '../widgets/manual_launcher.dart';
 import '../widgets/panels/default_playlists_panel.dart';
@@ -338,6 +339,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       showRight: _showRight,
       appTheme: ThemeController.instance.current.id,
       fontSizeLevel: FontScaleController.instance.current.id,
+      scoreDarkMode: ScoreDisplayPrefs.instance.mode,
       manualOnStart: ManualPrefs.instance.showOnStart,
       lyricAutoMode: _lyricAutoMode,
       closeAction: _closeAction,

@@ -9,6 +9,7 @@ import 'services/app_state_service.dart';
 import 'services/log_service.dart';
 import 'theme/app_fonts.dart';
 import 'theme/app_palette.dart';
+import 'theme/score_display_prefs.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,8 @@ Future<void> main() async {
     ThemeController.instance.switchTo(theme);
     // 恢复上次字号等级（state.json 的 fontSizeLevel；缺失/非法回退默认）
     FontScaleController.instance.switchTo(font);
+    // 恢复「深色下谱面显示」（§3.10；缺失/非法回退 dim）
+    ScoreDisplayPrefs.instance.restoreFrom(state.scoreDarkMode);
     LogService.instance.info(
       LogTag.system,
       '恢复上次状态',

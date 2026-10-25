@@ -6,6 +6,7 @@ import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
+import '../theme/score_display_prefs.dart';
 import '../widgets/manual_launcher.dart';
 import '../widgets/user_manual_dialog.dart';
 
@@ -50,6 +51,7 @@ class SettingsPage extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   _buildAppearanceSection(),
+                  _buildDisplaySection(),
                   _buildPreviewSection(context),
                   _buildPlaybackSection(),
                   _buildHelpSection(context),
@@ -234,6 +236,48 @@ class SettingsPage extends StatelessWidget {
       ),
     );
   }
+  // ---------- 显示（深色下谱面，§3.10）----------
+  Widget _buildDisplaySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionTitle('显示'),
+        _rowLabel('深色下谱面显示'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              for (final m in ScoreDisplayPrefs.modes)
+                _chip(
+                  label: ScoreDisplayPrefs.labelOf(m),
+                  active: ScoreDisplayPrefs.instance.mode == m,
+                  onTap: () {
+                    ScoreDisplayPrefs.instance.set(m);
+                    LogService.instance.info(
+                      LogTag.action,
+                      '设置页切换谱面显示：${ScoreDisplayPrefs.labelOf(m)}',
+                    );
+                    onSaveState();
+                  },
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '仅深色配色下生效：暗化 = 原色 + 20% 黑遮罩（默认）；反色为实验项',
+            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _divider(),
+      ],
+    );
+  }
+
   // ---------- 实时预览（200dp 卡片；按 0.55 缩放，用真实配色/字号令牌）----------
   Widget _buildPreviewSection(BuildContext context) {
     final hymn = previewHymn;

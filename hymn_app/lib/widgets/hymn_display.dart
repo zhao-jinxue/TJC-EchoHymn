@@ -16,6 +16,8 @@ import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/sqlite_repository.dart';
 import '../theme/app_fonts.dart';
+import '../theme/app_palette.dart';
+import '../theme/score_display_prefs.dart';
 import 'jianpu_grid_view.dart';
 
 /// 歌词显示模式
@@ -1473,18 +1475,66 @@ class _ScoreImageViewState extends State<_ScoreImageView> {
   }
 
   Widget _buildImage(double w, double h) {
-    if (_isNetwork) {
-      return Image.network(widget.path,
-          width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError);
-    }
-    // 与 _resolve 使用同一 provider（ResizeImage 以解码宽为键）→ 共享 ImageCache，
-    // 同一张图只解码一次；`cacheWidth` 也在此生效，避免全尺寸解码撑爆内存。
-    return Image(
-      image: _provider(_decodeWidth),
-      width: w,
-      height: h,
-      fit: BoxFit.contain,
-      errorBuilder: _imageError,
+    final img = _isNetwork
+        ? Image.network(widget.path,
+            width: w, height: h, fit: BoxFit.contain, errorBuilder: _imageError)
+        : Image(
+            // 与 _resolve 使用同一 provider（ResizeImage 以解码宽为键）→ 共享 ImageCache，
+            // 同一张图只解码一次；`cacheWidth` 也在此生效，避免全尺寸解码撑爆内存。
+            image: _provider(_decodeWidth),
+            width: w,
+            height: h,
+            fit: BoxFit.contain,
+            errorBuilder: _imageError,
+          );
+    return _applyDarkTreatment(img);
+  }
+
+  /// 深色主题下的扫描谱面处理（`ANDROID_PLAN §3.10` **定稿**）
+  ///
+  /// - 浅色主题：原样（白底图本来就合适）
+  /// - 深色 + `dim`（默认）：原色 + **20% 黑遮罩** —— 保留白底可读性、只降亮度
+  ///   （反色会丢印刷谱细节，不采用；强制浅色违背用户选择）
+  /// - 深色 + `invert`：反色（实验项，供用户自行对比）
+  /// - 深色 + `original`：原样
+  ///
+  /// 曲谱网格不受影响（自绘 + `AppColors` 语义色）。
+  Widget _applyDarkTreatment(Widget image) {
+    final isDark =
+        ThemeController.instance.current.brightness == Brightness.dark;
+    if (!isDark) return image;
+    return ValueListenableBuilder<String>(
+      valueListenable: ScoreDisplayPrefs.instance.modeNotifier,
+      builder: (context, mode, _) {
+        if (mode == 'invert') {
+          return ColorFiltered(
+            colorFilter: const ColorFilter.matrix(<double>[
+              -1, 0, 0, 0, 255, //
+              0, -1, 0, 0, 255, //
+              0, 0, -1, 0, 255, //
+              0, 0, 0, 1, 0, //
+            ]),
+            child: image,
+          );
+        }
+        if (mode == 'dim') {
+          return Stack(
+            fit: StackFit.passthrough,
+            children: [
+              image,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: Colors.black
+                        .withValues(alpha: ScoreDisplayPrefs.dimAlpha),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+        return image;
+      },
     );
   }
 

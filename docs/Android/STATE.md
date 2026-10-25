@@ -140,8 +140,18 @@
     - **踩坑**：首版用 `SafeArea + SizedBox.expand` 承载 → Column 拿到无界高度，溢出 **99206px**；
       换成 `Scaffold(body: SafeArea(...))` 后正常
 - **C-5 四页面全部完成 ✅**（搜索 / 设置 / 歌单 / 手册）
-- **下一工单**：**C-6 设计基础**（令牌 / 五态 / 动效 / 图标 / 无障碍 / 深色谱面）
-- **必读章节**：`ANDROID_PLAN.md` §3.0（设计基础）/ §3.10（深色谱面）/ §3.11（缩放，已做）
+- **C-6 设计基础（进行中）**（2026-10-25）——
+  - **① 深色谱面 ✅**（§3.10 定稿「原色 + 20% 黑遮罩」）：新增 `lib/theme/score_display_prefs.dart`
+    （`dim` 默认 / `original` / `invert` 实验三档 + `dimAlpha = 0.20` 令牌）；
+    `AppState` + `saveAll` + `load` 增加 `scoreDarkMode` 字段（兼容旧 state.json，缺失回退 `dim`）；
+    `_ScoreImageView._applyDarkTreatment()` 在**深色主题**下按设置叠加
+    （浅色主题原样返回；曲谱网格不受影响，自绘取语义色）；设置页新增「显示 → 深色下谱面显示」chips
+    - **确定性验证**（像素平均亮度，`System.Drawing` 采样 y400~1700 / x50~1000）：
+      `dim = 192.31` vs `original = 240.26` → **比值 0.800**（理论 0.80 = 精确 20% 黑遮罩）✅
+      （截图 `dark_dim.png` / `dark_original.png` 在 `D:\Android\logs\`）
+  - ② 令牌抽查 / ③ 五态（Loading·Empty·Error·Fallback·Offline）/ ④ 动效 / ⑤ 无障碍标签 ⬜
+- **下一工单**：**C-6 余下项**（令牌一致性抽查 + 五态触发 + 无障碍标签）→ **C-7 变体外壳** → **M5**
+- **必读章节**：`ANDROID_PLAN.md` §3.0（令牌/五态/动效/图标/无障碍）/ §3.1.15（无音频版外壳）
 
 ## 环境变更（换机/清缓存时需复原）
 

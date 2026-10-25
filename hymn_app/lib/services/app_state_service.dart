@@ -62,6 +62,8 @@ class AppStateService {
     bool showRight = false,
     String appTheme = '',
     String fontSizeLevel = '',
+    /// 深色下谱面显示：'dim'（默认）/ 'original' / 'invert'（§3.10）
+    String scoreDarkMode = 'dim',
     bool manualOnStart = true,
     bool lyricAutoMode = true,
     String closeAction = '',
@@ -78,6 +80,7 @@ class AppStateService {
       'showRight': showRight,
       'appTheme': appTheme,
       'fontSizeLevel': fontSizeLevel,
+      'scoreDarkMode': scoreDarkMode,
       'manualOnStart': manualOnStart,
       'lyricAutoMode': lyricAutoMode,
       'closeAction': closeAction,
@@ -158,6 +161,7 @@ class AppStateService {
         showRight: (json['showRight'] as bool?) ?? false,
         appTheme: (json['appTheme'] as String?) ?? '',
         fontSizeLevel: (json['fontSizeLevel'] as String?) ?? '',
+        scoreDarkMode: (json['scoreDarkMode'] as String?) ?? 'dim',
         manualOnStart: (json['manualOnStart'] as bool?) ?? true,
         lyricAutoMode: (json['lyricAutoMode'] as bool?) ?? true,
         closeAction: (json['closeAction'] as String?) ?? '',
@@ -211,6 +215,10 @@ class AppState {
   /// 'exit'=直接关闭、'tray'=最小化到系统托盘（v1.8.0）
   final String closeAction;
 
+  /// 深色主题下**扫描谱面**的显示方式（`ANDROID_PLAN §3.10`）：
+  /// `'dim'`（默认，原色 + 20% 黑遮罩）/ `'original'`（原色）/ `'invert'`（反色，实验）
+  final String scoreDarkMode;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -226,5 +234,6 @@ class AppState {
     this.manualOnStart = true,
     this.lyricAutoMode = true,
     this.closeAction = '',
+    this.scoreDarkMode = 'dim',
   });
 }
