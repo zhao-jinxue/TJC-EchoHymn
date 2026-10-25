@@ -226,11 +226,19 @@ const List<({String title, List<GuideLine> lines})> _guideSections = [
 /// 底部提供「启动时显示本手册」勾选框（ManualPrefs 持久化）。
 /// Esc / 右上角 ✕ / 点击遮罩关闭；重复触发不叠加。
 class UserManualDialog extends StatelessWidget {
-  const UserManualDialog({super.key, this.onRechooseCloseAction});
+  const UserManualDialog({
+    super.key,
+    this.onRechooseCloseAction,
+    this.fullscreen = false,
+  });
 
   /// 「重选关闭行为」回调（v1.8.0）：弹出选择框（直接关闭 / 进入系统托盘），
   /// 选择写入 state.json `closeAction` 并立即生效；null = 不显示重选按钮。
   final VoidCallback? onRechooseCloseAction;
+
+  /// **手机全屏**（`ANDROID_PLAN §3.1.8`）：true 时铺满整屏（顶栏 56 + 内容 + 底部固定区），
+  /// 并**隐藏「重选关闭行为」**（Android 无"关闭到托盘"概念）；false 时是桌面/手机默认的 560×560 弹窗。
+  final bool fullscreen;
 
   /// 是否已打开（防止 F1 / ？重复点击叠加多个手册弹窗，H11）
   static bool _isOpen = false;
@@ -256,12 +264,12 @@ class UserManualDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      backgroundColor: AppColors.cardBg,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 560),
-        child: Focus(
+    final content = ConstrainedBox(
+      // 全屏（手机 §3.1.8）不限制尺寸；弹窗仍 560×560
+      constraints: fullscreen
+          ? const BoxConstraints()
+          : const BoxConstraints(maxWidth: 560, maxHeight: 560),
+      child: Focus(
           autofocus: true,
           onKeyEvent: (node, event) {
             // 按 Esc 关闭手册
@@ -275,28 +283,41 @@ class UserManualDialog extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ---- 标题栏 ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '用户手册',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+              // ---- 标题栏（全屏 56dp：← + 标题；弹窗：标题 + ✕）----
+              SizedBox(
+                height: fullscreen ? 56 : null,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      fullscreen ? 4 : 20, 12, 8, 8),
+                  child: Row(
+                    children: [
+                      if (fullscreen)
+                        IconButton(
+                          iconSize: 24,
+                          tooltip: '返回',
+                          icon: Icon(Icons.arrow_back,
+                              color: AppColors.textPrimary),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      Expanded(
+                        child: Text(
+                          '用户手册',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close,
-                          size: 18, color: AppColors.textSecondary),
-                      tooltip: '关闭（Esc）',
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+                      if (!fullscreen)
+                        IconButton(
+                          icon: Icon(Icons.close,
+                              size: 18, color: AppColors.textSecondary),
+                          tooltip: '关闭（Esc）',
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               Divider(height: 1, color: AppColors.divider),
@@ -357,14 +378,28 @@ class UserManualDialog extends StatelessWidget {
                   ),
                 ),
               ),
-              // ---- 底部固定区：重选关闭行为 + 启动时显示本手册开关 ----
+              // ---- 底部固定区：重选关闭行为（仅桌面） + 启动时显示本手册开关 ----
               Divider(height: 1, color: AppColors.divider),
-              _buildCloseActionOption(),
+              // §3.1.8：Android 全屏手册**移除**「重选关闭行为」（无关闭到托盘概念）
+              if (!fullscreen) _buildCloseActionOption(),
               _buildStartupOption(),
             ],
           ),
         ),
-      ),
+    );
+
+    // 手机全屏（§3.1.8）：用 Scaffold 提供**有界**布局上下文
+    // （先前用 SafeArea + SizedBox.expand 时 Column 拿到无界高度 → 溢出 99206px）
+    if (fullscreen) {
+      return Scaffold(
+        backgroundColor: AppColors.lyricsBg,
+        body: SafeArea(child: content),
+      );
+    }
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      backgroundColor: AppColors.cardBg,
+      child: content,
     );
   }
 

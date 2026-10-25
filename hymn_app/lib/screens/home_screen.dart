@@ -14,6 +14,7 @@ import '../platform/window_controls.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../widgets/hymn_display.dart';
+import '../widgets/manual_launcher.dart';
 import '../widgets/panels/default_playlists_panel.dart';
 import '../widgets/panels/hymn_list_panel.dart';
 import '../widgets/panels/left_panel_base.dart';
@@ -252,8 +253,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             LogService.instance.info(LogTag.ui, '启动自动弹出用户手册');
-            UserManualDialog.show(context,
-                onRechooseCloseAction: _rechooseCloseAction);
+            // 手机走全屏手册页（§3.1.8），桌面仍走弹窗（带「重选关闭行为」）
+            final isPhone =
+                MediaQuery.sizeOf(context).shortestSide < kMobileBreakpoint;
+            if (isPhone) {
+              showManualPage(context);
+            } else {
+              UserManualDialog.show(context,
+                  onRechooseCloseAction: _rechooseCloseAction);
+            }
           }
         });
       }

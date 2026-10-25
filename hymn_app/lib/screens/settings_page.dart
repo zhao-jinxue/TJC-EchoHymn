@@ -6,6 +6,7 @@ import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
+import '../widgets/manual_launcher.dart';
 import '../widgets/user_manual_dialog.dart';
 
 /// 设置页（`ANDROID_PLAN §3.1.7` / 确认单 3.1.7）
@@ -421,7 +422,7 @@ class SettingsPage extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     LogService.instance.info(LogTag.action, '设置页打开用户手册');
-                    UserManualDialog.show(context);
+                    showManualPage(context);
                   },
                   child: const Text('打开'),
                 ),
