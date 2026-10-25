@@ -159,8 +159,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
   int _pageCount(Hymn? hymn) {
     if (hymn == null) return 0;
     if (_mode == DisplayMode.score) {
-      final pg = _pagination;
-      return (pg == null || pg.isEmpty) ? 1 : pg.pageCount;
+      // 曲谱：**一页一节**（2026-10-25 用户反馈）
+      return _jianpu.stanzaCount > 1 ? _jianpu.stanzaCount : 1;
     }
     return hymn.lyricPages.length;
   }
@@ -299,31 +299,49 @@ class _HymnDisplayState extends State<HymnDisplay> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            // 版本 chips 与 👥 仅在**全量音频版**显示：
-            // 单音频版（钢琴/人声）与无音频版**没有版本选择**（§3.1.17 / §3.1.15）
+            // **单按钮循环切换音频版本**（2026-10-25 用户要求）：
+            // 音频版本使用度远低于曲谱切换，两个 chip + 👥 占位过多 →
+            // 合并为一个按钮，点一下在「該首可用版本」之间循环。
             if (kFullAudioVariant) ...[
               _versionBtn(
-                label: '钢琴版',
-                icon: Icons.piano,
-                active: hymn != null &&
-                    widget.audio.currentAudioVersion.contains('鋼琴'),
-                onTap: hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
+                label: widget.audio.currentAudioVersion,
+                icon: widget.audio.currentAudioVersion.contains('鋼琴')
+                    ? Icons.piano
+                    : Icons.record_voice_over,
+                active: true,
+                onTap: hymn == null ? null : () => _cycleAudioVersion(hymn),
               ),
-              const SizedBox(width: 8),
-              _buildVoiceButton(hymn),
-              const SizedBox(width: 16),
+              const SizedBox(width: 6),
             ],
             _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
             _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
             _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
             _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
           ],
         ),
       ),
     );
+  }
+
+  /// 合并按钮：在该首的**可用版本**之间循环切换（2026-10-25 用户要求）
+  ///
+  /// 原来的「鋼琴版 / 人聲版」两个 chip + 👥 占满一行；合并后点按钮即切，
+  /// 宽度省下约 80dp，模式按钮得以全部显示。
+  void _cycleAudioVersion(Hymn hymn) {
+    final versions = voiceVersions(hymn);
+    if (versions.length < 2) return;
+    final current = widget.audio.currentAudioVersion;
+    final idx = versions.indexOf(current);
+    final next = versions[(idx + 1) % versions.length];
+    LogService.instance.info(
+      LogTag.action,
+      '切换音频版本（合并按钮）',
+      detail: '$current → $next（该首共 ${versions.length} 个版本）',
+    );
+    _switchVersion(hymn, next);
   }
 
   Widget _versionBtn({
@@ -345,17 +363,19 @@ class _HymnDisplayState extends State<HymnDisplay> {
         borderRadius: BorderRadius.circular(6),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          // 2026-10-25 用户要求：按钮内除图标/文字外的留白尽量小
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon,
-                  size: 16,
+                  size: 14,
                   color: active ? Colors.white : AppColors.textSecondary),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: active ? Colors.white : AppColors.textSecondary,
                 ),
               ),
@@ -376,23 +396,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
       ChineseConvertService.instance.toSimplified(v);
 
   /// 人声版切换按钮（切到第一个人声版本；多版本列表在播放条）
-  Widget _buildVoiceButton(Hymn? hymn) {
-    final voices = hymn == null ? <String>[] : voiceVersions(hymn);
-    if (hymn == null || voices.isEmpty) {
-      return _versionBtn(label: '人声版', icon: Icons.mic, active: false);
-    }
-    final currentVoice = widget.audio.currentAudioVersion;
-    final isVoiceActive = currentVoice.contains('人聲') ||
-        currentVoice.contains('人声') ||
-        !currentVoice.contains('鋼琴');
-    return _versionBtn(
-      label: '人声版',
-      icon: Icons.mic,
-      active: isVoiceActive,
-      onTap: () => _switchVersion(hymn, voices.first),
-    );
-  }
-
   Widget _modeBtn(String label, DisplayMode mode, IconData icon) {
     final selected = _mode == mode;
     return Material(
@@ -408,18 +411,19 @@ class _HymnDisplayState extends State<HymnDisplay> {
         borderRadius: BorderRadius.circular(6),
         onTap: () => _setMode(mode),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon,
-                  size: 15,
+                  size: 14,
                   color:
                       selected ? AppColors.primary : AppColors.textSecondary),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: selected ? AppColors.primary : AppColors.textSecondary,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 ),
@@ -494,12 +498,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 谱面各节共用（全库无「一块一节」结构）→ 切节只切换歌词行；
   /// 节数 > 1 时叠加「上一节/下一节 + 手自切换」控件，自动模式复用
   /// `autoPageIndexFor` 跟随播放进度。
+  ///
+  /// **2026-10-25 用户反馈修正**：曲谱页改为「**一页 = 一节**」（3 节 → 3 页）。
+  /// 此前（C-4）是「按小节分页 + 所有节歌词同页（`stanza: null`）」，
+  /// 实机效果是 3 节歌词挤在一屏、音词对不上 —— 用户明确要求每节单独一页。
+  /// `JianpuPagination`（B-4）模型保留，供将来"节内再切小节"时启用。
   Widget _buildJianpu(Hymn hymn) {
-    final pg = _pagination;
-    final total = (pg == null || pg.isEmpty) ? 1 : pg.pageCount;
-    final perPage = total > 1;
-    final page =
-        (pg == null || pg.isEmpty) ? null : pg.pages[_page.clamp(0, total - 1)];
+    final stanzas = _jianpu.stanzaCount;
+    final total = stanzas > 1 ? stanzas : 1;
+    final perStanza = total > 1;
     return Container(
       color: AppColors.lyricsBg,
       child: Stack(
@@ -514,40 +521,37 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   }
                   return const LoadingView(message: '简谱加载中…');
                 }
-                // 页内子谱面（列切片 + 平移）：渲染层无需知道"页"的概念，
-                // 页内列数铺满宽度 → 「页内同列同 x」自然成立（§3.14 判据 ②）。
-                final sub =
-                    page == null ? _jianpu : JianpuPagination.pageScore(_jianpu, page);
-                // 每页只记一次（诊断 C15 分页渲染是否真的取到内容）
-                final key = '${page?.blockNo}|${page?.startCol}|${page?.endCol}';
+                final stanzaNo = perStanza
+                    ? _page.clamp(0, stanzas - 1) + 1
+                    : null;
+                final key = 'stanza=$stanzaNo';
                 if (_lastPageLogKey != key) {
                   _lastPageLogKey = key;
                   LogService.instance.info(
                     LogTag.ui,
                     '曲谱页渲染',
-                    detail: '块 ${page?.blockNo} 列 ${page?.startCol}~${page?.endCol}'
-                        '（${page?.barRangeLabel}）→ 子谱 blocks=${sub.blocks.length}'
-                        ' rows=${sub.blocks.isEmpty ? 0 : sub.blocks.first.rows.length}'
-                        ' colCount=${sub.blocks.isEmpty ? 0 : sub.blocks.first.colCount}',
+                    detail: '第 ${stanzaNo ?? 1} / $stanzas 节'
+                        '（块数 ${_jianpu.blocks.length}，'
+                        '总行数 ${_jianpu.blocks.fold<int>(0, (s, b) => s + b.rows.length)}）',
                   );
                 }
                 return JianpuGridView(
-                  score: sub,
+                  score: _jianpu,
                   constraints: constraints,
-                  // 歌词行仍同页全显示（每行横跨页宽，与音符同列）；按节过滤留给歌词模式
-                  stanza: null,
+                  // 一页一节：按节过滤歌词行，音符行与歌词严格对齐
+                  stanza: stanzaNo,
                 );
               },
             ),
           ),
-          if (perPage)
+          if (perStanza)
             Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
-          if (perPage)
+          if (perStanza)
             Positioned(
               left: 0,
               right: 0,
               bottom: 6,
-              child: _buildPageNav(total, byBar: true),
+              child: _buildPageNav(total),
             ),
         ],
       ),

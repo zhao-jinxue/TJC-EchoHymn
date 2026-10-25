@@ -1,18 +1,21 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../services/log_service.dart';
 
 /// 字号等级（写入 state.json 的 fontSizeLevel 字段）
 ///
-/// 系数（2026-08-31 用户调整）：默认 1.0 / 中号 1.3 / 大号 1.6 / 最大 1.9。
-/// 系数集中在 [scale]，改一处即全局生效。
+/// **桌面系数**（2026-08-31 用户调整）：1.0 / 1.3 / 1.6 / 1.9 —— **保持不变**。
+/// **移动端系数**（2026-10-25 用户要求）：三档、档间差异温和 —— 1.0 / 1.12 / 1.26
+///（第 4 档 `xlarge` 手机不再显示，仅桌面用 1.40 作最大档）。
 enum FontSizeLevel {
-  normal('normal', '默认', 1.0),
-  medium('medium', '中号', 1.3),
-  large('large', '大号', 1.6),
-  xlarge('xlarge', '最大', 1.9);
+  normal('normal', '默认', 1.0, 1.0),
+  medium('medium', '中号', 1.3, 1.12),
+  large('large', '大号', 1.6, 1.26),
+  xlarge('xlarge', '最大', 1.9, 1.40);
 
-  const FontSizeLevel(this.id, this.label, this.scale);
+  const FontSizeLevel(this.id, this.label, this.scale, this.mobileScale);
 
   /// 持久化标识
   final String id;
@@ -20,8 +23,15 @@ enum FontSizeLevel {
   /// 中文显示名（字号切换菜单展示）
   final String label;
 
-  /// 全局等比缩放系数
+  /// **桌面**全局等比缩放系数
   final double scale;
+
+  /// **移动端**全局等比缩放系数（档间差异更温和，2026-10-25）
+  final double mobileScale;
+
+  /// 当前平台实际生效的系数
+  double get activeScale =>
+      (Platform.isAndroid || Platform.isIOS) ? mobileScale : scale;
 }
 
 /// 全局字号控制器：持有当前字号等级，切换时通知整棵 UI 树重建（全局等比缩放）。
@@ -39,7 +49,7 @@ class FontScaleController {
 
   FontSizeLevel get current => notifier.value;
 
-  double get scale => current.scale;
+  double get scale => current.activeScale;
 
   void switchTo(FontSizeLevel level) {
     if (level == current) return;

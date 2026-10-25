@@ -177,7 +177,8 @@ class SettingsPage extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final l in FontSizeLevel.values)
+              // 手机只显示 3 档（标准/大/特大；2026-10-25 用户要求档间差异温和）
+              for (final l in FontSizeLevel.values.take(3))
                 _chip(
                   label: _fontLabel(l),
                   active: FontScaleController.instance.current.id == l.id,
