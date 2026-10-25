@@ -77,7 +77,43 @@ class AudioService {
     _init();
   }
 
+  /// 配置 Android 音频上下文（`ANDROID_PLAN §6` **D-1 音频焦点**）
+  ///
+  /// - `audioFocus: gain` → 来电 / 其他 App 播放时**系统要求本播放器让出焦点**，
+  ///   `audioplayers` 的 Android 实现会自动暂停，恢复后由 App 的播放状态机续播；
+  /// - `usageType: media` + `contentType: music` → 被系统识别为媒体音频
+  ///   （音量键调"媒体音量"、通知栏分组正确、蓝牙路由按媒体音频选择）；
+  /// - `stayAwake: true` → 息屏时不因屏幕锁定被静音（`AudioManager` 层面）。
+  ///
+  /// 桌面（Windows）无此概念，直接跳过。
+  Future<void> _applyAndroidAudioContext() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _player.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            audioMode: AndroidAudioMode.normal,
+            stayAwake: true,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+        ),
+      );
+      LogService.instance.info(
+        LogTag.play,
+        '音频上下文已配置（Android）',
+        detail: 'audioFocus=gain / usage=media / contentType=music / stayAwake=true',
+      );
+    } catch (e, st) {
+      LogService.instance.exception('配置音频上下文失败', e, st);
+    }
+  }
+
   Future<void> _init() async {
+    // D-1 音频焦点（ANDROID_PLAN §6）：先配置音频上下文，再挂事件监听
+    await _applyAndroidAudioContext();
     // 时长 / 进度
     _player.onDurationChanged.listen((d) {
       if (!_durationCtrl.isClosed) _durationCtrl.add(d);

@@ -180,8 +180,19 @@
   - **③ lite「浏览」语义 ✅**：无音频版下移动顶栏与桌面顶栏标题加 **`浏览 · `** 前缀
     （§3.1.15：lite 的当前曲目语义是「当前浏览」而非「正在播放」）；列表行 `isCurrent` 高亮本就中性，未改
 - **C-7 变体外壳 ✅ —— M3 UI 移动化全部完成（C-1~C-7）**
-- **下一工单**：**M4 D-1 音频焦点**（`audio_session`：来电/他 App 抢占 → 暂停、恢复续播）
-- **必读章节**：`ANDROID_PLAN.md` §6（系统集成 D1~D3）+ `pubspec.yaml` 依赖现状
+- **M4 系统集成（进行中）**
+  - **D-1 音频焦点 ✅**（零依赖，走 `audioplayers` 自带的 `AudioContext`）：
+    `_applyAndroidAudioContext()` 在 `_init()` 首步配置
+    `audioFocus: gain`（来电/他 App 播放时系统要求让出焦点 → 自动暂停）、
+    `usageType: media` + `contentType: music`（音量键调媒体音量、通知分组、蓝牙路由正确）、
+    `stayAwake: true`；桌面 `Platform.isAndroid` 直接跳过
+    - **实测**：日志 `音频上下文已配置（Android）`；系统日志出现
+      `MediaFocusControl: ... from uid/pid 10216/15087 clientId=android.media.AudioManager@...`
+      （audioplayers 的 Android 侧已通过 `AudioManager` 申请焦点）✅
+  - **D-2 媒体通知 + 锁屏 + 后台播放 ⬜（下一步，需设计）**：需前台服务（`FOREGROUND_SERVICE_MEDIA_PLAYBACK`）+
+    MediaSession；候选方案：`audio_service` 包（标准，但要改 `AudioService` 架构）或自建 Kotlin MediaSession
+  - **D-3 媒体键 / 耳机线控 / 返回手势** ⬜
+- **必读章节**：`ANDROID_PLAN.md` §6（D2/D3）/ Android 14+ 前台服务类型要求
 
 ## 环境变更（换机/清缓存时需复原）
 
