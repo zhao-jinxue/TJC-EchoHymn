@@ -413,7 +413,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             final layoutMode = !isPhone
                 ? '桌面三栏'
                 : (mq.width >= kMobileBreakpoint ? '手机横屏双栏' : '手机竖屏单列');
-            if (_layoutMode != layoutMode) {
+            // 首帧 MediaQuery 可能为 0×0，此时不记（避免日志噪音）
+            if (mq.width > 0 && _layoutMode != layoutMode) {
               _layoutMode = layoutMode;
               LogService.instance.info(
                 LogTag.ui,
@@ -668,9 +669,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // 桌面自绘标题栏/功能栏/状态栏一律不出现（它们是窗口语义）。
   Widget _buildMobileTopBar() {
     final hymn = _audio?.currentHymn;
+    // 单音频版的替代音频标记（§1.4 ⑤）：让用户知道这首不是本包的原生版本
+    final substituted = _audio?.isSubstitutedVersion ?? false;
     final title = hymn != null
         ? '第 ${hymn.hymnNumber} 首《'
             '${ChineseConvertService.instance.toSimplified(hymn.title)}》'
+            '${substituted ? '（替代音频）' : ''}'
         : 'EchoHymn · 聆听赞美诗';
     // 顶栏高度：竖屏 56 / 横屏 48（ANDROID_PLAN §3.0.1 令牌 bar.top）
     final mq = MediaQuery.sizeOf(context);

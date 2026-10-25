@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'dart:io';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/hymn.dart';
+import '../app_feature.dart';
 import 'app_paths.dart';
 import 'log_service.dart';
 import '../platform/window_controls.dart';
@@ -32,8 +35,18 @@ class AudioService {
       StreamController<Duration>.broadcast();
 
   Hymn? _currentHymn;
-  String _currentAudioVersion = '鋼琴版'; // 记忆版本（用户偏好，切歌选版本用）
-  String _actualAudioVersion = '鋼琴版'; // 实际播放版本（UI 高亮用，含降级场景）
+  /// 当前变体的**默认音频版本**（`ANDROID_PLAN §1.4` ④）
+  ///
+  /// - 全量版 / 钢琴版 → `鋼琴版`
+  /// - **人声版 → `人聲版`**（此前硬编码 `鋼琴版`，会导致人声版包优先播鋼琴音频，属真实缺陷）
+  /// - 读谱版（lite）无播放能力，取 `鋼琴版` 占位即可
+  static String _variantDefaultVersion() => switch (kAudioVariant) {
+        AudioVariant.vocal => '人聲版',
+        _ => '鋼琴版',
+      };
+
+  String _currentAudioVersion = _variantDefaultVersion(); // 记忆版本（用户偏好，切歌选版本用）
+  String _actualAudioVersion = _variantDefaultVersion(); // 实际播放版本（UI 高亮用，含降级场景）
   bool _disposed = false;
   String? lastError; // 最近一次播放错误（Toast 展示用）
 
@@ -106,6 +119,35 @@ class AudioService {
   /// 当前**实际播放**的音频版本（UI 版本栏高亮用；降级场景显示实际版本，C14）
   String get currentAudioVersion => _actualAudioVersion;
 
+  /// 该首在 [version] 下**是否真有可播文件**（`ANDROID_PLAN §1.4` ⑤）
+  ///
+  /// 不能只看 `audioVersions.containsKey`：DB 里可能残留"有记录但文件未下载/未打包"的版本
+  /// （实测第 `249` 首在钢琴版包里 DB 仍记着 `鋼琴版` 键，但文件不存在）——
+  /// 那种情况下必须走**替代**，否则用户点播放只会得到「无音频文件」。
+  bool _hasAudioFile(Hymn hymn, String version) {
+    final rel = hymn.audioVersions[version];
+    if (rel == null || rel.isEmpty) return false;
+    final abs = AppPaths.resolveAsset(rel);
+    if (abs.isEmpty) return false;
+    try {
+      return File(abs).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 当前播放是否用了**替代音频**（`ANDROID_PLAN §1.4` ⑤）
+  ///
+  /// 单音频版全曲目可播靠「缺口互补替代」：钢琴版 1 首（`249` → 人聲版）、
+  /// 人声版 11 首（`3`/`389` → 四部合唱；9 首 → 鋼琴版）。
+  /// 判据：变体期望版本 ≠ 实际播放版本。
+  bool get isSubstitutedVersion {
+    if (!kSingleAudioVariant) return false;
+    final expected =
+        kAudioVariant == AudioVariant.piano ? '鋼琴版' : '人聲版';
+    return _currentHymn != null && _actualAudioVersion != expected;
+  }
+
   /// 用户**记忆**的音频版本（切歌选版本用；降级不覆盖记忆）
   String get preferredAudioVersion => _currentAudioVersion;
 
@@ -149,6 +191,27 @@ class AudioService {
     if (version != null) {
       _currentAudioVersion = version;
       _actualAudioVersion = version;
+    } else {
+      // 解析「实际会播放的版本」：记忆版本**真有文件** → 用它；否则找该首任一有文件的版本。
+      // 这一步决定单音频版的**替代标记**是否准确（`249` 在钢琴版包里会落到人聲版）。
+      final preferred = _currentAudioVersion;
+      if (_hasAudioFile(hymn, preferred)) {
+        _actualAudioVersion = preferred;
+      }
+      else {
+        final candidates = <String>[
+          if (hymn.audioVersionList.isNotEmpty) ...hymn.audioVersionList,
+          ...hymn.audioVersions.keys,
+        ];
+        var found = '';
+        for (final v in candidates) {
+          if (v != preferred && _hasAudioFile(hymn, v)) {
+            found = v;
+            break;
+          }
+        }
+        _actualAudioVersion = found.isNotEmpty ? found : preferred;
+      }
     }
     onCurrentChanged?.call();
     await _player.stop(); // 停止旧源，确保进度归零
@@ -156,7 +219,9 @@ class AudioService {
     LogService.instance.info(
       LogTag.play,
       '加载诗歌（不播放）：第 ${hymn.hymnNumber} 首《${hymn.title}》',
-      detail: '音频版本: $version / 列表位置: $index',
+      detail: '音频版本: $_actualAudioVersion'
+          '${isSubstitutedVersion ? '（替代：期望 ${_variantDefaultVersion()}）' : ''}'
+          ' / 列表位置: $index',
     );
   }
 
@@ -174,12 +239,39 @@ class AudioService {
     //    再遇到有人声版歌时仍能用记忆版本人声版播放）
     // 实际播放版本始终记录在 _actualAudioVersion，供 UI 高亮（含降级场景）。
     var audioVersion = version ?? _currentAudioVersion;
-    if (hymn.audioVersions.containsKey(audioVersion)) {
+    if (_hasAudioFile(hymn, audioVersion)) {
       _currentAudioVersion = audioVersion;
       _actualAudioVersion = audioVersion;
-    } else if (hymn.audioVersionList.isNotEmpty) {
-      audioVersion = hymn.audioVersionList.first;
-      _actualAudioVersion = audioVersion;
+    }
+    else {
+      // 缺口互补替代（§1.4 ⑤）：按候选顺序找**首个真有文件**的版本
+      // （不能信 DB 的键：可能有记录但文件未打包，例如钢琴版包里的 `249`）
+      final candidates = <String>[
+        if (hymn.audioVersionList.isNotEmpty) ...hymn.audioVersionList,
+        ...hymn.audioVersions.keys,
+      ];
+      var found = '';
+      for (final v in candidates) {
+        if (_hasAudioFile(hymn, v)) {
+          found = v;
+          break;
+        }
+      }
+      if (found.isNotEmpty) {
+        audioVersion = found;
+        _actualAudioVersion = found;
+        if (kSingleAudioVariant) {
+          LogService.instance.info(
+            LogTag.play,
+            '替代音频：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+            detail: '期望 ${_variantDefaultVersion()} → 实际 $found',
+          );
+        }
+      }
+      else if (hymn.audioVersionList.isNotEmpty) {
+        audioVersion = hymn.audioVersionList.first;
+        _actualAudioVersion = audioVersion;
+      }
     }
 
     final rel = hymn.audioVersions[audioVersion];
