@@ -313,14 +313,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
               ),
               // 版本按钮与歌词模式一组之间留更大的间隔（2026-10-25 用户要求：
               // 比四个模式按钮之间（3dp）明显更宽，形成"音频版本 | 显示模式"分组）
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
             ],
             _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
-            const SizedBox(width: 3),
+            const SizedBox(width: 2),
             _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
-            const SizedBox(width: 3),
+            const SizedBox(width: 2),
             _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
-            const SizedBox(width: 3),
+            const SizedBox(width: 2),
             _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
           ],
         ),

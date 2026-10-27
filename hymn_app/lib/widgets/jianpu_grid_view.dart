@@ -156,6 +156,10 @@ class JianpuGridView extends StatelessWidget {
       for (final block in score.blocks)
         JianpuGridView.minLyricColGap(block),
     ];
+    // **单节全页 + 字号最大**的平衡点（2026-10-27 用户要求）：
+    // bps = 每段小节数（0 = 桌面不折行）；fittedSlot = 该平衡点下的槽宽
+    final (bps, fittedSlot) =
+        fitFullPage(score, availW, availH, lyricGaps, _rowEm);
     var totalH = 0.0;
     for (var bi = 0; bi < visible.length; bi++) {
       if (bi > 0 && visible[bi].isNotEmpty) totalH += slots[bi] * blockGapEm;
@@ -182,16 +186,14 @@ class JianpuGridView extends StatelessWidget {
       final block = score.blocks[bi];
       // **按整小节折行**（2026-10-27，仅移动端）：每段不超过 `per` 列且在小节线处断开；
       // 桌面 `per = colCount` → 只有 1 段 = 原版式（golden 基准不变）。
-      // **行数最少优先**（2026-10-27 用户指定算法）：短块一行放下、长块才折行，
-      // 行数确定后每段**独立铺满可用宽**（字号按该段列数最大化，右侧不留空白）。
-      final segs = planSegments(block, availW, _lyricEm(lyricGaps[bi]));
+      // 平衡点选定：`bps` 段小节数（0 = 桌面不折行），槽宽统一按 `fittedSlot`
+      final segs =
+          bps > 0 ? segmentsByBars(block, bps) : [(0, block.colCount)];
       final barCols = block.barColsByLine();
       for (var si = 0; si < segs.length; si++) {
         final (cs, ce) = segs[si];
         final cols = ce - cs;
-        // 每段按自身列数铺满（用户 2026-10-27：不能出现大片右侧空白）
-        final segSlot =
-            cols > 0 ? (availW / cols).clamp(1.0, maxSlotFor) : slots[bi];
+        final segSlot = bps > 0 ? fittedSlot : slots[bi];
         final m = _Metrics(
           slot: segSlot,
           gridW: segSlot * cols,
@@ -377,6 +379,56 @@ class JianpuGridView extends StatelessWidget {
     return segmentsByBars(block, barsPerSeg);
   }
 
+  /// **「单节全页 + 字号最大」平衡点搜索**（2026-10-27 用户要求）
+  ///
+  /// 用户诉求：字号够大了，但一节内容超出一屏 → 要在「**单节全页显示**」与「折行扩字号」
+  /// 之间取平衡，并以第 1 首为例确定这个字号作为新的最小字号基准。
+  ///
+  /// 做法：以「**每段几个小节**」`bps` 为搜索变量（1→6），
+  /// - `bps` 越小 → 每段列数越少 → 槽宽越大 → 字号越大；
+  /// - 逐档累加**估算总高**，取**第一个满足 `总高 ≤ 可用高`** 的档 = 字号最大的可行解。
+  ///
+  /// 返回 `(每段小节数, 槽宽)`；桌面返回 `(0, 0)` 表示不折行（原版式）。
+  static (int, double) fitFullPage(
+    JianpuScore score,
+    double availW,
+    double availH,
+    List<int> lyricGaps,
+    double Function(JianpuRowKind kind, int colGap) rowEm,
+  ) {
+    if (!_isMobile || score.blocks.isEmpty) return (0, 0.0);
+    var totalCols = 0;
+    var totalBars = 0;
+    for (final b in score.blocks) {
+      totalCols += b.colCount;
+      totalBars += segmentsByBars(b, 1).length;
+    }
+    if (totalCols <= 0 || totalBars <= 0) return (0, 0.0);
+    final avgBarWidth = totalCols / totalBars;
+
+    for (var bps = 1; bps <= 6; bps++) {
+      var perCols = (avgBarWidth * bps).ceil();
+      if (perCols < 2) perCols = 2;
+      final slot = availW / perCols;
+      var h = 0.0;
+      for (var bi = 0; bi < score.blocks.length; bi++) {
+        final block = score.blocks[bi];
+        final segs = segmentsByBars(block, bps);
+        var segH = 0.0;
+        for (final row in block.rows) {
+          segH += slot * rowEm(row.kind, lyricGaps[bi]);
+        }
+        h += segH * segs.length;
+        if (bi > 0) h += slot * 0.55; // blockGapEm
+      }
+      if (h <= availH) return (bps, slot);
+    }
+    // 内容极多：取最密档（6 小节/段）保证尽量少滚动
+    var perCols = (avgBarWidth * 6).ceil();
+    if (perCols < 2) perCols = 2;
+    return (6, availW / perCols);
+  }
+
   /// 相邻歌词列的**最小列距**（用于动态放大歌词字号）
   ///
   /// 2026-10-27 找到「字看不清」的真正原因：一行 22 列时槽宽只有 ~16.6dp，
@@ -484,10 +536,14 @@ class JianpuGridView extends StatelessWidget {
       final cell = row.cells[col]!;
       final w = _buildCell(row, cell, m);
       if (w == null) continue;
+      // **含标点的歌词格放宽到 1.6 列**（汉字原字号 + 小号标点，2026-10-27）：
+      // 直接加宽该 Positioned，而不是靠溢出 → 既不缩小汉字，也不触发 RenderFlex overflow。
+      final isMultiChar = cell.kind == JianpuCellKind.text &&
+          cell.displayText.characters.length > 1;
       stack.add(Positioned(
         left: (col - colStart) * m.slot,
         top: 0,
-        width: m.slot,
+        width: isMultiChar ? m.slot * 1.6 : m.slot,
         height: h,
         child: w,
       ));
@@ -539,26 +595,54 @@ class JianpuGridView extends StatelessWidget {
           ),
         );
       case JianpuCellKind.text:
-        // **多字符单元格自适应缩放**（2026-10-27 用户反馈「「圣哉，」的标点与下一个「圣」重叠」）：
-        // 歌词单元格可能含 2~3 个字符（如「哉，」「、」），字宽 = 0.88 槽宽 × 字符数 ⇒ 必然
-        // 溢出到相邻列。用 `FittedBox(scaleDown)` 把该格压进 1 列宽度内，**绝不越过列界**。
-        return Align(
-          alignment: Alignment.center,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
+        // **汉字与标点分开渲染**（2026-10-27 用户指出：整格缩放会把「哉」也缩小 —— 低级错误）
+        //
+        // 数据库 `jianpu_cell.text` 把「哉，」存在**同一格**（CSV 原样，未拆分）。
+        // 正确做法：按末尾标点拆开 —— **汉字保持原字号**，标点用 0.55 倍字号紧贴其后；
+        // 整体略宽于 1 列时允许溢出到右侧（该位置在源数据里通常是空列），
+        // 既不缩小汉字，也不会与相邻字重叠。
+        final rawText = cell.displayText;
+        final punctMatch =
+            RegExp(r'[，。、；：！？,.;:!?）】」』…—]+$').firstMatch(rawText);
+        final bodyText = punctMatch == null
+            ? rawText
+            : rawText.substring(0, punctMatch.start);
+        final punctText = punctMatch?.group(0) ?? '';
+        final baseStyle = TextStyle(
+          fontFamily: 'EchoKai',
+          fontFamilyFallback: const ['KaiTi', 'EchoSans'],
+          fontSize: m.lyricSize,
+          height: 1.15,
+          color: m.lyricColor,
+        );
+        if (punctText.isEmpty || bodyText.isEmpty) {
+          return Align(
+            alignment: Alignment.center,
             child: Text(
-              cell.displayText,
+              rawText,
               maxLines: 1,
               softWrap: false,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'EchoKai',
-                fontFamilyFallback: const ['KaiTi', 'EchoSans'],
-                fontSize: m.lyricSize,
-                height: 1.15,
-                color: m.lyricColor,
-              ),
+              style: baseStyle,
             ),
+          );
+        }
+        return Align(
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(bodyText,
+                  maxLines: 1, softWrap: false, style: baseStyle),
+              Text(
+                punctText,
+                maxLines: 1,
+                softWrap: false,
+                style: baseStyle.copyWith(fontSize: m.lyricSize * 0.55),
+              ),
+            ],
           ),
         );
       case JianpuCellKind.stanza:
