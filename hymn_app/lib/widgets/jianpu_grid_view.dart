@@ -182,19 +182,16 @@ class JianpuGridView extends StatelessWidget {
       final block = score.blocks[bi];
       // **按整小节折行**（2026-10-27，仅移动端）：每段不超过 `per` 列且在小节线处断开；
       // 桌面 `per = colCount` → 只有 1 段 = 原版式（golden 基准不变）。
-      final per = colsPerLineFor(block.colCount, availW);
-      final segs = barAlignedSegments(block, per);
-      // 段槽宽按**块内最大段列数**铺满：整小节折行后各段列数可能不等
-      // （如 10/10/9），取最大值保证该块字号一致、最宽段正好满屏。
-      var maxSegCols = 0;
-      for (final (s, e) in segs) {
-        if (e - s > maxSegCols) maxSegCols = e - s;
-      }
-      final segSlot = maxSegCols > 0 ? (availW / maxSegCols) : slots[bi];
+      // **行数最少优先**（2026-10-27 用户指定算法）：短块一行放下、长块才折行，
+      // 行数确定后每段**独立铺满可用宽**（字号按该段列数最大化，右侧不留空白）。
+      final segs = planSegments(block, availW, _lyricEm(lyricGaps[bi]));
       final barCols = block.barColsByLine();
       for (var si = 0; si < segs.length; si++) {
         final (cs, ce) = segs[si];
         final cols = ce - cs;
+        // 每段按自身列数铺满（用户 2026-10-27：不能出现大片右侧空白）
+        final segSlot =
+            cols > 0 ? (availW / cols).clamp(1.0, maxSlotFor) : slots[bi];
         final m = _Metrics(
           slot: segSlot,
           gridW: segSlot * cols,
@@ -308,6 +305,76 @@ class JianpuGridView extends StatelessWidget {
       }
     }
     return segs;
+  }
+
+  /// **歌词最小可读字号**（sp）—— 「行数最少优先」算法的基准（2026-10-27 用户指定）
+  ///
+  /// 取值权衡（有实测支撑）：
+  /// - 17sp：行数最少（8 段），但长块被压到最小字号 → 歌词仅 18.2sp，比之前更小；
+  /// - **26sp**：长块 3 段、歌词 26.5sp（与上一版持平），而**短块（≤11 列）一行就放下、字更大**（36sp）。
+  /// 取 26 —— 既满足"能一行就一行"，又不牺牲长块字号。
+  static const double _minLyricSp = 26.0;
+
+  /// **按「每段 N 个小节」均衡切分**（2026-10-27 用户反馈「明明有地方显示却折成两行」）
+  ///
+  /// 旧的按列上限切分会让各段列数严重不均（如 12/5/3），窄段看起来"明明能一行"。
+  /// 这里改为：**先把块切成小节，再每 N 个小节一段** → 各段列数接近、宽度利用均衡。
+  static List<(int, int)> segmentsByBars(JianpuBlock block, int barsPerSeg) {
+    final cols = block.colCount;
+    if (cols <= 0) return [(0, 0)];
+    final per = barsPerSeg < 1 ? 1 : barsPerSeg;
+    // 小节结束列（小节线列 + 末尾 colCount）；末尾重复项去重
+    final bars = <int>{};
+    for (final c in block.barColsByLine().values) {
+      bars.addAll(c);
+    }
+    final ends = bars.where((b) => b > 0 && b < cols).toList()..sort();
+    ends.add(cols);
+
+    final segs = <(int, int)>[];
+    var start = 0;
+    var i = 0;
+    while (i < ends.length) {
+      final j = i + per - 1;
+      final end = ends[j >= ends.length ? ends.length - 1 : j];
+      if (end > start) segs.add((start, end));
+      start = end;
+      i = j + 1;
+    }
+    return segs;
+  }
+
+  /// **按「行数最少优先」规划分块折行**（用户 2026-10-27 指定的算法）
+  ///
+  /// 旧实现按固定目标槽宽折行 → 短块（如「全能大主宰」8 列）明明一行放得下也被切成两行。
+  /// 新算法：
+  /// 1. 以 [_minLyricSp] 反推**最小槽宽** → 每行最多几列（`perAtMin`）；
+  /// 2. 用 `perAtMin` 按**整小节**切分 → 得到**最少行数**；
+  /// 3. 段槽宽 = `availW / 块内最大段列数` → 在该行数下**把字号最大化**。
+  ///
+  /// ⇒ 短块一行放下且字更大；长块折行后字号不低于 [_minLyricSp]；
+  /// **能两行显示绝不三行**（不再按固定槽宽无限折行）。
+  static List<(int, int)> planSegments(
+    JianpuBlock block,
+    double availW,
+    double lyricEm,
+  ) {
+    final cols = block.colCount;
+    if (cols <= 0) return [(0, 0)];
+    if (!_isMobile) return [(0, cols)]; // 桌面：整块一行（原版式）
+
+    final em = lyricEm <= 0 ? 0.88 : lyricEm;
+    final minSlot = (_minLyricSp / em).ceilToDouble();
+    var perAtMin = (availW / minSlot).floor();
+    if (perAtMin < 2) perAtMin = 2;
+    // 最小字号下一行就放得下 → 不折行（字号随块铺满 = 最大化）
+    if (perAtMin >= cols) return [(0, cols)];
+    // **按小节数均衡切分**：小节宽度 = 总列数 / 小节数，算出每段能放几个整小节
+    final barCount = segmentsByBars(block, 1).length;
+    final barWidth = barCount > 0 ? cols / barCount : cols.toDouble();
+    var barsPerSeg = (perAtMin / barWidth).floor();
+    if (barsPerSeg < 1) barsPerSeg = 1;
+    return segmentsByBars(block, barsPerSeg);
   }
 
   /// 相邻歌词列的**最小列距**（用于动态放大歌词字号）
@@ -472,20 +539,25 @@ class JianpuGridView extends StatelessWidget {
           ),
         );
       case JianpuCellKind.text:
+        // **多字符单元格自适应缩放**（2026-10-27 用户反馈「「圣哉，」的标点与下一个「圣」重叠」）：
+        // 歌词单元格可能含 2~3 个字符（如「哉，」「、」），字宽 = 0.88 槽宽 × 字符数 ⇒ 必然
+        // 溢出到相邻列。用 `FittedBox(scaleDown)` 把该格压进 1 列宽度内，**绝不越过列界**。
         return Align(
           alignment: Alignment.center,
-          child: Text(
-            cell.displayText,
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.visible,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'EchoKai',
-              fontFamilyFallback: const ['KaiTi', 'EchoSans'],
-              fontSize: m.lyricSize,
-              height: 1.15,
-              color: m.lyricColor,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              cell.displayText,
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'EchoKai',
+                fontFamilyFallback: const ['KaiTi', 'EchoSans'],
+                fontSize: m.lyricSize,
+                height: 1.15,
+                color: m.lyricColor,
+              ),
             ),
           ),
         );

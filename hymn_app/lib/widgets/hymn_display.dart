@@ -561,18 +561,6 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   }
                   final availW =
                       (constraints.maxWidth - JianpuGridView.padX * 2);
-                  final per = JianpuGridView.colsPerLineFor(maxCols, availW);
-                  var segCount = 0;
-                  var segMax = 0;
-                  for (final b in _jianpu.blocks) {
-                    final segs = JianpuGridView.barAlignedSegments(b, per);
-                    segCount += segs.length;
-                    for (final (s, e) in segs) {
-                      if (e - s > segMax) segMax = e - s;
-                    }
-                  }
-                  final slot =
-                      availW / (segMax > 0 ? segMax : (per > 0 ? per : 1));
                   final gaps = <int>[
                     for (final b in _jianpu.blocks)
                       JianpuGridView.minLyricColGap(b),
@@ -582,25 +570,45 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   final lyricEm = gap <= 1
                       ? JianpuGridView.lyricFontEmFor
                       : (gap * 0.92).clamp(JianpuGridView.lyricFontEmFor, 2.6);
+                  // 按「行数最少优先」逐块规划（与实际渲染调用同一函数）
+                  var segCount = 0;
+                  var segMax = 0;
+                  for (final b in _jianpu.blocks) {
+                    final g = JianpuGridView.minLyricColGap(b);
+                    final em = g <= 1
+                        ? JianpuGridView.lyricFontEmFor
+                        : (g * 0.92)
+                            .clamp(JianpuGridView.lyricFontEmFor, 2.6);
+                    final segs = JianpuGridView.planSegments(b, availW, em);
+                    segCount += segs.length;
+                    for (final (s, e) in segs) {
+                      if (e - s > segMax) segMax = e - s;
+                    }
+                  }
+                  final slot = availW / (segMax > 0 ? segMax : 1);
                   LogService.instance.info(
                     LogTag.ui,
                     '曲谱页渲染（一页一节 + 整小节折行）',
                     detail: '第 ${stanzaNo ?? 1} / $stanzas 节'
                         '（块数 ${_jianpu.blocks.length}，最大列数 $maxCols，'
                         '歌词列距 $gap）\n'
-                        '可用宽 ${availW.toStringAsFixed(0)}dp / 每行 ≤$per 列'
-                        '（$segCount 段，最多 $segMax 列）'
-                        ' / 槽宽 ${slot.toStringAsFixed(1)}dp'
+                        '可用宽 ${availW.toStringAsFixed(0)}dp / 每行最多 $segMax 列'
+                        '（共 $segCount 段）/ 槽宽 ${slot.toStringAsFixed(1)}dp'
                         ' → 音符 ${(slot * JianpuGridView.noteFontEmFor).toStringAsFixed(1)}sp'
                         ' / 歌词 ${(slot * lyricEm).toStringAsFixed(1)}sp'
                         '（${lyricEm.toStringAsFixed(2)} em）',
                   );
                 }
-                return JianpuGridView(
-                  score: _jianpu,
-                  constraints: constraints,
-                  // **一页一节**：只显示该节歌词行；节内由组件按整小节折行
-                  stanza: stanzaNo,
+                // **曲谱不跟随「设置 → 字号」与系统字体缩放**（2026-10-27 用户要求）：
+                // 曲谱字号由本算法按「列数 / 行数 / 最小可读字号」严格计算，
+                // 任何外部缩放都会破坏列对齐与折行结果 → 这里强制关闭文本缩放。
+                return MediaQuery.withNoTextScaling(
+                  child: JianpuGridView(
+                    score: _jianpu,
+                    constraints: constraints,
+                    // **一页一节**：只显示该节歌词行；节内由组件按整小节折行
+                    stanza: stanzaNo,
+                  ),
                 );
               },
             ),
