@@ -159,9 +159,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
   int _pageCount(Hymn? hymn) {
     if (hymn == null) return 0;
     if (_mode == DisplayMode.score) {
-      // 曲谱：**整页形态**（2026-10-27 用户要求复刻参考 APK）
-      // 全部节同页显示、内容超出纵向滚动 → 只有 1 页，无翻页
-      return 1;
+      // 曲谱：**一页一节**（节内按整小节折行，2026-10-27 定型）
+      return _jianpu.stanzaCount > 1 ? _jianpu.stanzaCount : 1;
     }
     return hymn.lyricPages.length;
   }
@@ -519,84 +518,103 @@ class _HymnDisplayState extends State<HymnDisplay> {
     }
   }
 
-  /// 「曲谱」：**整页形态**简谱网格（单声部主旋律 + 每一节各一行歌词）
+  /// 「曲谱」：**一页一节 + 节内按整小节折行**（单声部主旋律 + 该节歌词行）
   ///
   /// 数据源 `jianpu_*` 三表（列 = 拍点）；**无网格数据时回退**该首简谱扫描图
   /// （老库、未收录、数据异常时不留空白）。
   ///
-  /// **2026-10-27 用户要求复刻参考 APK**：一页显示**全部节**（`stanza: null`），
-  /// 节号 `(1)(2)(3)` 用来区分各节歌词，内容超出时**纵向滚动** ——
-  /// 这正是印刷本 / 参考 APK 的形态。
+  /// **2026-10-27 定型**（用户多轮反馈后的最终形态）：
+  /// - **一页只显示一节**（`stanza: 当前节`）—— 多节同屏会让 2~3 行歌词混在一起，用户明确不要；
+  /// - **节内按整小节折行**（见 `JianpuGridView` 移动端折行）→ 一行 1~2 小节、歌词约 26.5sp；
+  /// - 节数 > 1 时叠加「上一节/下一节 + 手自切换」控件。
   ///
-  /// 历史：2026-10-25 曾改为「一页一节 + 翻页条」（用户当时反馈"3 节挤一屏、音词错位"），
-  /// 但对照参考 APK 后确认用户要的是**整页滚动**形态 → 本次改回。
-  /// `JianpuPagination`（B-4）模型保留，供将来「按小节分页」需要时启用。
+  /// 轨迹：C-4「按小节分页 + 全部节同页」→ 2026-10-25「一页一节」→
+  /// 2026-10-27 中途误改为「整页形态（全部节同页）」以对齐参考 APK，实机是多节混排
+  /// → 定型为「**一页一节 + 折行**」：既拿到大字，又不让多节歌词挤在一起。
   Widget _buildJianpu(Hymn hymn) {
+    final stanzas = _jianpu.stanzaCount;
+    final total = stanzas > 1 ? stanzas : 1;
+    final perStanza = total > 1;
     return Container(
       color: AppColors.lyricsBg,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (_jianpu.isEmpty) {
-            if (!_jianpuLoading) {
-              return _buildScore(hymn.numberedPngPath,
-                  isEmpty: '暂无简谱');
-            }
-            return const LoadingView(message: '简谱加载中…');
-          }
-          if (_lastPageLogKey != 'stanza=all') {
-            _lastPageLogKey = 'stanza=all';
-            // 字号可测量化：用户反馈「字太小」时需要知道实际槽宽/字号，
-            // 而不是靠截图目测（2026-10-27）
-            var maxCols = 0;
-            for (final b in _jianpu.blocks) {
-              if (b.colCount > maxCols) maxCols = b.colCount;
-            }
-            final availW =
-                (constraints.maxWidth - JianpuGridView.padX * 2);
-            // 折行后的真实槽宽与段数（移动端按整小节折行；桌面 1 段）
-            final per = JianpuGridView.colsPerLineFor(maxCols, availW);
-            var segCount = 0;
-            var segMax = 0;
-            for (final b in _jianpu.blocks) {
-              final segs = JianpuGridView.barAlignedSegments(b, per);
-              segCount += segs.length;
-              for (final (s, e) in segs) {
-                if (e - s > segMax) segMax = e - s;
-              }
-            }
-            // 实际渲染用「块内最大段列数」铺满（见 JianpuGridView.build）
-            final slot = availW / (segMax > 0 ? segMax : (per > 0 ? per : 1));
-            // 歌词字号按「相邻歌词列距」动态放大（移动端），日志给出真实值
-            final gaps = <int>[
-              for (final b in _jianpu.blocks)
-                JianpuGridView.minLyricColGap(b),
-            ];
-            final gap = gaps.isEmpty
-                ? 1
-                : gaps.reduce((a, b) => a > b ? a : b);
-            final lyricEm = gap <= 1
-                ? JianpuGridView.lyricFontEmFor
-                : (gap * 0.92).clamp(JianpuGridView.lyricFontEmFor, 2.6);
-            LogService.instance.info(
-              LogTag.ui,
-              '曲谱页渲染（整页形态：全部节同页）',
-              detail: '节数 ${_jianpu.stanzaCount}'
-                  '（块数 ${_jianpu.blocks.length}，最大列数 $maxCols，'
-                  '歌词列距 $gap）\n'
-                  '可用宽 ${availW.toStringAsFixed(0)}dp / 每行 ≤$per 列'
-                  '（$segCount 段，最多 $segMax 列）/ 槽宽 ${slot.toStringAsFixed(1)}dp'
-                  ' → 音符 ${(slot * JianpuGridView.noteFontEmFor).toStringAsFixed(1)}sp'
-                  ' / 歌词 ${(slot * lyricEm).toStringAsFixed(1)}sp'
-                  '（${lyricEm.toStringAsFixed(2)} em）',
-            );
-          }
-          return JianpuGridView(
-            score: _jianpu,
-            constraints: constraints,
-            // **null = 显示全部节**（印刷本形态；节号 (1)(2)(3) 区分各节歌词行）
-            stanza: null,
-          );
-        },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (_jianpu.isEmpty) {
+                  if (!_jianpuLoading) {
+                    return _buildScore(hymn.numberedPngPath,
+                        isEmpty: '暂无简谱');
+                  }
+                  return const LoadingView(message: '简谱加载中…');
+                }
+                final stanzaNo =
+                    perStanza ? _page.clamp(0, stanzas - 1) + 1 : null;
+                final key = 'stanza=$stanzaNo';
+                if (_lastPageLogKey != key) {
+                  _lastPageLogKey = key;
+                  // 字号可测量化（2026-10-27）：折行后的真实列数 / 槽宽 / 字号
+                  var maxCols = 0;
+                  for (final b in _jianpu.blocks) {
+                    if (b.colCount > maxCols) maxCols = b.colCount;
+                  }
+                  final availW =
+                      (constraints.maxWidth - JianpuGridView.padX * 2);
+                  final per = JianpuGridView.colsPerLineFor(maxCols, availW);
+                  var segCount = 0;
+                  var segMax = 0;
+                  for (final b in _jianpu.blocks) {
+                    final segs = JianpuGridView.barAlignedSegments(b, per);
+                    segCount += segs.length;
+                    for (final (s, e) in segs) {
+                      if (e - s > segMax) segMax = e - s;
+                    }
+                  }
+                  final slot =
+                      availW / (segMax > 0 ? segMax : (per > 0 ? per : 1));
+                  final gaps = <int>[
+                    for (final b in _jianpu.blocks)
+                      JianpuGridView.minLyricColGap(b),
+                  ];
+                  final gap =
+                      gaps.isEmpty ? 1 : gaps.reduce((a, b) => a > b ? a : b);
+                  final lyricEm = gap <= 1
+                      ? JianpuGridView.lyricFontEmFor
+                      : (gap * 0.92).clamp(JianpuGridView.lyricFontEmFor, 2.6);
+                  LogService.instance.info(
+                    LogTag.ui,
+                    '曲谱页渲染（一页一节 + 整小节折行）',
+                    detail: '第 ${stanzaNo ?? 1} / $stanzas 节'
+                        '（块数 ${_jianpu.blocks.length}，最大列数 $maxCols，'
+                        '歌词列距 $gap）\n'
+                        '可用宽 ${availW.toStringAsFixed(0)}dp / 每行 ≤$per 列'
+                        '（$segCount 段，最多 $segMax 列）'
+                        ' / 槽宽 ${slot.toStringAsFixed(1)}dp'
+                        ' → 音符 ${(slot * JianpuGridView.noteFontEmFor).toStringAsFixed(1)}sp'
+                        ' / 歌词 ${(slot * lyricEm).toStringAsFixed(1)}sp'
+                        '（${lyricEm.toStringAsFixed(2)} em）',
+                  );
+                }
+                return JianpuGridView(
+                  score: _jianpu,
+                  constraints: constraints,
+                  // **一页一节**：只显示该节歌词行；节内由组件按整小节折行
+                  stanza: stanzaNo,
+                );
+              },
+            ),
+          ),
+          if (perStanza)
+            Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
+          if (perStanza)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 6,
+              child: _buildPageNav(total),
+            ),
+        ],
       ),
     );
   }
