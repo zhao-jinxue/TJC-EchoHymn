@@ -114,11 +114,19 @@ class JianpuGridView extends StatelessWidget {
   /// 槽宽上限：桌面 72（原值）；移动端放开到 320 → 块宽铺满可用宽
   static double get maxSlotFor => _isMobile ? 320.0 : maxSlot;
 
-  /// 记谱字号系数：桌面 0.50（原值）；移动端 **0.68**（音符明显更大 → 列内空隙变小）
-  static double get noteFontEmFor => _isMobile ? 0.68 : noteFontEm;
+  /// 记谱字号系数：桌面 0.50（原值）；移动端 **0.95**
+  ///
+  /// 2026-10-27 用户反馈「文字很小、几乎无法看清」→ 系数从 0.68 提到 0.95：
+  /// 槽宽 = 可用宽 ÷ 列数（一行音符越密槽宽越小），系数是**唯一**能在不改列数的
+  /// 前提下放大字号的旋钮。0.95 已接近「字形墨迹填满一个拍点列」的物理上限
+  /// （再大音符会横向压到相邻列）。
+  static double get noteFontEmFor => _isMobile ? 0.95 : noteFontEm;
 
-  /// 歌词字号系数：桌面 0.54（原值）；移动端 **0.60**（仍 < 1 列宽，不挤压相邻音节）
-  static double get lyricFontEmFor => _isMobile ? 0.60 : lyricFontEm;
+  /// 歌词字号系数：桌面 0.54（原值）；移动端 **0.88**
+  ///
+  /// 汉字字宽 ≈ 1 em 字号 → 必须 < 1 列宽才不与相邻音节重叠，故上限 ≈ 0.95；
+  /// 取 0.88 留出标点/破折号的空间（2026-10-27 用户要求「大、看得清」）。
+  static double get lyricFontEmFor => _isMobile ? 0.88 : lyricFontEm;
 
   @override
   Widget build(BuildContext context) {
@@ -143,11 +151,16 @@ class JianpuGridView extends StatelessWidget {
     final visible = <List<JianpuRow>>[
       for (final block in score.blocks) _visibleRows(block),
     ];
+    // 每块的「相邻歌词最小列距」（2026-10-27：用于动态放大歌词字号）
+    final lyricGaps = <int>[
+      for (final block in score.blocks)
+        JianpuGridView.minLyricColGap(block),
+    ];
     var totalH = 0.0;
     for (var bi = 0; bi < visible.length; bi++) {
       if (bi > 0 && visible[bi].isNotEmpty) totalH += slots[bi] * blockGapEm;
       for (final row in visible[bi]) {
-        totalH += slots[bi] * _rowEm(row.kind);
+        totalH += slots[bi] * _rowEm(row.kind, lyricGaps[bi]);
       }
     }
     if (totalH > availH && totalH > 0 && !_isMobile) {
@@ -167,13 +180,34 @@ class JianpuGridView extends StatelessWidget {
     final children = <Widget>[];
     for (var bi = 0; bi < score.blocks.length; bi++) {
       final block = score.blocks[bi];
-      final m = _Metrics(slot: slots[bi], gridW: slots[bi] * block.colCount);
-      if (bi > 0 && visible[bi].isNotEmpty) {
-        children.add(SizedBox(height: slots[bi] * blockGapEm));
-      }
+      // **折行**（2026-10-27，仅移动端）：一行最多 `per` 列，超出拆成多段，
+      // 每段按 `availW / per` 重新铺满 → 列变宽、歌词字号随之变大。
+      final per = colsPerLineFor(block.colCount, availW);
+      final segCount = block.colCount <= 0
+          ? 1
+          : (block.colCount + per - 1) ~/ per;
+      final segSlot = segCount > 1 ? (availW / per) : slots[bi];
       final barCols = block.barColsByLine();
-      for (final row in visible[bi]) {
-        children.add(_buildRow(row, barCols[row.lineNo] ?? const <int>{}, m));
+      for (var si = 0; si < segCount; si++) {
+        final cs = si * per;
+        final ce = (cs + per) > block.colCount ? block.colCount : (cs + per);
+        final m = _Metrics(
+          slot: segSlot,
+          gridW: segSlot * (ce - cs),
+          lyricColGap: lyricGaps[bi],
+        );
+        if (si == 0 && bi > 0 && visible[bi].isNotEmpty) {
+          children.add(SizedBox(height: slots[bi] * blockGapEm));
+        }
+        for (final row in visible[bi]) {
+          children.add(_buildRow(
+            row,
+            barCols[row.lineNo] ?? const <int>{},
+            m,
+            colStart: cs,
+            colEnd: ce,
+          ));
+        }
       }
     }
 
@@ -208,16 +242,66 @@ class JianpuGridView extends StatelessWidget {
     );
   }
 
+  /// **移动端折行的目标槽宽**（dp）：一行列数受限，超出即换行。
+  /// 2026-10-27：歌词密集（每列一个字）时字号上限 = 槽宽，一行 20 列只有 16.6dp
+  /// ≈ 14.6sp（用户："几乎无法看清"）→ 折行让每列变宽、字变大。
+  /// 30dp → 歌词约 26sp、音符约 28sp，接近正文 1.8 倍，舒适可读。
+  static const double _targetSlot = 30.0;
+
+  /// 每行最多列数：**桌面不拆**（返回该块列数，保持原版式与 golden 基准）；
+  /// 移动端按 [_targetSlot] 计算上限，最少 4 列（极窄屏保护）。
+  ///
+  /// 公开为 static：日志/自测需要核对该值时不必复制一遍逻辑。
+  static int colsPerLineFor(int colCount, double availW) {
+    if (!_isMobile) return colCount;
+    if (colCount <= 0) return 1;
+    final maxCols = (availW / _targetSlot).floor();
+    final limit = maxCols < 4 ? 4 : maxCols;
+    return colCount > limit ? limit : colCount;
+  }
+
+  /// 相邻歌词列的**最小列距**（用于动态放大歌词字号）
+  ///
+  /// 2026-10-27 找到「字看不清」的真正原因：一行 22 列时槽宽只有 ~16.6dp，
+  /// 若歌词字号 = 槽宽 × 0.88 → 仅 14.6sp（与正文同大，看不清）。
+  /// 但**歌词并非每个音符都配字**：相邻歌词常隔 2~4 列，字宽完全可以超过 1 列。
+  /// 故按该块「相邻歌词列距的最小值」放大字号：稀疏处字更大，密集处仍不重叠。
+  ///
+  /// 公开为 static：日志/自测需要核对该值时不必复制一遍逻辑。
+  static int minLyricColGap(JianpuBlock block) {
+    var gap = 1 << 30;
+    for (final row in block.rows) {
+      if (row.kind != JianpuRowKind.lyric) continue;
+      final cols = row.cols.toList()..sort();
+      for (var i = 1; i < cols.length; i++) {
+        final d = cols[i] - cols[i - 1];
+        if (d < gap) gap = d;
+      }
+    }
+    return gap == (1 << 30) ? 1 : gap;
+  }
+
+  /// 歌词字号系数（相对槽宽）：列距越大字越大，上限 2.6 em（防个别稀疏块字过大）
+  ///
+  /// **仅移动端启用动态放大**：桌面版式（印刷本口径）保持原 `lyricFontEm` 不变，
+  /// 否则桌面歌词会被放大数倍、破坏 golden 基准。
+  double _lyricEm(int colGap) {
+    if (!_isMobile) return lyricFontEm;
+    if (colGap <= 1) return lyricFontEmFor;
+    return (colGap * 0.92).clamp(lyricFontEmFor, 2.6);
+  }
+
   /// 行高（em：音符/记号行相对**记谱字号**；歌词/空行相对槽宽）
-  double _rowEm(JianpuRowKind k) => switch (k) {
+  double _rowEm(JianpuRowKind k, int lyricColGap) => switch (k) {
         JianpuRowKind.note => noteRowEm * noteFontEmFor,
         JianpuRowKind.markUp => markUpEm * noteFontEmFor,
         JianpuRowKind.markDown => markDownEm * noteFontEmFor,
-        JianpuRowKind.lyric => lyricFontEmFor * 1.7,
+        JianpuRowKind.lyric => _lyricEm(lyricColGap) * 1.7,
         JianpuRowKind.blank => blankEm,
       };
 
-  double _rowHeight(JianpuRowKind k, _Metrics m) => m.slot * _rowEm(k);
+  double _rowHeight(JianpuRowKind k, _Metrics m) =>
+      m.slot * _rowEm(k, m.lyricColGap);
 
   /// 该块在当前节下要显示的行（保持原行序）
   ///
@@ -252,14 +336,25 @@ class JianpuGridView extends StatelessWidget {
     return out;
   }
 
-  Widget _buildRow(JianpuRow row, Set<int> barCols, _Metrics m) {
+  Widget _buildRow(
+    JianpuRow row,
+    Set<int> barCols,
+    _Metrics m, {
+    int colStart = 0,
+    int colEnd = 1 << 30,
+  }) {
     final h = _rowHeight(row.kind, m);
     final stack = <Widget>[];
 
+    // ③ 折行切片（2026-10-27）：只画落在 [colStart, colEnd) 的列，
+    // x 坐标按切片起点归零 → 每段都是独立的一行
+    bool inSlice(int col) => col >= colStart && col < colEnd;
+
     // ① 小节线（先画，位于内容之下；被 rowspan 覆盖的行同样绘制 → 视觉连续）
     for (final col in barCols) {
+      if (!inSlice(col)) continue;
       stack.add(Positioned(
-        left: col * m.slot + (m.slot - m.barW) / 2,
+        left: (col - colStart) * m.slot + (m.slot - m.barW) / 2,
         top: 0,
         bottom: 0,
         child: Container(width: m.barW, color: m.barColor),
@@ -268,11 +363,12 @@ class JianpuGridView extends StatelessWidget {
 
     // ② 单元格内容
     for (final col in row.cols) {
+      if (!inSlice(col)) continue;
       final cell = row.cells[col]!;
       final w = _buildCell(row, cell, m);
       if (w == null) continue;
       stack.add(Positioned(
-        left: col * m.slot,
+        left: (col - colStart) * m.slot,
         top: 0,
         width: m.slot,
         height: h,
@@ -518,24 +614,39 @@ class JianpuGridView extends StatelessWidget {
 
 /// 渲染度量（由槽宽 [slot] 派生，随窗口/字号等级联动）
 class _Metrics {
-  const _Metrics({required this.slot, required this.gridW});
+  const _Metrics({
+    required this.slot,
+    required this.gridW,
+    required this.lyricColGap,
+  });
 
-  /// 槽宽 = 拍点间距（列宽；歌词字号与列对齐都以它为基准）
+  /// 槽宽 = 拍点间距（列宽；与列对齐基准）
   final double slot;
 
   /// 网格总宽 = 槽宽 × 全曲最大列数
   final double gridW;
 
+  /// 该块相邻歌词列的最小列距（≥1；用于放大歌词字号，2026-10-27）
+  final int lyricColGap;
+
   /// **记谱字号**（音符/记号字形大小）= 槽宽 × [JianpuGridView.noteFontEmFor]
-  /// （移动端 0.68 / 桌面 0.50，2026-10-25）
+  /// （移动端 0.95 / 桌面 0.50，2026-10-27）
   double get noteSize => slot * JianpuGridView.noteFontEmFor;
 
   double get barW => (noteSize * 0.075).clamp(1.0, 3.5);
 
-  /// 歌词字号 = 槽宽 × [JianpuGridView.lyricFontEmFor]（移动端 0.60 / 桌面 0.54）。
-  /// 上限 46：移动端铺满后槽宽可达 ~90dp，0.60 × 90 = 54 需留出余量。
-  double get lyricSize =>
-      (slot * JianpuGridView.lyricFontEmFor).clamp(8.0, 46.0);
+  /// **歌词字号** = 槽宽 × 动态系数（列距越大字越大，见 `_lyricEm`）。
+  /// 上限 56：移动端稀疏块可达 2.6 em × 40dp ≈ 104，需限制在可读范围。
+  /// **桌面保持原口径**（`lyricFontEm`，不随列距放大）。
+  double get lyricSize {
+    if (!JianpuGridView._isMobile) {
+      return (slot * JianpuGridView.lyricFontEm).clamp(8.0, 46.0);
+    }
+    final em = lyricColGap <= 1
+        ? JianpuGridView.lyricFontEmFor
+        : (lyricColGap * 0.92).clamp(JianpuGridView.lyricFontEmFor, 2.6);
+    return (slot * em).clamp(8.0, 56.0);
+  }
 
   Color get noteColor => AppColors.textPrimary;
   Color get lyricColor => AppColors.textPrimary;
