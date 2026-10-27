@@ -180,20 +180,24 @@ class JianpuGridView extends StatelessWidget {
     final children = <Widget>[];
     for (var bi = 0; bi < score.blocks.length; bi++) {
       final block = score.blocks[bi];
-      // **折行**（2026-10-27，仅移动端）：一行最多 `per` 列，超出拆成多段，
-      // 每段按 `availW / per` 重新铺满 → 列变宽、歌词字号随之变大。
+      // **按整小节折行**（2026-10-27，仅移动端）：每段不超过 `per` 列且在小节线处断开；
+      // 桌面 `per = colCount` → 只有 1 段 = 原版式（golden 基准不变）。
       final per = colsPerLineFor(block.colCount, availW);
-      final segCount = block.colCount <= 0
-          ? 1
-          : (block.colCount + per - 1) ~/ per;
-      final segSlot = segCount > 1 ? (availW / per) : slots[bi];
+      final segs = barAlignedSegments(block, per);
+      // 段槽宽按**块内最大段列数**铺满：整小节折行后各段列数可能不等
+      // （如 10/10/9），取最大值保证该块字号一致、最宽段正好满屏。
+      var maxSegCols = 0;
+      for (final (s, e) in segs) {
+        if (e - s > maxSegCols) maxSegCols = e - s;
+      }
+      final segSlot = maxSegCols > 0 ? (availW / maxSegCols) : slots[bi];
       final barCols = block.barColsByLine();
-      for (var si = 0; si < segCount; si++) {
-        final cs = si * per;
-        final ce = (cs + per) > block.colCount ? block.colCount : (cs + per);
+      for (var si = 0; si < segs.length; si++) {
+        final (cs, ce) = segs[si];
+        final cols = ce - cs;
         final m = _Metrics(
           slot: segSlot,
-          gridW: segSlot * (ce - cs),
+          gridW: segSlot * cols,
           lyricColGap: lyricGaps[bi],
         );
         if (si == 0 && bi > 0 && visible[bi].isNotEmpty) {
@@ -245,19 +249,65 @@ class JianpuGridView extends StatelessWidget {
   /// **移动端折行的目标槽宽**（dp）：一行列数受限，超出即换行。
   /// 2026-10-27：歌词密集（每列一个字）时字号上限 = 槽宽，一行 20 列只有 16.6dp
   /// ≈ 14.6sp（用户："几乎无法看清"）→ 折行让每列变宽、字变大。
-  /// 30dp → 歌词约 26sp、音符约 28sp，接近正文 1.8 倍，舒适可读。
-  static const double _targetSlot = 30.0;
+  /// 30dp 起步（歌词 ~26sp）→ 用户要求"再大一些" → 试 38dp 后发现**整小节折行**下
+  /// 每段只剩 5 列（1 小节）、段宽仅占屏 63%（又出现留白）→ **定 33dp**：
+  /// 一行约 10 列 ≈ 2 小节，配 `segSlot = availW / 块内最大段列数` 正好铺满。
+  static const double _targetSlot = 33.0;
 
   /// 每行最多列数：**桌面不拆**（返回该块列数，保持原版式与 golden 基准）；
-  /// 移动端按 [_targetSlot] 计算上限，最少 4 列（极窄屏保护）。
+  /// 移动端按 [_targetSlot] 计算上限，最少 3 列（极窄屏保护）。
   ///
   /// 公开为 static：日志/自测需要核对该值时不必复制一遍逻辑。
   static int colsPerLineFor(int colCount, double availW) {
     if (!_isMobile) return colCount;
     if (colCount <= 0) return 1;
     final maxCols = (availW / _targetSlot).floor();
-    final limit = maxCols < 4 ? 4 : maxCols;
+    final limit = maxCols < 3 ? 3 : maxCols;
     return colCount > limit ? limit : colCount;
+  }
+
+  /// **按整小节边界折行**（2026-10-27 用户要求：不要把小节切两半）
+  ///
+  /// 返回 `[(startCol, endCol), ...]`，每段不超过 [maxCols] 列，且尽量在小节线处断开
+  /// （小节线本身归入**下一段**开头，使每段都是完整小节）。
+  /// 若一个小节本身超过 [maxCols]，则该段硬切（否则无法排布）。
+  static List<(int, int)> barAlignedSegments(JianpuBlock block, int maxCols) {
+    final segs = <(int, int)>[];
+    if (block.colCount <= 0) return [(0, 0)];
+    if (maxCols >= block.colCount) return [(0, block.colCount)];
+
+    // 小节线列（取该块所有行的小节线并集；只有分隔线、不承载内容）
+    final bars = <int>{};
+    for (final cols in block.barColsByLine().values) {
+      bars.addAll(cols);
+    }
+    final sorted = bars.toList()..sort();
+
+    var start = 0;
+    while (start < block.colCount) {
+      final limit = start + maxCols;
+      var end = -1;
+      // 取「不超过 limit 的最后一根小节线」作为断点
+      for (final b in sorted) {
+        if (b > start && b <= limit) {
+          if (b > end) end = b;
+        }
+      }
+      if (end <= start) {
+        // 段内没有小节线（或小节本身超长）→ 硬切
+        var hard = start + maxCols;
+        if (hard > block.colCount) hard = block.colCount;
+        segs.add((start, hard));
+        start = hard;
+      } else {
+        // **小节线归入本段末尾**（行尾有 `|` 收尾，符合印刷本与参考 APK 观感），
+        // 下一段从 end+1 开始（该列的小节线不再重复绘制）
+        final segEnd = end + 1 > block.colCount ? block.colCount : end + 1;
+        segs.add((start, segEnd));
+        start = segEnd;
+      }
+    }
+    return segs;
   }
 
   /// 相邻歌词列的**最小列距**（用于动态放大歌词字号）

@@ -553,10 +553,19 @@ class _HymnDisplayState extends State<HymnDisplay> {
             }
             final availW =
                 (constraints.maxWidth - JianpuGridView.padX * 2);
-            // 折行后的真实槽宽（移动端一行最多 per 列；桌面 per = 最大列数）
+            // 折行后的真实槽宽与段数（移动端按整小节折行；桌面 1 段）
             final per = JianpuGridView.colsPerLineFor(maxCols, availW);
-            final slot = availW / (per > 0 ? per : 1);
-            final segs = maxCols <= 0 ? 1 : (maxCols + per - 1) ~/ per;
+            var segCount = 0;
+            var segMax = 0;
+            for (final b in _jianpu.blocks) {
+              final segs = JianpuGridView.barAlignedSegments(b, per);
+              segCount += segs.length;
+              for (final (s, e) in segs) {
+                if (e - s > segMax) segMax = e - s;
+              }
+            }
+            // 实际渲染用「块内最大段列数」铺满（见 JianpuGridView.build）
+            final slot = availW / (segMax > 0 ? segMax : (per > 0 ? per : 1));
             // 歌词字号按「相邻歌词列距」动态放大（移动端），日志给出真实值
             final gaps = <int>[
               for (final b in _jianpu.blocks)
@@ -574,8 +583,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
               detail: '节数 ${_jianpu.stanzaCount}'
                   '（块数 ${_jianpu.blocks.length}，最大列数 $maxCols，'
                   '歌词列距 $gap）\n'
-                  '可用宽 ${availW.toStringAsFixed(0)}dp / 每行 $per 列 ×$segs 段'
-                  ' / 槽宽 ${slot.toStringAsFixed(1)}dp'
+                  '可用宽 ${availW.toStringAsFixed(0)}dp / 每行 ≤$per 列'
+                  '（$segCount 段，最多 $segMax 列）/ 槽宽 ${slot.toStringAsFixed(1)}dp'
                   ' → 音符 ${(slot * JianpuGridView.noteFontEmFor).toStringAsFixed(1)}sp'
                   ' / 歌词 ${(slot * lyricEm).toStringAsFixed(1)}sp'
                   '（${lyricEm.toStringAsFixed(2)} em）',
