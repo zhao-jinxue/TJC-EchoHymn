@@ -291,18 +291,18 @@ class _HymnDisplayState extends State<HymnDisplay> {
     return Container(
       height: 44,
       color: AppColors.versionBarBg,
-      // 手机竖屏（ANDROID_PLAN §3.1 合并行 44）：版本 chips + 4 个模式按钮 + ⟳
-      // 在 360~411dp 宽度下必然放不下 → 横向可滚动，避免 RenderFlex overflow
-      // 把最后一两个按钮挤成不可点（B 阶段实机验证曾被此问题阻塞）。
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      // 手机竖屏（ANDROID_PLAN §3.1 合并行 44）：**左右两组分开**
+      //   左：音频版本切换按钮（1 个）
+      //   右：歌词/曲谱/简谱/五线谱 四个模式按钮
+      // 2026-10-28 用户要求：四个模式按钮**右对齐**，与左侧音频按钮形成两个明显区域。
+      // 311dp 安全宽度校验：版本按钮 ≈75dp + 模式组 ≈200dp = 275dp < 360dp 最小竖屏 ✓
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // **单按钮循环切换音频版本**（2026-10-25 用户要求）：
-            // 音频版本使用度远低于曲谱切换，两个 chip + 👥 占位过多 →
-            // 合并为一个按钮，点一下在「該首可用版本」之间循环。
-            if (kFullAudioVariant) ...[
+            // ---- 左区：音频版本（点一下在该首可用版本间循环）----
+            if (kFullAudioVariant)
               _versionBtn(
                 label: widget.audio.currentAudioVersion,
                 icon: widget.audio.currentAudioVersion.contains('鋼琴')
@@ -310,18 +310,22 @@ class _HymnDisplayState extends State<HymnDisplay> {
                     : Icons.record_voice_over,
                 active: true,
                 onTap: hymn == null ? null : () => _cycleAudioVersion(hymn),
-              ),
-              // 版本按钮与歌词模式一组之间留更大的间隔（2026-10-25 用户要求：
-              // 比四个模式按钮之间（3dp）明显更宽，形成"音频版本 | 显示模式"分组）
-              const SizedBox(width: 10),
-            ],
-            _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
-            const SizedBox(width: 2),
-            _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
-            const SizedBox(width: 2),
-            _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
-            const SizedBox(width: 2),
-            _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+              )
+            else
+              const SizedBox.shrink(),
+            // ---- 右区：显示模式 ----
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
+                const SizedBox(width: 2),
+                _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
+                const SizedBox(width: 2),
+                _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
+                const SizedBox(width: 2),
+                _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+              ],
+            ),
           ],
         ),
       ),
@@ -570,30 +574,33 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   final lyricEm = gap <= 1
                       ? JianpuGridView.lyricFontEmFor
                       : (gap * 0.92).clamp(JianpuGridView.lyricFontEmFor, 2.6);
-                  // 按「行数最少优先」逐块规划（与实际渲染调用同一函数）
-                  var segCount = 0;
-                  var segMax = 0;
-                  for (final b in _jianpu.blocks) {
-                    final g = JianpuGridView.minLyricColGap(b);
-                    final em = g <= 1
-                        ? JianpuGridView.lyricFontEmFor
-                        : (g * 0.92)
-                            .clamp(JianpuGridView.lyricFontEmFor, 2.6);
-                    final segs = JianpuGridView.planSegments(b, availW, em);
-                    segCount += segs.length;
-                    for (final (s, e) in segs) {
-                      if (e - s > segMax) segMax = e - s;
-                    }
-                  }
-                  final slot = availW / (segMax > 0 ? segMax : 1);
+                  // 平衡点（与渲染同一函数）→ 日志给出**真实每段小节数与字号**
+                  final availH = (constraints.maxHeight -
+                          JianpuGridView.padTop -
+                          JianpuGridView.padBottom)
+                      .clamp(60.0, 100000.0);
+                  final (bpsLog, slotLog) = JianpuGridView.fitFullPage(
+                    _jianpu,
+                    availW,
+                    availH,
+                    gaps,
+                    (kind, g) => switch (kind) {
+                      JianpuRowKind.note => 1.27,
+                      JianpuRowKind.markUp => 0.48,
+                      JianpuRowKind.markDown => 0.55,
+                      JianpuRowKind.lyric => 1.5,
+                      JianpuRowKind.blank => 0.30,
+                    },
+                  );
+                  final slot = slotLog > 0 ? slotLog : availW / 10;
                   LogService.instance.info(
                     LogTag.ui,
                     '曲谱页渲染（一页一节 + 整小节折行）',
                     detail: '第 ${stanzaNo ?? 1} / $stanzas 节'
                         '（块数 ${_jianpu.blocks.length}，最大列数 $maxCols，'
                         '歌词列距 $gap）\n'
-                        '可用宽 ${availW.toStringAsFixed(0)}dp / 每行最多 $segMax 列'
-                        '（共 $segCount 段）/ 槽宽 ${slot.toStringAsFixed(1)}dp'
+                        '可用宽 ${availW.toStringAsFixed(0)}dp / 可用高 ${availH.toStringAsFixed(0)}dp\n'
+                        '平衡点：每段 $bpsLog 小节 → 槽宽 ${slot.toStringAsFixed(1)}dp'
                         ' → 音符 ${(slot * JianpuGridView.noteFontEmFor).toStringAsFixed(1)}sp'
                         ' / 歌词 ${(slot * lyricEm).toStringAsFixed(1)}sp'
                         '（${lyricEm.toStringAsFixed(2)} em）',

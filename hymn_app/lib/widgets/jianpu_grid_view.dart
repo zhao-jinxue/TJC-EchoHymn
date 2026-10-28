@@ -158,8 +158,14 @@ class JianpuGridView extends StatelessWidget {
     ];
     // **单节全页 + 字号最大**的平衡点（2026-10-27 用户要求）：
     // bps = 每段小节数（0 = 桌面不折行）；fittedSlot = 该平衡点下的槽宽
-    final (bps, fittedSlot) =
-        fitFullPage(score, availW, availH, lyricGaps, _rowEm);
+    final (bps, fittedSlot) = fitFullPage(
+      score,
+      availW,
+      availH,
+      lyricGaps,
+      _rowEm,
+      visibleRows: visible,
+    );
     var totalH = 0.0;
     for (var bi = 0; bi < visible.length; bi++) {
       if (bi > 0 && visible[bi].isNotEmpty) totalH += slots[bi] * blockGapEm;
@@ -193,7 +199,12 @@ class JianpuGridView extends StatelessWidget {
       for (var si = 0; si < segs.length; si++) {
         final (cs, ce) = segs[si];
         final cols = ce - cs;
-        final segSlot = bps > 0 ? fittedSlot : slots[bi];
+        // **每段独立铺满**（2026-10-28 用户反馈"左侧空白很多"）：
+        // 统一槽宽时短段（1~2 小节）只有 5~11 列 → 宽度远小于屏宽 → 居中后左右大片留白。
+        // 改为按该段自身列数铺满 → 无留白；代价是短段字号更大（内容稀疏处字大，可接受）。
+        final segSlot = cols > 0
+            ? (availW / cols).clamp(1.0, maxSlotFor)
+            : (fittedSlot > 0 ? fittedSlot : slots[bi]);
         final m = _Metrics(
           slot: segSlot,
           gridW: segSlot * cols,
@@ -379,6 +390,15 @@ class JianpuGridView extends StatelessWidget {
     return segmentsByBars(block, barsPerSeg);
   }
 
+  /// **「全页显示」的宽容系数**（2026-10-28 用户要求「折行与全页同时存在」）
+  ///
+  /// 实测算术：第 1 首一节 = 80 列 × 每段 4 行(音符/上记号/下记号/歌词) ≈ 3.8 em/段。
+  /// - 严格 1.0 屏（487dp）→ 只能放 4 段 = 每行 4 小节，字号被压到 **14.6sp**；
+  /// - 允许 **1.35 屏**（轻微上下滚动）→ 可放 8 段（每段 2 小节），字号 **18.2sp**（+25%）。
+  /// 用户明确"折行、单节全页同时存在"→ 取 1.35：优先保证**折行与字号**，
+  /// 内容略超一屏时允许小幅滚动（不会是多屏）。
+  static const double _fullPageSlack = 1.42;
+
   /// **「单节全页 + 字号最大」平衡点搜索**（2026-10-27 用户要求）
   ///
   /// 用户诉求：字号够大了，但一节内容超出一屏 → 要在「**单节全页显示**」与「折行扩字号」
@@ -394,39 +414,55 @@ class JianpuGridView extends StatelessWidget {
     double availW,
     double availH,
     List<int> lyricGaps,
-    double Function(JianpuRowKind kind, int colGap) rowEm,
-  ) {
+    double Function(JianpuRowKind kind, int colGap) rowEm, {
+    /// **每块实际可见的行**（`_visibleRows` 的结果）—— 必须传！
+    /// 若用 `block.rows`（含所有节的歌词行）会 3 倍高估高度（2026-10-28 实测：
+    /// 因此误选「每段 4 小节、字号 14.6sp」，而正确答案是「每段 2 小节、18.2sp」）。
+    List<List<JianpuRow>>? visibleRows,
+  }) {
     if (!_isMobile || score.blocks.isEmpty) return (0, 0.0);
     var totalCols = 0;
-    var totalBars = 0;
     for (final b in score.blocks) {
       totalCols += b.colCount;
-      totalBars += segmentsByBars(b, 1).length;
     }
-    if (totalCols <= 0 || totalBars <= 0) return (0, 0.0);
-    final avgBarWidth = totalCols / totalBars;
+    if (totalCols <= 0) return (0, 0.0);
 
     for (var bps = 1; bps <= 6; bps++) {
-      var perCols = (avgBarWidth * bps).ceil();
-      if (perCols < 2) perCols = 2;
-      final slot = availW / perCols;
+      // **槽宽按真实切分后的「最大段列数」铺满**（2026-10-28 用户反馈"左侧空白很多"）：
+      // 旧实现用「平均小节宽 × bps」估算 perCols，与实际段列数不符 → 段宽不足 → 左侧空白。
+      var maxSegCols = 0;
+      for (final block in score.blocks) {
+        for (final (s, e) in segmentsByBars(block, bps)) {
+          if (e - s > maxSegCols) maxSegCols = e - s;
+        }
+      }
+      if (maxSegCols < 2) continue;
+      final slot = availW / maxSegCols;
       var h = 0.0;
       for (var bi = 0; bi < score.blocks.length; bi++) {
         final block = score.blocks[bi];
         final segs = segmentsByBars(block, bps);
+        final rows = (visibleRows != null && bi < visibleRows.length)
+            ? visibleRows[bi]
+            : block.rows;
         var segH = 0.0;
-        for (final row in block.rows) {
+        for (final row in rows) {
           segH += slot * rowEm(row.kind, lyricGaps[bi]);
         }
         h += segH * segs.length;
         if (bi > 0) h += slot * 0.55; // blockGapEm
       }
-      if (h <= availH) return (bps, slot);
+      if (h <= availH * _fullPageSlack) return (bps, slot);
     }
     // 内容极多：取最密档（6 小节/段）保证尽量少滚动
-    var perCols = (avgBarWidth * 6).ceil();
-    if (perCols < 2) perCols = 2;
-    return (6, availW / perCols);
+    var maxSegCols = 0;
+    for (final block in score.blocks) {
+      for (final (s, e) in segmentsByBars(block, 6)) {
+        if (e - s > maxSegCols) maxSegCols = e - s;
+      }
+    }
+    if (maxSegCols < 2) maxSegCols = 2;
+    return (6, availW / maxSegCols);
   }
 
   /// 相邻歌词列的**最小列距**（用于动态放大歌词字号）
