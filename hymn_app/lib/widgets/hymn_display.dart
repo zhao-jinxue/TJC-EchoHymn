@@ -600,7 +600,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
                         '（块数 ${_jianpu.blocks.length}，最大列数 $maxCols，'
                         '歌词列距 $gap）\n'
                         '可用宽 ${availW.toStringAsFixed(0)}dp / 可用高 ${availH.toStringAsFixed(0)}dp\n'
-                        '平衡点：每段 $bpsLog 小节 → 槽宽 ${slot.toStringAsFixed(1)}dp'
+                        '基准：歌词 ≥18sp（折行优先，允许轻微滚动）；'
+                        '估算每段 $bpsLog 小节 / 槽宽 ${slot.toStringAsFixed(1)}dp'
                         ' → 音符 ${(slot * JianpuGridView.noteFontEmFor).toStringAsFixed(1)}sp'
                         ' / 歌词 ${(slot * lyricEm).toStringAsFixed(1)}sp'
                         '（${lyricEm.toStringAsFixed(2)} em）',
@@ -949,8 +950,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // 144，实际播放键 iconSize42 使组宽 ~154，且无显式间距 → 重叠）。
     return Row(
       children: [
-        // 左配重：音量控件（滑轨宽度由内部 LayoutBuilder 自适应本区分配）
-        Expanded(child: _buildVolumeControl()),
+        // 左配重：**Android/iOS 不显示音量控件**（2026-10-28 用户要求：
+        // 四个变体都不要音量调节按钮与音量图标 —— 手机用系统音量键即可）。
+        // 桌面保留音量滑轨；移动端用等宽空占位，保证中间按钮组仍绝对居中。
+        Expanded(
+          child: (Platform.isAndroid || Platform.isIOS)
+              ? const SizedBox.shrink()
+              : _buildVolumeControl(),
+        ),
         IconButton(
           icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
           tooltip: '上一首',

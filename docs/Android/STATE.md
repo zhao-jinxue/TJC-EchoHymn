@@ -395,6 +395,15 @@
     - `analyze` 0、`test 77/77`、`overflow = 0`
     - **遗留**：① `RenderFlex overflowed 6.5px` 仍未定位（不影响观感）；
       ② **Android 用户手册需与 Windows 版不同、按 Android 细分版本匹配** —— 内容工程，待单独一轮
+  - **⑭ 定稿 18sp 基准 + Android 移除音量控件（2026-10-28 第九轮）✅**：
+    - **用户裁定方案 A**：折行优先、允许轻微上下滚动，**字号以 18sp 为基准**
+      → `_minLyricSp = 26 → 18`；一行放不下该小节段就折行，行数由内容决定
+      - 平衡点实测基准：**歌词 ≥18sp**（每段独立铺满时短段可达 28~30sp）
+    - **Android 四个变体全部移除音量控件**（音量图标 + 滑轨）：
+      `_buildControls` 左配重改 `Platform.isAndroid || isIOS ? SizedBox.shrink() : _buildVolumeControl()`
+      → 手机用系统音量键；空占位保证中间按钮组仍绝对居中；桌面保留滑轨
+    - `analyze` 0、`test 77/77`、`overflow = 0`
+    - **遗留**：Android 专用用户手册（按 4 个细分变体精确匹配）—— 待专门一轮
 - **下一步**：**用户试用** → P0/P1 反馈 → 打 tag
 
 ## 环境变更（换机/清缓存时需复原）
