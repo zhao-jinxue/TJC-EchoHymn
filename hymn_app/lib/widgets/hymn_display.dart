@@ -287,81 +287,90 @@ class _HymnDisplayState extends State<HymnDisplay> {
   }
 
   // ============ 版本栏 ============
+  /// 顶栏按钮行（2026-10-28 用户定稿，三条规则）：
+  ///
+  /// 1. **音频区**：宽屏显示**两个独立按钮**（钢琴 / 人声，选中高亮）；
+  ///    窄屏放不下才**自动合并**为单按钮循环切换 —— 按可用宽度自适应，不写死平台。
+  /// 2. **文案**：移动端「钢琴 / 人声」；桌面保留「钢琴版 / 人声版」。
+  /// 3. **对齐**：桌面**全部左对齐**（连续排列，不用两端分布）；
+  ///    移动端保持「左音频 / 右模式」两组分明。
   Widget _buildVersionBar(Hymn? hymn) {
+    final isMobile = Platform.isAndroid || Platform.isIOS;
     return Container(
       height: 44,
       color: AppColors.versionBarBg,
-      // 手机竖屏（ANDROID_PLAN §3.1 合并行 44）：**左右两组分开**
-      //   左：音频版本切换按钮（1 个）
-      //   右：歌词/曲谱/简谱/五线谱 四个模式按钮
-      // 2026-10-28 用户要求：四个模式按钮**右对齐**，与左侧音频按钮形成两个明显区域。
-      // 311dp 安全宽度校验：版本按钮 ≈75dp + 模式组 ≈200dp = 275dp < 360dp 最小竖屏 ✓
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // ---- 左区：音频版本 ----
-            // **平台区分**（2026-10-28 用户指出：Windows 不该用合并按钮）
-            // · Android/iOS：窄屏 → 合并为单按钮循环切换（文字「钢琴」「人声」）
-            // · Windows：宽屏 → 保持两个独立按钮「钢琴版」「人声版」，一眼看清当前档
-            if (kFullAudioVariant)
-              ...((Platform.isAndroid || Platform.isIOS)
-                  ? <Widget>[
-                      _versionBtn(
-                        label: _voiceLabel(widget.audio.currentAudioVersion),
-                        icon: widget.audio.currentAudioVersion.contains('鋼琴')
-                            ? Icons.piano
-                            : Icons.record_voice_over,
-                        active: true,
-                        onTap:
-                            hymn == null ? null : () => _cycleAudioVersion(hymn),
-                      ),
-                    ]
-                  : <Widget>[
-                      _versionBtn(
-                        label: '钢琴版',
-                        icon: Icons.piano,
-                        active: hymn != null &&
-                            widget.audio.currentAudioVersion.contains('鋼琴'),
-                        onTap: hymn == null
-                            ? null
-                            : () => _switchVersion(hymn, '鋼琴版'),
-                      ),
-                      const SizedBox(width: 6),
-                      _versionBtn(
-                        label: '人声版',
-                        icon: Icons.record_voice_over,
-                        active: hymn != null &&
-                            !widget.audio.currentAudioVersion.contains('鋼琴'),
-                        onTap: hymn == null
-                            ? null
-                            : () {
-                                final v = voiceVersions(hymn);
-                                _switchVersion(
-                                    hymn, v.isEmpty ? '人聲版' : v.first);
-                              },
-                      ),
-                    ])
-            else
-              const SizedBox.shrink(),
-            // ---- 右区：显示模式（**Android 无「曲谱」模式**，2026-10-28 用户定稿）----
-            Row(
-              mainAxisSize: MainAxisSize.min,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 宽屏判定（< 380dp 视为窄屏 → 合并音频按钮）
+          final wide = constraints.maxWidth >= 380;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              // 桌面：全部左对齐；移动端：左右两组分开
+              mainAxisAlignment: isMobile
+                  ? MainAxisAlignment.spaceBetween
+                  : MainAxisAlignment.start,
               children: [
-                _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
-                const SizedBox(width: 2),
-                if (!Platform.isAndroid && !Platform.isIOS) ...[
-                  _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
-                  const SizedBox(width: 2),
+                // ---- 音频区 ----
+                if (kFullAudioVariant) ...[
+                  if (!wide)
+                    // 窄屏：合并单按钮（点一下循环切换）
+                    _versionBtn(
+                      label: _voiceLabel(widget.audio.currentAudioVersion),
+                      icon: widget.audio.currentAudioVersion.contains('鋼琴')
+                          ? Icons.piano
+                          : Icons.record_voice_over,
+                      active: true,
+                      onTap:
+                          hymn == null ? null : () => _cycleAudioVersion(hymn),
+                    )
+                  else ...[
+                    // 宽屏：两个独立按钮，选中高亮
+                    _versionBtn(
+                      label: isMobile ? '钢琴' : '钢琴版',
+                      icon: Icons.piano,
+                      active: hymn != null &&
+                          widget.audio.currentAudioVersion.contains('鋼琴'),
+                      onTap:
+                          hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
+                    ),
+                    const SizedBox(width: 6),
+                    _versionBtn(
+                      label: isMobile ? '人声' : '人声版',
+                      icon: Icons.record_voice_over,
+                      active: hymn != null &&
+                          !widget.audio.currentAudioVersion.contains('鋼琴'),
+                      onTap: hymn == null
+                          ? null
+                          : () {
+                              final v = voiceVersions(hymn);
+                              _switchVersion(hymn, v.isEmpty ? '人聲版' : v.first);
+                            },
+                    ),
+                  ],
+                  // 桌面左对齐：音频组与模式组之间留固定间隔
+                  if (!isMobile) const SizedBox(width: 16),
                 ],
-                _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
-                const SizedBox(width: 2),
-                _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+                // ---- 模式区 ----
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
+                    const SizedBox(width: 2),
+                    // 「曲谱」仅桌面（Android/iOS 不提供，2026-10-28 定稿）
+                    if (!isMobile) ...[
+                      _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
+                      const SizedBox(width: 2),
+                    ],
+                    _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
+                    const SizedBox(width: 2),
+                    _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
