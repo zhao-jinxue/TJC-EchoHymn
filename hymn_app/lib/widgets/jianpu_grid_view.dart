@@ -426,9 +426,15 @@ class JianpuGridView extends StatelessWidget {
     }
     if (totalCols <= 0) return (0, 0.0);
 
+    // **折行后字号自动放大**（2026-10-28 用户追问的核心）：
+    // bps 越小 → 每段列数越少 → 槽宽越大 → 字号越大，但总高也越大。
+    // 所以从 bps=1（字号最大）起逐档试：
+    //   · 高度超限 → 继续折行（bps++，段变窄→字号变小→高度下降）；
+    //   · 高度满足 → **立即返回**，此时字号就是"该行数下能给出的最大值"；
+    //   · 字号跌破基准 [_minLyricSp]（18sp）→ 停止（防止为了塞进一屏把字压得太小）。
+    var bestBps = 0;
+    var bestSlot = 0.0;
     for (var bps = 1; bps <= 6; bps++) {
-      // **槽宽按真实切分后的「最大段列数」铺满**（2026-10-28 用户反馈"左侧空白很多"）：
-      // 旧实现用「平均小节宽 × bps」估算 perCols，与实际段列数不符 → 段宽不足 → 左侧空白。
       var maxSegCols = 0;
       for (final block in score.blocks) {
         for (final (s, e) in segmentsByBars(block, bps)) {
@@ -437,6 +443,8 @@ class JianpuGridView extends StatelessWidget {
       }
       if (maxSegCols < 2) continue;
       final slot = availW / maxSegCols;
+      // 字号下限保护（按基准 em 0.88 估算；低于 18sp 就不再继续压缩）
+      if (slot * 0.88 < _minLyricSp) break;
       var h = 0.0;
       for (var bi = 0; bi < score.blocks.length; bi++) {
         final block = score.blocks[bi];
@@ -451,9 +459,13 @@ class JianpuGridView extends StatelessWidget {
         h += segH * segs.length;
         if (bi > 0) h += slot * 0.55; // blockGapEm
       }
+      bestBps = bps;
+      bestSlot = slot;
+      // 高度已能接受 → 该档就是「字号最大且（近似）一屏」的解
       if (h <= availH * _fullPageSlack) return (bps, slot);
     }
-    // 内容极多：取最密档（6 小节/段）保证尽量少滚动
+    if (bestBps > 0) return (bestBps, bestSlot);
+    // 兜底：最密档
     var maxSegCols = 0;
     for (final block in score.blocks) {
       for (final (s, e) in segmentsByBars(block, 6)) {
