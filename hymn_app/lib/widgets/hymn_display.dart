@@ -306,52 +306,62 @@ class _HymnDisplayState extends State<HymnDisplay> {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
-              // 桌面：全部左对齐；移动端：左右两组分开
-              mainAxisAlignment: isMobile
-                  ? MainAxisAlignment.spaceBetween
-                  : MainAxisAlignment.start,
+              // **两平台统一规则**（2026-10-28 用户澄清）：
+              //   音频切换按钮组 → 靠左
+              //   歌词模式按钮组 → 靠右
+              // 中间自然留出空白，形成两个区域。（我上一轮把桌面改成"全部左对齐"是理解错了）
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // ---- 音频区 ----
-                if (kFullAudioVariant) ...[
-                  if (!wide)
-                    // 窄屏：合并单按钮（点一下循环切换）
-                    _versionBtn(
-                      label: _voiceLabel(widget.audio.currentAudioVersion),
-                      icon: widget.audio.currentAudioVersion.contains('鋼琴')
-                          ? Icons.piano
-                          : Icons.record_voice_over,
-                      active: true,
-                      onTap:
-                          hymn == null ? null : () => _cycleAudioVersion(hymn),
-                    )
-                  else ...[
-                    // 宽屏：两个独立按钮，选中高亮
-                    _versionBtn(
-                      label: isMobile ? '钢琴' : '钢琴版',
-                      icon: Icons.piano,
-                      active: hymn != null &&
-                          widget.audio.currentAudioVersion.contains('鋼琴'),
-                      onTap:
-                          hymn == null ? null : () => _switchVersion(hymn, '鋼琴版'),
-                    ),
-                    const SizedBox(width: 6),
-                    _versionBtn(
-                      label: isMobile ? '人声' : '人声版',
-                      icon: Icons.record_voice_over,
-                      active: hymn != null &&
-                          !widget.audio.currentAudioVersion.contains('鋼琴'),
-                      onTap: hymn == null
-                          ? null
-                          : () {
-                              final v = voiceVersions(hymn);
-                              _switchVersion(hymn, v.isEmpty ? '人聲版' : v.first);
-                            },
-                    ),
+                // ---- 左组：音频（**整组包成一个 child**）----
+                // 关键：若把两个音频按钮直接展开在外层 children，`spaceBetween` 会把
+                // 「钢琴版」推到最左、「人声版」推到中间/右侧（2026-10-28 实测就是这个现象）。
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (kFullAudioVariant) ...[
+                      if (!wide)
+                        // 窄屏：合并单按钮（点一下循环切换）
+                        _versionBtn(
+                          label: _voiceLabel(widget.audio.currentAudioVersion),
+                          icon:
+                              widget.audio.currentAudioVersion.contains('鋼琴')
+                                  ? Icons.piano
+                                  : Icons.record_voice_over,
+                          active: true,
+                          onTap: hymn == null
+                              ? null
+                              : () => _cycleAudioVersion(hymn),
+                        )
+                      else ...[
+                        // 宽屏：两个独立按钮，选中高亮
+                        _versionBtn(
+                          label: isMobile ? '钢琴' : '钢琴版',
+                          icon: Icons.piano,
+                          active: hymn != null &&
+                              widget.audio.currentAudioVersion.contains('鋼琴'),
+                          onTap: hymn == null
+                              ? null
+                              : () => _switchVersion(hymn, '鋼琴版'),
+                        ),
+                        const SizedBox(width: 6),
+                        _versionBtn(
+                          label: isMobile ? '人声' : '人声版',
+                          icon: Icons.record_voice_over,
+                          active: hymn != null &&
+                              !widget.audio.currentAudioVersion.contains('鋼琴'),
+                          onTap: hymn == null
+                              ? null
+                              : () {
+                                  final v = voiceVersions(hymn);
+                                  _switchVersion(
+                                      hymn, v.isEmpty ? '人聲版' : v.first);
+                                },
+                        ),
+                      ],
+                    ],
                   ],
-                  // 桌面左对齐：音频组与模式组之间留固定间隔
-                  if (!isMobile) const SizedBox(width: 16),
-                ],
-                // ---- 模式区 ----
+                ),
+                // ---- 右组：模式（靠右） ----
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
