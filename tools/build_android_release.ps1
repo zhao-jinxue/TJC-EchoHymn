@@ -58,6 +58,12 @@ if ($LASTEXITCODE -ne 0) { throw '素材同步失败，中止构建' }
 Write-Host '[*] flutter clean（保证素材不跨变体污染）...' -ForegroundColor DarkGray
 Push-Location $AppDir
 flutter clean 2>&1 | Out-Null
+# Gradle 的 mergeReleaseAssets 也有独立缓存（flutter clean 清不到）——
+# 2026-10-28 实测：piano 与 vocal 产出了**同一个包**（都是 vocal 素材），
+# 必须在 android/ 下再跑一次 gradlew clean。
+Push-Location (Join-Path $AppDir 'android')
+if (Test-Path '.\gradlew.bat') { .\gradlew.bat clean 2>&1 | Out-Null }
+Pop-Location
 Pop-Location
 
 # 关键：`flutter build` 的 asset bundle 有**增量缓存**，只同步目录内容不会让它失效
@@ -105,6 +111,13 @@ if (-not $SkipVerify) {
         }
     }
 }
+
+# **构建后立刻归档**（2026-10-28 实测教训）：每个变体构建前的 flutter/gradle clean 会清空 build/，
+# 让前面变体的 APK 一起消失 → 先复制到独立目录再继续。
+$distDir = Join-Path $Root 'release\android\builds'
+New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+Copy-Item -Path $apk -Destination (Join-Path $distDir ("EchoHymn-$Variant-release.apk")) -Force
+Write-Host ("[OK] 已归档 → release\android\builds\EchoHymn-$Variant-release.apk") -ForegroundColor Green
 
 Write-Host "[OK] $Variant 构建完成: $apk（$mb MB）" -ForegroundColor Green
 exit 0
