@@ -302,9 +302,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // ---- 左区：音频版本（点一下在该首可用版本间循环）----
+            // 2026-10-28 用户定稿：按钮文字精简为「钢琴」「人声」（去掉"版"字），
+            // 便于在 360dp 窄屏下与右侧 3 个模式按钮共存。
             if (kFullAudioVariant)
               _versionBtn(
-                label: widget.audio.currentAudioVersion,
+                label: _voiceLabel(widget.audio.currentAudioVersion),
                 icon: widget.audio.currentAudioVersion.contains('鋼琴')
                     ? Icons.piano
                     : Icons.record_voice_over,
@@ -313,14 +315,16 @@ class _HymnDisplayState extends State<HymnDisplay> {
               )
             else
               const SizedBox.shrink(),
-            // ---- 右区：显示模式 ----
+            // ---- 右区：显示模式（**Android 无「曲谱」模式**，2026-10-28 用户定稿）----
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
                 const SizedBox(width: 2),
-                _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
-                const SizedBox(width: 2),
+                if (!Platform.isAndroid && !Platform.isIOS) ...[
+                  _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
+                  const SizedBox(width: 2),
+                ],
                 _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
                 const SizedBox(width: 2),
                 _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
@@ -514,6 +518,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
       case DisplayMode.lyrics:
         return _buildLyrics(hymn);
       case DisplayMode.score:
+        // **Android/iOS 不提供「曲谱」模式**（2026-10-28 用户定稿：算法难适配全库诗歌，
+        // 反复微调不划算）。若 state.json 里残留 score（旧状态/桌面同步）→ 回退歌词页。
+        if (Platform.isAndroid || Platform.isIOS) return _buildLyrics(hymn);
         return _buildJianpu(hymn);
       case DisplayMode.jianpu:
         return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
