@@ -450,7 +450,22 @@
          否则 piano/vocal 会产出**同一个包**（piano 包里全是 vocal 音频）
       2. 每个变体构建前的 clean 会**清空 `build/`**，把前面变体的 APK 一起删掉
          → 构建后**立即归档**到 `release/android/builds/`
-- **下一步**：**Android 用户手册按 4 个细分变体分别编写**（用户明确要求，内容工程）→ 之后打 tag
+  - **⑱ Android 四变体手册 + Windows 双按钮恢复（2026-10-28）✅**：
+    - **Windows 音频按钮恢复**（用户指出合并是错的）：`_buildVersionBar` 平台分支 ——
+      桌面两个独立按钮「钢琴版 / 人声版」（一眼看清当前档），手机仍是合并单按钮循环切换
+    - **Android 专属手册**（新增 `lib/widgets/android_manual_sections.dart`，217 行，8 节）：
+      打开关闭 / 顶栏 / **音频（按变体）** / 显示模式（无曲谱）/ 播放条（无音量滑轨）/
+      左侧栏与搜索 / **设置与 SAF 素材导入（按变体）** / **常见问题（按变体）**
+      - `full`：音频按钮循环切换 + 单版本提示
+      - `piano`：只含钢琴、**无切换按钮**（FAQ 明确"想听人声请装人声版"）
+      - `vocal`：只含人声、**无切换按钮**
+      - `lite`：**无内置音频**，必须 SAF 导入才能出声（重点章节 + FAQ 首条）
+    - `user_manual_dialog.dart` 分流：移动端用 `androidManualSections()`、桌面用原 `_guideSections`；
+      **「快捷键说明」整块仅桌面**；「软件介绍」文案平台自适应（手机不再提"exe 同级 state.json"）
+    - **四变体 APK 全部重建**（22:38~22:42，含新手册）：
+      full 82.22 / piano 78.50 / vocal 67.18 / lite 63.46 MB
+    - `analyze` 无 error、`test 77/77`
+- **下一步**：**用户验收** → 打 tag（`android-v1.9.0-phone`）
 
 ## 环境变更（换机/清缓存时需复原）
 
