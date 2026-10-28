@@ -154,8 +154,7 @@ class JianpuGridView extends StatelessWidget {
     ];
     // 每块的「相邻歌词最小列距」（2026-10-27：用于动态放大歌词字号）
     final lyricGaps = <int>[
-      for (final block in score.blocks)
-        JianpuGridView.minLyricColGap(block),
+      for (final block in score.blocks) JianpuGridView.minLyricColGap(block),
     ];
     // **单节全页 + 字号最大**的平衡点（2026-10-27 用户要求）：
     // bps = 每段小节数（0 = 桌面不折行）；fittedSlot = 该平衡点下的槽宽
@@ -446,7 +445,7 @@ class JianpuGridView extends StatelessWidget {
       }
     }
     if (bestSlot <= 0) {
-      final slot = _minLyricSp / 0.88;
+      const slot = _minLyricSp / 0.88;
       var per = (availW / slot).floor();
       if (per < 2) per = 2;
       return (slot, per);
@@ -737,8 +736,7 @@ class JianpuGridView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(bodyText,
-                  maxLines: 1, softWrap: false, style: baseStyle),
+              Text(bodyText, maxLines: 1, softWrap: false, style: baseStyle),
               Text(
                 punctText,
                 maxLines: 1,
@@ -899,7 +897,8 @@ class JianpuGridView extends StatelessWidget {
           Container(
             width: d,
             height: d,
-            decoration: BoxDecoration(color: m.markColor, shape: BoxShape.circle),
+            decoration:
+                BoxDecoration(color: m.markColor, shape: BoxShape.circle),
           ),
         ],
       ],
@@ -997,5 +996,3 @@ class _FermataPainter extends CustomPainter {
   bool shouldRepaint(covariant _FermataPainter oldDelegate) =>
       oldDelegate.color != color;
 }
-
-

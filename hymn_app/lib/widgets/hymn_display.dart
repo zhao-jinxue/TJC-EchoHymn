@@ -301,18 +301,48 @@ class _HymnDisplayState extends State<HymnDisplay> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // ---- 左区：音频版本（点一下在该首可用版本间循环）----
-            // 2026-10-28 用户定稿：按钮文字精简为「钢琴」「人声」（去掉"版"字），
-            // 便于在 360dp 窄屏下与右侧 3 个模式按钮共存。
+            // ---- 左区：音频版本 ----
+            // **平台区分**（2026-10-28 用户指出：Windows 不该用合并按钮）
+            // · Android/iOS：窄屏 → 合并为单按钮循环切换（文字「钢琴」「人声」）
+            // · Windows：宽屏 → 保持两个独立按钮「钢琴版」「人声版」，一眼看清当前档
             if (kFullAudioVariant)
-              _versionBtn(
-                label: _voiceLabel(widget.audio.currentAudioVersion),
-                icon: widget.audio.currentAudioVersion.contains('鋼琴')
-                    ? Icons.piano
-                    : Icons.record_voice_over,
-                active: true,
-                onTap: hymn == null ? null : () => _cycleAudioVersion(hymn),
-              )
+              ...((Platform.isAndroid || Platform.isIOS)
+                  ? <Widget>[
+                      _versionBtn(
+                        label: _voiceLabel(widget.audio.currentAudioVersion),
+                        icon: widget.audio.currentAudioVersion.contains('鋼琴')
+                            ? Icons.piano
+                            : Icons.record_voice_over,
+                        active: true,
+                        onTap:
+                            hymn == null ? null : () => _cycleAudioVersion(hymn),
+                      ),
+                    ]
+                  : <Widget>[
+                      _versionBtn(
+                        label: '钢琴版',
+                        icon: Icons.piano,
+                        active: hymn != null &&
+                            widget.audio.currentAudioVersion.contains('鋼琴'),
+                        onTap: hymn == null
+                            ? null
+                            : () => _switchVersion(hymn, '鋼琴版'),
+                      ),
+                      const SizedBox(width: 6),
+                      _versionBtn(
+                        label: '人声版',
+                        icon: Icons.record_voice_over,
+                        active: hymn != null &&
+                            !widget.audio.currentAudioVersion.contains('鋼琴'),
+                        onTap: hymn == null
+                            ? null
+                            : () {
+                                final v = voiceVersions(hymn);
+                                _switchVersion(
+                                    hymn, v.isEmpty ? '人聲版' : v.first);
+                              },
+                      ),
+                    ])
             else
               const SizedBox.shrink(),
             // ---- 右区：显示模式（**Android 无「曲谱」模式**，2026-10-28 用户定稿）----

@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app.dart';
 import '../services/app_state_service.dart';
 import '../services/log_service.dart';
+import 'android_manual_sections.dart';
 
 /// 用户手册显示偏好（全局单例，与 ThemeController/FontScaleController 同模式）
 ///
@@ -329,17 +332,25 @@ class UserManualDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const _SectionTitle('软件介绍'),
-                      const _SectionBody(
-                        'EchoHymn · 聆听赞美诗是一款本地运行的赞美诗歌应用：'
-                        '收录《赞美诗歌》（增订本）473 首，可离线播放钢琴版 / 人声版音频，'
-                        '查看歌词、简谱与五线谱。内置默认歌单分类与个人歌单管理，'
-                        '自动记忆上次播放的诗歌、版本与界面状态（状态存于 exe 同级 state.json，便携可迁移）。',
+                      _SectionBody(
+                        (Platform.isAndroid || Platform.isIOS)
+                            ? 'EchoHymn · 聆听赞美诗是一款本地运行的赞美诗歌应用：'
+                                '收录《赞美诗歌》（增订本）473 首，可离线播放音频、'
+                                '查看歌词与简谱 / 五线谱扫描图。内置分类与个人歌单管理，'
+                                '自动记忆上次播放的诗歌与界面状态（存于应用私有目录 state.json）。'
+                            : 'EchoHymn · 聆听赞美诗是一款本地运行的赞美诗歌应用：'
+                                '收录《赞美诗歌》（增订本）473 首，可离线播放钢琴版 / 人声版音频，'
+                                '查看歌词、简谱与五线谱。内置默认歌单分类与个人歌单管理，'
+                                '自动记忆上次播放的诗歌、版本与界面状态（状态存于 exe 同级 state.json，便携可迁移）。',
                       ),
                       const SizedBox(height: 16),
                       const _SectionTitle('操作说明'),
                       _buildGuideList(context),
                       const SizedBox(height: 16),
-                      const _SectionTitle('快捷键说明'),
+                      // **快捷键说明仅桌面**（2026-10-28）：手机没有物理键盘/滚轮，
+                      // 照搬会误导用户；Android 版的手势说明已写进「操作说明」。
+                      if (!Platform.isAndroid && !Platform.isIOS) ...[
+                        const _SectionTitle('快捷键说明'),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 2),
                         child: Text(
@@ -373,7 +384,8 @@ class UserManualDialog extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _buildShortcutTable(),
+                        _buildShortcutTable(),
+                      ],
                     ],
                   ),
                 ),
@@ -408,7 +420,10 @@ class UserManualDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final section in _guideSections)
+        for (final section
+            in (Platform.isAndroid || Platform.isIOS)
+                ? androidManualSections()
+                : _guideSections)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Column(
