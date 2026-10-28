@@ -43,12 +43,13 @@ class JianpuGridView extends StatelessWidget {
   /// - 副歌 / 各节共用的块（歌词行数 < 节数，印刷本只写一遍）：**每节都显示**。
   final int? stanza;
 
-  // ---------- 版式常量（em：相对槽宽 S = 拍点间距；印刷实测 槽距 ≈ 1.0 × 记谱字号） ----------
-  static const double padX = 18;
-  static const double padTop = 16;
+  // ---------- 版式常量（em：相对槽宽 S = 拍点间距） ----------
+  /// 四周边距：**统一 10px**（2026-10-28 用户定稿「左右上下都只留 10px」）
+  static const double padX = 10;
+  static const double padTop = 10;
 
-  /// 底部留白：为「上一节/下一节」翻页条预留净空（与歌词页同口径）
-  static const double padBottom = 52;
+  /// 底部留白：同样 10（原 52 是为旧翻页条预留，现曲谱页无翻页条压底）
+  static const double padBottom = 10;
 
   /// **记谱字号系数（相对槽宽 = 拍点间距）** —— 2026-10-13 定稿 **0.50**。
   ///
@@ -158,7 +159,8 @@ class JianpuGridView extends StatelessWidget {
     ];
     // **单节全页 + 字号最大**的平衡点（2026-10-27 用户要求）：
     // bps = 每段小节数（0 = 桌面不折行）；fittedSlot = 该平衡点下的槽宽
-    final (bps, fittedSlot) = fitFullPage(
+    // **字号 + 折行按用户定稿优先级求解**（18sp 基准 → 折行 → 全页优先 → 最多滑一行歌词）
+    final (fitSlot, fitPer) = fitByFontSize(
       score,
       availW,
       availH,
@@ -192,19 +194,16 @@ class JianpuGridView extends StatelessWidget {
       final block = score.blocks[bi];
       // **按整小节折行**（2026-10-27，仅移动端）：每段不超过 `per` 列且在小节线处断开；
       // 桌面 `per = colCount` → 只有 1 段 = 原版式（golden 基准不变）。
-      // 平衡点选定：`bps` 段小节数（0 = 桌面不折行），槽宽统一按 `fittedSlot`
-      final segs =
-          bps > 0 ? segmentsByBars(block, bps) : [(0, block.colCount)];
+      // 折行：按求解出的「每行列数」以整小节切分（fitPer=0 表示桌面不折行）
+      final segs = fitPer > 0
+          ? barAlignedSegments(block, fitPer)
+          : [(0, block.colCount)];
+      // **统一字号**（用户要求"按能全页显示的规格放大"，不接受每段字大小不一）
+      final segSlot = fitSlot > 0 ? fitSlot : slots[bi];
       final barCols = block.barColsByLine();
       for (var si = 0; si < segs.length; si++) {
         final (cs, ce) = segs[si];
         final cols = ce - cs;
-        // **每段独立铺满**（2026-10-28 用户反馈"左侧空白很多"）：
-        // 统一槽宽时短段（1~2 小节）只有 5~11 列 → 宽度远小于屏宽 → 居中后左右大片留白。
-        // 改为按该段自身列数铺满 → 无留白；代价是短段字号更大（内容稀疏处字大，可接受）。
-        final segSlot = cols > 0
-            ? (availW / cols).clamp(1.0, maxSlotFor)
-            : (fittedSlot > 0 ? fittedSlot : slots[bi]);
         final m = _Metrics(
           slot: segSlot,
           gridW: segSlot * cols,
@@ -398,7 +397,64 @@ class JianpuGridView extends StatelessWidget {
   /// 内容略超一屏时允许小幅滚动（不会是多屏）。
   static const double _fullPageSlack = 1.42;
 
-  /// **「单节全页 + 字号最大」平衡点搜索**（2026-10-27 用户要求）
+  /// **按用户 2026-10-28 定稿的优先级算法**求「字号 + 折行」：
+  ///
+  /// 1. 先按基准 18sp（[_minLyricSp]）算每行列数；
+  /// 2. 需要折行就折行（按整小节）；
+  /// 3. **全页优先**：逐步放大字号，只要总高 ≤ 可用高（不滑动）就继续放大；
+  /// 4. 若放大到必须滑动，**最多允许超出「一行歌词」的高度**
+  ///    （⇒ 首屏能看到最后一行简谱，往下滑一点就能看到全部歌词）；
+  /// 5. 返回最终采用的槽宽（字号 = 槽宽 × 歌词系数）。
+  ///
+  /// 返回 `(槽宽 slot, 每行列数 perCols)`；桌面返回 `(0, 0)`（不折行、原版式）。
+  static (double, int) fitByFontSize(
+    JianpuScore score,
+    double availW,
+    double availH,
+    List<int> lyricGaps,
+    double Function(JianpuRowKind kind, int colGap) rowEm, {
+    List<List<JianpuRow>>? visibleRows,
+  }) {
+    if (!_isMobile || score.blocks.isEmpty) return (0, 0);
+    var bestSlot = 0.0;
+    var bestPer = 0;
+    for (var sp = _minLyricSp; sp <= 96; sp += 1) {
+      final slot = sp / 0.88; // 基准歌词系数 0.88
+      final perCols = (availW / slot).floor();
+      if (perCols < 2) break;
+      var h = 0.0;
+      for (var bi = 0; bi < score.blocks.length; bi++) {
+        final block = score.blocks[bi];
+        final segs = barAlignedSegments(block, perCols);
+        final rows = (visibleRows != null && bi < visibleRows.length)
+            ? visibleRows[bi]
+            : block.rows;
+        var segH = 0.0;
+        for (final row in rows) {
+          segH += slot * rowEm(row.kind, lyricGaps[bi]);
+        }
+        h += segH * segs.length;
+        if (bi > 0) h += slot * 0.55; // blockGapEm
+      }
+      // 允许的超出量 = 一行歌词的高度（"往下滑一点看到全部歌词"）
+      final oneLyricLine = slot * (0.88 * 1.7);
+      if (h <= availH + oneLyricLine) {
+        bestSlot = slot;
+        bestPer = perCols;
+      } else {
+        break; // 字号再大更放不下
+      }
+    }
+    if (bestSlot <= 0) {
+      final slot = _minLyricSp / 0.88;
+      var per = (availW / slot).floor();
+      if (per < 2) per = 2;
+      return (slot, per);
+    }
+    return (bestSlot, bestPer);
+  }
+
+  /// **「单节全页 + 字号最大」平衡点搜索**（旧实现，保留供对比）
   ///
   /// 用户诉求：字号够大了，但一节内容超出一屏 → 要在「**单节全页显示**」与「折行扩字号」
   /// 之间取平衡，并以第 1 首为例确定这个字号作为新的最小字号基准。
