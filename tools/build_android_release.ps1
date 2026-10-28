@@ -52,6 +52,14 @@ Write-Host '[*] 同步素材 ...' -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { throw '素材同步失败，中止构建' }
 
 # ---- 2. 构建 ----
+# **必须彻底清理**（2026-10-28 实测教训）：仅删 intermediates 不够 ——
+# 连续构建 4 个变体时，piano 的 APK 里出现了 vocal 素材（交叉污染），
+# 因为 Flutter 的 flutter_assets 清单有独立缓存。唯一可靠做法是 flutter clean。
+Write-Host '[*] flutter clean（保证素材不跨变体污染）...' -ForegroundColor DarkGray
+Push-Location $AppDir
+flutter clean 2>&1 | Out-Null
+Pop-Location
+
 # 关键：`flutter build` 的 asset bundle 有**增量缓存**，只同步目录内容不会让它失效
 # （实测：full 与 lite 打出同样 63.52 MB，因为沿用了上一次的 flutter_assets）。
 # touch pubspec.yaml 更新时间戳即可让 Flutter 重新打包 assets。
