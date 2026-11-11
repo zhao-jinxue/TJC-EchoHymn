@@ -79,7 +79,7 @@ Push-Location $AppDir
 try {
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    flutter build apk --release --flavor $Variant --target-platform $TargetPlatform 2>&1 | Out-Host
+    flutter build apk --release --flavor $Variant --target-platform $TargetPlatform "--dart-define=AUDIO_VARIANT=$Variant" 2>&1 | Out-Host
     $code = $LASTEXITCODE
     $ErrorActionPreference = $prevEAP
 }

@@ -51,13 +51,16 @@ String _variantName(AudioVariant v) => switch (v) {
     );
 
 ({String title, List<GuideLine> lines}) _topBar() => (
-      title: '顶栏与音频版本按钮',
+      title: kHasAudio ? '顶栏与音频版本按钮' : '顶栏与显示模式按钮',
       lines: [
         const GuideLine('左侧 ☰：打开诗歌列表 / 分类 / 我的歌单。'),
         const GuideLine('中间标题：显示「第 N 首《诗歌名》」。'),
         const GuideLine('右侧 🔍 搜索、⋮ 更多（用户手册、设置、关于）。'),
-        const GuideLine('按钮栏分左右两组：', [
-          '左边是**音频版本**，右边是**显示模式**（歌词 / 简谱 / 五线谱）—— 两组互不干扰；',
+        GuideLine('按钮栏分左右两组：', [
+          if (kHasAudio)
+            '左边是**音频版本**，右边是**显示模式**（歌词 / 简谱 / 五线谱）—— 两组互不干扰；'
+          else
+            '本版本**没有音频版本按钮**，按钮栏只有右侧的**显示模式**（歌词 / 简谱 / 五线谱）；',
           'Android 版**没有「曲谱」模式**（桌面 Windows 版才有）。',
         ]),
       ],
@@ -103,7 +106,7 @@ String _variantName(AudioVariant v) => switch (v) {
       return (
         title: '音频（精简版：无内置音频）',
         lines: [
-          const GuideLine('**本版本不包含任何音频文件**，安装后点击播放不会有声音，这是设计如此。'),
+          const GuideLine('**本版本不包含任何音频文件**，界面也不显示播放条与音频按钮 —— 定位是「看谱 / 背词」。'),
           const GuideLine('精简版提供的是：474 首诗歌的**歌词**、**简谱扫描图**、**五线谱扫描图**、'
               '分类与歌单管理 —— 体积最小，适合只看谱/背词。'),
           const GuideLine('要让精简版出声，必须自己导入音频：', [

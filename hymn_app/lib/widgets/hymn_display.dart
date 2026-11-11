@@ -702,15 +702,30 @@ class _HymnDisplayState extends State<HymnDisplay> {
     }
     final page = pages[_page.clamp(0, pages.length - 1)];
 
+    // 移动端：翻页条占用独立的 56dp 区域（不再压住歌词）——
+    // 2026-11-11 布局走查实测：横屏（914×411dp）等低高度场景下，
+    // 字号系数会把内容撑出可用高度（可滚动），overlay 的翻页条会盖住第 3~4 行歌词。
+    // 桌面保持原 overlay 版式（Windows golden 基准不变）。
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final navReserve = (isMobile && pages.length > 1) ? 56.0 : 0.0;
+
     // 歌词显示区：暖白背景（与左右侧栏冷灰形成轻微色差，便于感知区域大小）
     return Container(
       color: AppColors.lyricsBg,
       child: Stack(
         children: [
-          Positioned.fill(
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: navReserve,
             child: LayoutBuilder(
-              builder: (context, constraints) =>
-                  _buildLyricPage(hymn, page, constraints),
+              builder: (context, constraints) => _buildLyricPage(
+                hymn,
+                page,
+                constraints,
+                navReserved: navReserve > 0,
+              ),
             ),
           ),
           // 右上角：歌词翻页「手动 / 自动」切换按钮（默认自动）
@@ -730,12 +745,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
 
   /// 单页歌词渲染：字号受「铺满显示区」与「每行不换行」双约束
   Widget _buildLyricPage(
-      Hymn hymn, LyricPage page, BoxConstraints constraints) {
+      Hymn hymn, LyricPage page, BoxConstraints constraints,
+      {bool navReserved = false}) {
     final conv = ChineseConvertService.instance;
-    // 底部翻页条预留高度，避免歌词与控件重叠
+    // 底部翻页条预留高度，避免歌词与控件重叠。
+    // 移动端翻页条已有独立占位区（见 _buildLyrics 的 navReserve）→ 此处不再重复预留，
+    // 否则字号会被压小两次。
     const padX = 24.0;
     const padTop = 24.0;
-    const padBottom = 56.0;
+    final padBottom = navReserved ? 0.0 : 56.0;
     final availH =
         (constraints.maxHeight - padTop - padBottom).clamp(100.0, 4000.0);
     final availW = constraints.maxWidth - padX * 2;
@@ -753,15 +771,25 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // （实测 343 首第 1 节 34 字全角句被折成两行，正是用户要求根治的现象）。
     // v1.5.0 字号等级：系数只作用于**高度方向**（行数少时字可更大），
     // 宽度受限的长句不会被放大到折行。
+    //
+    // 2026-11-11 布局走查修正（仅移动端）：**高度才是瓶颈时不叠加字号系数**。
+    // 横屏（914×411dp）实测：availH 仅 ~151dp，maxByH（≈16.8sp）< maxByW，
+    // 若仍 ×1.26 再 +4，内容总高必然超出可用高 → 歌词整段滚出可视区（只看得到标题）。
+    // 此系数本是"高度有余量时把字放大"，高度不足时放大只会牺牲可见性。
+    // 桌面（ls=1.0 且版式基准固定）不进入该分支，golden 基准不变。
     final ls = AppFonts.lyricsScale;
-    var size = maxByH * ls;
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final heightBound = isMobile && maxByH <= maxByW;
+    var size = heightBound ? maxByH : maxByH * ls;
     if (size > maxByW) size = maxByW;
-    size = size + 4.0 > maxByW ? maxByW : size + 4.0;
+    if (!heightBound) {
+      size = size + 4.0 > maxByW ? maxByW : size + 4.0;
+    }
     final bodySize = size.clamp(12.0, 100.0);
     final titleSize = (bodySize * 1.4).clamp(16.0, 40.0);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
+      padding: EdgeInsets.fromLTRB(padX, padTop, padX, padBottom),
       // 2026-09-22（用户反馈）：内容整体**垂直居中**。
       // 此前用 spaceBetween 把内容摊开铺满（标题贴顶、末行贴底），
       // 结果标题与歌词之间被拉出巨大空隙、整块内容偏上，用户要求居中；
@@ -1070,18 +1098,21 @@ class _HymnDisplayState extends State<HymnDisplay> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ValueListenableBuilder<bool>(
-          valueListenable: widget.audio.mutedNotifier,
-          builder: (context, muted, _) => IconButton(
-            iconSize: 24,
-            tooltip: muted ? '取消静音' : '静音',
-            icon: Icon(
-              muted ? Icons.volume_off : Icons.volume_up,
-              color: AppColors.textPrimary,
+        // 移动端不显示音量/静音图标（2026-10-28 用户定稿：四个变体都不要音量
+        // 调节按钮与图标，手机用系统音量键）；桌面横屏保留。
+        if (!(Platform.isAndroid || Platform.isIOS))
+          ValueListenableBuilder<bool>(
+            valueListenable: widget.audio.mutedNotifier,
+            builder: (context, muted, _) => IconButton(
+              iconSize: 24,
+              tooltip: muted ? '取消静音' : '静音',
+              icon: Icon(
+                muted ? Icons.volume_off : Icons.volume_up,
+                color: AppColors.textPrimary,
+              ),
+              onPressed: () => widget.audio.toggleMute(),
             ),
-            onPressed: () => widget.audio.toggleMute(),
           ),
-        ),
         IconButton(
           iconSize: 26,
           tooltip: '上一首',

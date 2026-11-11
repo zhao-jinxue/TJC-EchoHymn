@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:sqlite3/sqlite3.dart';
 
@@ -61,9 +62,39 @@ class SqliteRepository {
     // 移动端：再装内置音频样本（12 首，按变体裁剪）；桌面端 no-op。见 MediaBootstrap。
     await MediaBootstrap.ensureSamples();
     final path = AppPaths.databasePath ?? '';
-    final db = sqlite3.open(path);
+    var db = sqlite3.open(path);
+    var repo = SqliteRepository._(db);
+    // 自愈（2026-11-11）：并发首装/中断可能留下**空库（无核心表）**——
+    // 此前只记一条「数据库统计失败」，UI 就永远停在 0 首（lite 首启实测）。
+    // 这里删库 + 强制重装一次，避免用户设备"一次失败永久不可用"。
+    if (AppPaths.isMobile && !repo.hasCoreTables) {
+      LogService.instance.warning(
+        LogTag.lib,
+        '数据库缺少核心表，尝试重新安装内置库',
+        detail: path,
+      );
+      repo.dispose();
+      try {
+        final file = File(path);
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {}
+      try {
+        final root = AppPaths.dataRoot;
+        if (root != null) {
+          final vf = File('$root${Platform.pathSeparator}db_version.txt');
+          if (vf.existsSync()) vf.deleteSync();
+        }
+      } catch (_) {}
+      await DbBootstrap.ensureDatabase(force: true);
+      db = sqlite3.open(path);
+      repo = SqliteRepository._(db);
+      LogService.instance.info(
+        LogTag.lib,
+        '数据库自愈完成',
+        detail: '核心表存在: ${repo.hasCoreTables}',
+      );
+    }
     LogService.instance.info(LogTag.lib, '打开 SQLite 数据库', detail: path);
-    final repo = SqliteRepository._(db);
     repo._ensurePlaylistTable();
     // 统计已加载数据量
     try {

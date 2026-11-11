@@ -92,6 +92,16 @@ if (-not $commitShort) { $commitShort = 'nogit' }
 Write-Step "提交 $branch@$commitShort 触发 Windows 自动发布"
 
 # ---- 2. 构建 Windows release ----
+# 素材与变体对齐（2026-11-11 修复）：Android 发布**最后构建的是 lite 变体**，
+# `hymn_app/assets/media` 会停留在「无音频」状态；桌面版必须用 full 样本，
+# 否则自动发布的 Windows 包会缺内置音频（旧脚本没有这一步，属长期隐患）。
+Write-Step '同步 Windows 内置素材（full 样本）...'
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'tools\sync_audio_samples.ps1') -Variant full
+if ($LASTEXITCODE -ne 0) {
+    Write-ErrorL '素材同步失败，已中止 Windows 发布'
+    exit 1
+}
+
 Write-Step '构建 Windows release 版本...'
 Push-Location $AppDir
 try {

@@ -6,6 +6,7 @@ import 'package:audio_service/audio_service.dart' as media;
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'app_feature.dart';
 import 'platform/notification_permission.dart';
 import 'services/app_state_service.dart';
 import 'services/audio_handler.dart';
@@ -22,7 +23,8 @@ Future<void> main() async {
   LogService.instance.info(LogTag.system, '应用启动');
 
   // Android：初始化媒体会话（通知栏 / 锁屏 / 蓝牙控制 + 前台服务；ANDROID_PLAN §6 D-2）
-  if (Platform.isAndroid) {
+  // **lite（无音频版）不初始化**：§3.1.15 要求播放能力完全不存在（无媒体通知/前台服务/音频焦点）。
+  if (Platform.isAndroid && kHasAudio) {
     try {
       // Android 13+ 必须**运行时**授予通知权限，否则媒体通知 importance=NONE 不显示
       // （走自建通道 echohymn/permission；不用 permission_handler —— 它会破坏 Windows 构建）
