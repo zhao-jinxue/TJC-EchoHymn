@@ -109,10 +109,9 @@ foreach ($v in $Variants) {
     # 按变体裁剪内置音频样本：full 双版本 / piano 仅钢琴 / vocal 仅人声 / lite 无音频
     $syncSamples = Join-Path $Root 'tools\sync_audio_samples.ps1'
     if (Test-Path $syncSamples) {
-        # 2026-11-13：piano/vocal/lite **全量内置**（装完即可用）；
-        # full 保持 12 首样本——实测 2.52GB APK 超过 Android ~2GB 安装上限。
-        $syncArgs = @('-Variant', $v)
-        if ($v -ne 'full') { $syncArgs += '-IncludeAll' }
+        # 2026-11-13 用户定稿：**所有变体（含 full）全量内置**（音频 + 全部扫描图）。
+        # full 约 2.52 GB（> Android ~2GB 安装上限属已知风险，由用户实机验证）。
+        $syncArgs = @('-Variant', $v, '-IncludeAll')
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $syncSamples @syncArgs | Out-Null
         if ($LASTEXITCODE -ne 0) { Write-ErrorL "样本同步失败（变体 $v），继续构建" }
     }
