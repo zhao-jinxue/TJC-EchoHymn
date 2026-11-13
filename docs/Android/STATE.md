@@ -1,6 +1,6 @@
 # Android 开发状态（唯一续接入口）
 
-**更新**：2026-11-13 ｜ **阶段**：**M5 发布（v1.9.1 · piano/vocal/lite 素材全内置 · full 受 2GB APK 上限保持样本）** ｜ **分支**：`main` ｜ **最后提交**：见 `git log -1`
+**更新**：2026-11-13 ｜ **阶段**：**M5 发布（v1.9.1 已发布并推送 · piano/vocal/lite 素材全内置 · full 保持样本）** ｜ **分支**：`main` ｜ **最后提交**：`21b8d69`
 
 ## 当前
 
@@ -491,7 +491,8 @@
     - **四变体 APK 全部重建**（22:38~22:42，含新手册）：
       full 82.22 / piano 78.50 / vocal 67.18 / lite 63.46 MB
     - `analyze` 无 error、`test 77/77`
-- **下一步**：**推送 tag**（`git push origin main && git push origin android-v1.9.0-phone`；本机缺 `~/.ssh` 与公钥，需你补凭据）→ 用户手动安装验收（`docs/Android/TRIAL_GUIDE.md`）→ 反馈驱动修 P0/P1
+- **下一步**：**用户手动安装验收**（`docs/Android/TRIAL_GUIDE.md`；安装包见 `release/android/echohymn_android_20261113-174540_21b8d69/`）→ 反馈驱动修 P0/P1
+  - tag：`android-v1.9.0-phone`（b35f97e）与 `android-v1.9.1-phone`（21b8d69）均已推送 origin
 
 ## 环境变更（换机/清缓存时需复原）
 
