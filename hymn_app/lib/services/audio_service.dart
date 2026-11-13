@@ -215,6 +215,45 @@ class AudioService {
     }
   }
 
+  /// 替代候选顺序（`ANDROID_PLAN §1.4` ⑤）
+  ///
+  /// 单音频版缺本版音频时，优先挑**最接近本版音**的版本：
+  /// - 人声版：`人聲版` > `四部合唱版` > `四部合唱-N部版` > 其它合唱 > 其它（鋼琴版垫底）
+  /// - 钢琴版：`鋼琴版` > 含「人聲」的版本 > 其它
+  ///
+  /// **不能直接用 DB 的 `audio_version_list` 顺序**：人声版的该列表是
+  /// `[鋼琴版, 四部合唱版, ...]`，取首个有文件的会落到鋼琴版 ——
+  /// 而计划明确「人声版 `3`/`389` → 四部合唱版」（2026-11-11 实测发现的规则缺陷）。
+  static List<String> substitutionOrder(Hymn hymn) {
+    final all = <String>[
+      if (hymn.audioVersionList.isNotEmpty) ...hymn.audioVersionList,
+      ...hymn.audioVersions.keys,
+    ];
+    final unique = <String>[];
+    for (final v in all) {
+      if (!unique.contains(v)) unique.add(v);
+    }
+    int rank(String v) {
+      if (kAudioVariant == AudioVariant.vocal) {
+        if (v == '人聲版') return 0;
+        if (v == '四部合唱版') return 1;
+        if (v.startsWith('四部合唱')) return 2;
+        if (v.contains('合唱')) return 3;
+        if (v.contains('鋼琴')) return 9;
+        return 5;
+      }
+      if (kAudioVariant == AudioVariant.piano) {
+        if (v == '鋼琴版') return 0;
+        if (v.contains('人聲')) return 1;
+        return 5;
+      }
+      return 0;
+    }
+
+    unique.sort((a, b) => rank(a).compareTo(rank(b)));
+    return unique;
+  }
+
   /// 当前播放是否用了**替代音频**（`ANDROID_PLAN §1.4` ⑤）
   ///
   /// 单音频版全曲目可播靠「缺口互补替代」：钢琴版 1 首（`249` → 人聲版）、
@@ -278,10 +317,7 @@ class AudioService {
         _actualAudioVersion = preferred;
       }
       else {
-        final candidates = <String>[
-          if (hymn.audioVersionList.isNotEmpty) ...hymn.audioVersionList,
-          ...hymn.audioVersions.keys,
-        ];
+        final candidates = AudioService.substitutionOrder(hymn);
         var found = '';
         for (final v in candidates) {
           if (v != preferred && _hasAudioFile(hymn, v)) {
@@ -325,10 +361,7 @@ class AudioService {
     else {
       // 缺口互补替代（§1.4 ⑤）：按候选顺序找**首个真有文件**的版本
       // （不能信 DB 的键：可能有记录但文件未打包，例如钢琴版包里的 `249`）
-      final candidates = <String>[
-        if (hymn.audioVersionList.isNotEmpty) ...hymn.audioVersionList,
-        ...hymn.audioVersions.keys,
-      ];
+      final candidates = AudioService.substitutionOrder(hymn);
       var found = '';
       for (final v in candidates) {
         if (_hasAudioFile(hymn, v)) {

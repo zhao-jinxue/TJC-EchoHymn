@@ -461,12 +461,16 @@ class SettingsPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionTitle('素材'),
+        _sectionTitle(kHasAudio ? '素材' : '素材（扫描图）'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            '包内只有 12 首样本音频。可把完整素材目录（Hymn_Downloads）拷到手机后从这里导入；'
-            '导入会**复制**到应用私有目录（约 2.9 GB，需数分钟，期间请保持应用在前台）。',
+            kHasAudio
+                ? '包内只有 12 首样本音频。可把完整素材目录（Hymn_Downloads）拷到手机后从这里导入；'
+                    '导入会**复制**到应用私有目录（约 2.9 GB，需数分钟，期间请保持应用在前台）。'
+                : '包内只有 12 首的扫描图。可把完整素材目录（Hymn_Downloads）拷到手机后从这里导入，'
+                    '补齐全部诗歌的简谱 / 五线谱扫描图（约 0.5 GB）。'
+                    '**本版本没有播放功能**，导入音频也不会播放。',
             style: TextStyle(
               fontSize: 12,
               height: 1.5,
