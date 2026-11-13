@@ -173,6 +173,47 @@ $manifest = @(
 )
 Set-Content -Path (Join-Path $PkgOutDir 'BUILD-INFO.txt') -Value $manifest -Encoding utf8BOM
 
+# ---- 5.6 版本级发布记录（F-3 验收项：SHA256 留档 + 版本日志）----
+# 2026-11-11 修复：此前本脚本只写 auto-release.log（每次清空重写），
+# `release/android/android-release.log` 自 2026-10-25 起停更 → F-3 该项实际失效。
+# 现在每次发布**追加**一条版本记录（含签名指纹与各变体体积），保留历史。
+$versionLog = Join-Path $ReleaseDir 'android-release.log'
+if (-not (Test-Path $versionLog)) {
+    Set-Content -Path $versionLog -Value 'EchoHymn Android 发布记录' -Encoding utf8BOM
+}
+$sigLine = '（未校验）'
+try {
+    $bt = Get-ChildItem 'D:\Android\Sdk\build-tools' -Directory -ErrorAction Stop |
+        Sort-Object Name -Descending | Select-Object -First 1
+    $firstApk = Get-ChildItem -Path $PkgOutDir -File -Filter '*.apk' |
+        Sort-Object Name | Select-Object -First 1
+    if ($bt -and $firstApk) {
+        $cert = & "$($bt.FullName)\apksigner.bat" verify --print-certs $firstApk.FullName 2>&1 |
+            Select-String -Pattern 'SHA-256 digest' | Select-Object -First 1
+        if ($cert) { $sigLine = ($cert.Line -replace '.*SHA-256 digest:\s*', '').Trim() }
+    }
+}
+catch { }
+$record = @(
+    '',
+    '----------------------------------------------',
+    "时间: $(Get-Date -Format 'yyyyMMdd-HHmmss')",
+    "提交: $branch@$commitShort",
+    "版本: v$ver",
+    "ABI:  $TargetPlatform",
+    "目录: $PkgName",
+    "签名: SHA-256 $sigLine",
+    '',
+    '产物:'
+) + @($built | ForEach-Object {
+        $f = Get-ChildItem -Path $PkgOutDir -File -Filter "EchoHymn-$_-*.apk" |
+            Select-Object -First 1
+        if ($f) { "  $($f.Name)  ($([math]::Round($f.Length / 1MB, 1)) MB)" }
+        else { "  $_（缺失）" }
+    })
+Add-Content -Path $versionLog -Value $record -Encoding utf8BOM
+Write-OK "已追加版本记录 → release\android\android-release.log（签名 $sigLine）"
+
 # ---- 5.5 产物白名单校验（B-6）：禁止类型 / 库外路径 / 数据基线 ----
 $verify = Join-Path $Root 'tools\verify_android_package.ps1'
 if (Test-Path $verify) {
