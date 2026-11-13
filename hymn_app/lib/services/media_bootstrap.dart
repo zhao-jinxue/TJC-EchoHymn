@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/services.dart' show rootBundle;
 
 import 'app_paths.dart';
@@ -37,6 +38,11 @@ class MediaBootstrap {
   /// 背景（2026-10-25 实测）：`SqliteRepository.open()` 可能被多处触发 →
   /// 两条协程同时跑安装，互相删除对方的 `.tmp` → 60 条 `PathNotFoundException`
   /// （`Cannot rename ... path = ...tmp  No such file or directory`）。
+  /// **首启迁移进度**（0..1；`null` = 当前不在迁移）。
+  /// 全量素材（2026-11-13：1800+ 文件 / 2.5 GB）首启需要数分钟，
+  /// HomeScreen 的加载态据此显示百分比，避免用户以为卡死。
+  static final ValueNotifier<double?> progress = ValueNotifier<double?>(null);
+
   static Future<void> ensureSamples() =>
       _running ??= _ensureSamplesOnce().whenComplete(() => _running = null);
 
@@ -82,8 +88,25 @@ class MediaBootstrap {
     var installed = 0;
     var skipped = 0;
     var failed = 0;
+    var processed = 0;
+    final total = entries.length;
+    final watch = Stopwatch()..start();
 
     for (final e in entries) {
+      processed++;
+      // 全量素材可达 1800+ 个文件 / 2.5 GB（2026-11-13）：每 100 个记一条进度，
+      // 便于真机/模拟器观测首启迁移耗时。
+      if (processed % 20 == 0) {
+        progress.value = processed / total;
+      }
+      // 日志每 100 个一条（见下）
+      if (processed % 100 == 0) {
+        LogService.instance.info(
+          LogTag.lib,
+          '内置素材安装进度',
+          detail: '$processed / $total（已用 ${watch.elapsed.inSeconds}s）',
+        );
+      }
       if (e is! Map) continue;
       final asset = e['asset'] as String?;
       final target = e['target'] as String?;
@@ -126,11 +149,13 @@ class MediaBootstrap {
       }
     }
 
+    progress.value = null;
     LogService.instance.info(
       LogTag.lib,
       '内置样本素材安装完成',
       detail: '新增 $installed / 跳过 $skipped / 失败 $failed'
-          '（共 ${entries.length} 条，版本 $mediaVersion，版本戳匹配=$versionMatches）',
+          '（共 $total 条，耗时 ${watch.elapsed.inSeconds}s，版本 $mediaVersion，'
+          '版本戳匹配=$versionMatches）',
     );
   }
 }

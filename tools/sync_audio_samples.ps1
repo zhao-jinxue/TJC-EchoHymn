@@ -3,9 +3,16 @@
     同步内置音频样本到 hymn_app\assets\media\（按构建变体裁剪）。
 
 .DESCRIPTION
-    阶段 B 素材方案（ANDROID_PLAN §7.5 定稿）：**样本内置（10~20 首）+ 外部导入（SAF）**。
-    本脚本从仓库单一数据源 `data\Hymn_Downloads\` 挑固定 12 首样本，扁平复制到
-    `hymn_app\assets\media\`，并生成 `index.json`（asset 文件名 → DB 内相对路径）。
+    素材方案（2026-11-13 用户定稿）：**按变体把对应音频全量打进 APK**，
+    应用首启由 `MediaBootstrap` 同步迁移到私有目录（不再依赖外部导入）。
+
+      - `-IncludeAll`：遍历 `data\Hymn_Downloads` 全部 474 首（全量）；
+        不带则仍只复制 12 首样本（旧行为，调试用）。
+      - 变体白名单：full = 鋼琴版 + 人聲版（**不含合唱类**）；
+        piano = 鋼琴版 + `249` 人聲版（替代）；vocal = 人聲版 + `3`/`389` 四部合唱版
+        + 9 首鋼琴版（替代）；lite = 无音频。四者均内置全部扫描图（`-SkipImages` 可关）。
+
+    实测体积（全量）：full ≈2.52 GB / piano ≈1.68 GB / vocal ≈1.45 GB / lite ≈0.55 GB。
 
     变体口径（与 ANDROID_PLAN B3 验收一致）：
 
@@ -28,7 +35,15 @@
 #>
 param(
     [ValidateSet('full', 'piano', 'vocal', 'lite')]
-    [string]$Variant = 'full'
+    [string]$Variant = 'full',
+
+    # 全量内置（2026-11-13 用户定稿）：遍历 data\Hymn_Downloads 全部 474 首，
+    # 按变体白名单把音频 + 扫描图全部打进 APK（安装后由 MediaBootstrap 迁移）。
+    # 不带此开关时仍只复制 12 首样本（旧行为，保留给快速调试）。
+    [switch]$IncludeAll,
+
+    # 不内置扫描图（full 体积回退方案用；默认内置）
+    [switch]$SkipImages
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,6 +69,12 @@ $samples = @(
 
 if (-not (Test-Path $srcRoot)) { throw "缺少素材源目录 $srcRoot" }
 
+# 全量模式：遍历全部诗歌目录；否则只用 12 首样本
+if ($IncludeAll) {
+    $samples = @(Get-ChildItem -Path $srcRoot -Directory | Sort-Object Name | ForEach-Object { $_.Name })
+    Write-Host "[*] 全量模式：$($samples.Count) 首诗歌目录" -ForegroundColor Cyan
+}
+
 # 清空输出目录（保留目录本身，避免 pubspec 声明失效）
 if (Test-Path $dstDir) {
     Get-ChildItem -Path $dstDir -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
@@ -76,23 +97,40 @@ foreach ($s in $samples) {
     $audio = @($files | Where-Object { $_.Extension -in '.m4a', '.mp3' })
     $images = @($files | Where-Object { $_.Extension -in '.png', '.jpg' })
 
+    # 音频白名单（2026-11-13 定稿：全量版 = **鋼琴版 + 人聲版**，不含合唱类；
+    # 合唱仅保留 3/389 的四部合唱版，作为人声版的替代音源）
     $picked = @(switch ($Variant) {
         'lite' { @() }
-        'piano' { @($audio | Where-Object { $_.Name -like '*鋼琴版*' }) }
-        'vocal' { @($audio | Where-Object { $_.Name -like '*人聲版*' }) }
-        default { @($audio) }
+        'piano' {
+            @($audio | Where-Object { $_.Name -like '*鋼琴版*' -or $_.Name -like '249_人聲版*' })
+        }
+        'vocal' {
+            $alts = @('103_', '107_', '178_', '255_', '268_', '274_b_', '308_', '386_', '387_')
+            @($audio | Where-Object {
+                    $n = $_.Name
+                    if ($n -like '*人聲版*') { return $true }
+                    if ($n -like '3_四部合唱版*' -or $n -like '389_四部合唱版*') { return $true }
+                    if ($n -like '*鋼琴版*') {
+                        foreach ($a in $alts) { if ($n.StartsWith($a)) { return $true } }
+                    }
+                    return $false
+                })
+        }
+        default {
+            @($audio | Where-Object { $_.Name -like '*鋼琴版*' -or $_.Name -like '*人聲版*' })
+        }
     })
-    # 扫描图（简谱 / 五线谱 PNG）：**所有变体都内置**——
-    # 无音频版 = 扫描图 + 数据库（ANDROID_PLAN §1.4），故 lite 也带图。
-    $picked += $images
+    # 扫描图（简谱 / 五线谱 PNG）：所有变体都内置（-SkipImages 可关闭）
+    if (-not $SkipImages) { $picked += $images }
 
     foreach ($f in $picked) {
         $seq++
         $kind = if ($f.Name -like '*鋼琴版*') { 'piano' }
         elseif ($f.Name -like '*人聲版*') { 'vocal' }
+        elseif ($f.Name -like '*合唱*') { 'choir' }
         elseif ($f.Name -like '*简谱*') { 'numbered' }
         else { 'staff' }
-        $assetName = ('s{0:D3}_{1}{2}' -f $seq, $kind, $f.Extension)
+        $assetName = ('s{0:D4}_{1}{2}' -f $seq, $kind, $f.Extension)
         Copy-Item -Path $f.FullName -Destination (Join-Path $dstDir $assetName) -Force
         [void]$index.Add([pscustomobject]@{
                 asset  = $assetName

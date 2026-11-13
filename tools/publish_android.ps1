@@ -109,11 +109,19 @@ foreach ($v in $Variants) {
     # 按变体裁剪内置音频样本：full 双版本 / piano 仅钢琴 / vocal 仅人声 / lite 无音频
     $syncSamples = Join-Path $Root 'tools\sync_audio_samples.ps1'
     if (Test-Path $syncSamples) {
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $syncSamples -Variant $v | Out-Null
+        # 2026-11-13：piano/vocal/lite **全量内置**（装完即可用）；
+        # full 保持 12 首样本——实测 2.52GB APK 超过 Android ~2GB 安装上限。
+        $syncArgs = @('-Variant', $v)
+        if ($v -ne 'full') { $syncArgs += '-IncludeAll' }
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $syncSamples @syncArgs | Out-Null
         if ($LASTEXITCODE -ne 0) { Write-ErrorL "样本同步失败（变体 $v），继续构建" }
     }
     Push-Location $AppDir
     try {
+        # 强制资源重新打包（2026-10-28 教训：flutter build 的 asset bundle 有增量缓存，
+        # 只改素材目录内容不会失效 → 大包切换时更易串素材）
+        $pubspec = Join-Path $AppDir 'pubspec.yaml'
+        if (Test-Path $pubspec) { (Get-Item $pubspec).LastWriteTime = Get-Date }
         # flutter 的正常提示会写 stderr，Stop 模式下会被误判为终止性错误
         $prevEAP = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'

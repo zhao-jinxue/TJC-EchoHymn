@@ -48,7 +48,10 @@ Write-Host "===== 构建 $Variant（$TargetPlatform）=====" -ForegroundColor Cy
 # ---- 1. 同步素材（治本：杜绝"变体与内容错配"）----
 $sync = Join-Path $Root 'tools\sync_audio_samples.ps1'
 Write-Host '[*] 同步素材 ...' -ForegroundColor Cyan
-& pwsh -NoProfile -ExecutionPolicy Bypass -File $sync -Variant $Variant
+# 2026-11-13：piano/vocal/lite 全量内置；full 保持 12 首样本（APK > 2GB 无法安装）
+$syncArgs = @('-Variant', $Variant)
+if ($Variant -ne 'full') { $syncArgs += '-IncludeAll' }
+& pwsh -NoProfile -ExecutionPolicy Bypass -File $sync @syncArgs
 if ($LASTEXITCODE -ne 0) { throw '素材同步失败，中止构建' }
 
 # ---- 2. 构建 ----

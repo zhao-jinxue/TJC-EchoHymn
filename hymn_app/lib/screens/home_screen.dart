@@ -11,6 +11,7 @@ import '../services/audio_handler.dart';
 import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
+import '../services/media_bootstrap.dart';
 import '../services/sqlite_repository.dart';
 import '../platform/window_controls.dart';
 import '../theme/app_fonts.dart';
@@ -1118,7 +1119,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     }
     if (_repo == null || _audio == null) {
-      return const Center(child: CircularProgressIndicator());
+      // 首启全量素材迁移（2026-11-13：最多 1800+ 个文件 / 2.5 GB）会在这里等待，
+      // 显示百分比而非干转圈，避免用户以为卡死。
+      return ValueListenableBuilder<double?>(
+        valueListenable: MediaBootstrap.progress,
+        builder: (context, p, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 14),
+              Text(
+                p == null
+                    ? '正在加载数据…'
+                    : '正在安装内置素材 ${(p * 100).round()}%（首次启动，请稍候）',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final repo = _repo!;

@@ -1,6 +1,6 @@
 # Android 开发状态（唯一续接入口）
 
-**更新**：2026-11-13 ｜ **阶段**：**M5 发布（F-3 全勾 · v1.9.0 · tag 已打〔本地，待推送〕）** ｜ **分支**：`main` ｜ **最后提交**：`b35f97e`
+**更新**：2026-11-13 ｜ **阶段**：**M5 发布（v1.9.1 · piano/vocal/lite 素材全内置 · full 受 2GB APK 上限保持样本）** ｜ **分支**：`main` ｜ **最后提交**：见 `git log -1`
 
 ## 当前
 
@@ -270,6 +270,17 @@
       - **修替代顺序缺陷**：候选原按 DB `audio_version_list`（人声版该列表 `鋼琴版` 在前）→ `3`/`389` 会错播鋼琴版；
         新增 `AudioService.substitutionOrder()` 按变体优先级（人聲 > 四部合唱 > 分部合唱 > 鋼琴）
       - **版本升 `1.9.0+1`** → 4 变体重建 → 打 `android-v1.9.0-phone` tag
+    - **2026-11-13 素材内置进 APK（用户要求 + 实测结论）**：
+      - **piano / vocal / lite 全量内置 ✅**：`sync_audio_samples.ps1 -IncludeAll` 按变体白名单把音频 + 全部扫描图打进 APK；
+        首启 `MediaBootstrap` 迁移到私有目录（带百分比 UI + 每 100 个文件进度日志 + 总耗时）
+      - **piano 端到端实测**（x64 / API 36 模拟器，数据分区扩到 16 GB）：APK **1689.2 MB** → `adb install` **9.1 s 成功** →
+        首启迁移 **1422 条 / 1.6 GB / 17–18 s / 失败 0** → 播放第 1 首
+        `files/Hymn_Downloads/001_1頌讚獨一真神/1_鋼琴版.m4a` → **播放成功**；变体 UI 正确（无音频版本按钮）
+      - **full 全内置不可行 ❌**：APK **2,702,241,808 B（2.52 GB）** 构建成功但 `adb install` **失败**
+        —— APK v2/v3 签名使用 **32 位 zip 偏移**，单 APK 上限 ≈ **2 GB**；full 仅音频（鋼琴+人聲）就 2.03 GB
+        → **full 保持「12 首样本 + 导入」**（折中「内置全部扫描图、音频导入」待定）
+      - 发布脚本：`publish_android.ps1` / `build_android_release.ps1` 对 piano/vocal/lite 自动加 `-IncludeAll`，full 不加
+      - 版本升 **`1.9.1+2`**
     - **试用包已产出**：`release/android/echohymn_android_trial_<时间戳>_18fd6c0/`
       （full 82.29 / piano 78.56 / vocal 67.24 / lite 63.52 MB + `SHA256SUMS.txt`）
     - **试用说明**：`docs/Android/TRIAL_GUIDE.md`（安装方式 / 能力边界 / 重点验什么 / 已知问题 / 反馈分级）
@@ -506,6 +517,7 @@
 | **首启双引擎初始化**（日志 `HomeScreen 初始化` ×2，两个 isolate 并发） | 首启重复初始化/日志噪声；DB 已做并发兜底 | 下轮排查（不阻塞 tag） |
 | 横屏 + 特大字号需纵向滚动（翻页条已移到独立区域，不再遮挡） | 观感（物理高度限制） | 可接受，待你确认 |
 | 320dp 极窄屏顶栏按钮行需横向滑动才能看到「五线谱」 | 极窄屏可用性 | 可接受（C-1 既定横向滚动） |
+| **full 无法全内置**（APK 2.52GB > 2GB 签名偏移上限） | full 仍需导入完整素材 | 已实测；折中方案（内置全部扫描图、音频导入）待你定 |
 
 ## 最近里程碑
 
