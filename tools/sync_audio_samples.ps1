@@ -43,7 +43,11 @@ param(
     [switch]$IncludeAll,
 
     # 不内置扫描图（full 体积回退方案用；默认内置）
-    [switch]$SkipImages
+    [switch]$SkipImages,
+
+    # **主体模式**（2026-11-13 用户定稿）：清空 assets\media，只保留程序 + 数据库；
+    # 素材（扫描图 / 人声 / 钢琴）由 installer 数据包在安装后导入。
+    [switch]$Empty
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,6 +90,15 @@ else {
 $index = New-Object System.Collections.ArrayList
 $seq = 0
 $totalBytes = 0
+
+if ($Empty) {
+    # 主体模式：index.json = []（App 内 MediaBootstrap 会跳过，能力检测判定为 lite）
+    [System.IO.File]::WriteAllText(
+        (Join-Path $dstDir 'index.json'), '[]',
+        (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host '[OK] 主体模式：assets/media 已清空（仅程序 + 数据库，素材由 installer 包导入）' -ForegroundColor Green
+    return
+}
 
 foreach ($s in $samples) {
     $dir = Join-Path $srcRoot $s

@@ -1,6 +1,6 @@
 # Android 开发状态（唯一续接入口）
 
-**更新**：2026-11-13 ｜ **阶段**：**M5 发布（v1.9.1 已发布并推送 · piano/vocal/lite 素材全内置 · full 保持样本）** ｜ **分支**：`main` ｜ **最后提交**：`21b8d69`
+**更新**：2026-11-16 ｜ **阶段**：**M5 发布（v1.9.2 · 主体 APK + installer 数据包 · 运行时能力检测）** ｜ **分支**：`main` ｜ **最后提交**：见 `git log -1`
 
 ## 当前
 
@@ -281,6 +281,20 @@
         → **full 保持「12 首样本 + 导入」**（折中「内置全部扫描图、音频导入」待定）
       - 发布脚本：`publish_android.ps1` / `build_android_release.ps1` 对 piano/vocal/lite 自动加 `-IncludeAll`，full 不加
       - 版本升 **`1.9.1+2`**
+    - **2026-11-16 架构调整（用户 7 条要求）：主体 APK + installer 数据包 + 运行时能力检测**：
+      - **主体 APK**（release 唯一产物）：**55.6 MB**（程序 + 数据库，**不含素材**）
+      - **运行时能力**：新增 `MediaCapabilityProbe`（按**前十首**检测 扫描图 / 人声 / 钢琴）→ `AudioCapability`；
+        `kAudioVariant` / `kHasAudio` / `kSingleAudioVariant` / `kFullAudioVariant` 由编译期常量改为**运行期 getter**；
+        **桌面固定构建期变体（Windows 零改动）**
+      - **实测**（API36 x86_64 模拟器）：空素材 → `钢琴=false / 人声=false / 扫描图=false → lite` + 首启引导页；
+        复制钢琴素材后重启 → `钢琴=true / 人声=false / 扫描图=true → piano`，手册/顶栏自动切为钢琴版
+      - **导入通道**：Kotlin `echohymn/pack`（SAF 选 zip → `ZipInputStream` 流式解压 → 路径/文件名白名单 →
+        规则外**丢弃不落盘**、同名**覆盖**）；入口 = 首启引导页 + 设置「数据导入（压缩包）」
+      - **installer 产物**（`installer/output/android/`）：主体 55.6 MB + 6 包
+        （scores 237.8/249.9 · vocal 229.6/684.6 · piano 545.2/600.7 MB），每包 <2GB、按 1–237 / 238–474 拆分
+      - **`installer/output` 分平台**：`windows/`（既有 Inno 产物已迁入）+ `android/`（新）
+      - 脚本：`tools/build_android_media_packs.py`（6 包）+ `tools/build_android_installer.ps1`（APK + 包 + SHA256SUMS + BUILD-INFO）
+      - 版本升 **`1.9.2+3`**；tag `android-v1.9.2-phone`
     - **试用包已产出**：`release/android/echohymn_android_trial_<时间戳>_18fd6c0/`
       （full 82.29 / piano 78.56 / vocal 67.24 / lite 63.52 MB + `SHA256SUMS.txt`）
     - **试用说明**：`docs/Android/TRIAL_GUIDE.md`（安装方式 / 能力边界 / 重点验什么 / 已知问题 / 反馈分级）

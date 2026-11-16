@@ -12,8 +12,11 @@ import '../services/audio_service.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
 import '../services/media_bootstrap.dart';
+import '../services/media_capability_probe.dart';
 import '../services/sqlite_repository.dart';
+import '../platform/pack_import.dart';
 import '../platform/window_controls.dart';
+import '../services/app_paths.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../theme/score_display_prefs.dart';
@@ -154,6 +157,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       LogService.instance.info(LogTag.ui, 'HomeScreen 初始化数据中...');
       final repo = await SqliteRepository.open();
+      final allHymns = repo.getAllHymns();
+      // 2026-11-13：主体 APK 无内置素材 → 首启按前十首检测钢琴/人声/扫描图，
+      // 据此决定 UI 形态（full / piano / vocal / lite）。桌面固定构建期变体。
+      await MediaCapabilityProbe.detectAndApply(allHymns);
       final audio = AudioService();
       // Android：关联媒体会话（通知栏/锁屏/蓝牙；D-2）
       final mediaHandler = kMediaHandler;
@@ -179,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _repo = repo;
         _audio = audio;
-        _allHymns = repo.getAllHymns();
+        _allHymns = allHymns;
         _currentAudioVersion =
             state.audioVersion.isEmpty ? '鋼琴版' : state.audioVersion;
         _currentDisplayMode =
@@ -759,6 +766,98 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   /// 打开设置页（`ANDROID_PLAN §3.1.7`）：点选即生效，持久化走 `_saveState`
+  /// 首启引导：无任何素材时提供「扫描图 / 人声 / 钢琴」导入入口
+  Widget _buildNoMediaGuide() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inbox_outlined,
+                size: 56, color: AppColors.textTertiary),
+            const SizedBox(height: 16),
+            Text(
+              '还没有导入诗歌数据',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '请选择安装包附带的压缩包导入（扫描图 / 人声 / 钢琴）。\n'
+              '只接受符合命名规则的文件，规则外丢弃、不占空间。',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.6,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () => _importPack('scores', '扫描图'),
+                  child: const Text('导入扫描图'),
+                ),
+                OutlinedButton(
+                  onPressed: () => _importPack('vocal', '人声音频'),
+                  child: const Text('导入人声'),
+                ),
+                OutlinedButton(
+                  onPressed: () => _importPack('piano', '钢琴音频'),
+                  child: const Text('导入钢琴'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _openSettings,
+              child: const Text('打开设置（更多导入选项）'),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '导入完成后请重启应用，界面会按实际素材自动切换。',
+              style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 首启导入：选 zip → 流式导入（规则外丢弃）
+  Future<void> _importPack(String kind, String label) async {
+    final root = AppPaths.dataRoot;
+    if (root == null || root.isEmpty) return;
+    final uri = await PackImport.pickZip(kind);
+    if (uri == null) return;
+    LogService.instance
+        .info(LogTag.action, '首启导入数据包：$label（kind=$kind）');
+    StreamSubscription<PackImportResult>? sub;
+    sub = PackImport.doneStream.listen((r) async {
+      await sub?.cancel();
+      LogService.instance.info(
+        LogTag.action,
+        '首启导入完成：$label',
+        detail: '导入 ${r.accepted} / 丢弃 ${r.rejected} / 失败 ${r.failed}',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(r.ok
+            ? '$label 导入完成：${r.accepted} 个；请重启应用以更新界面'
+            : '$label 导入失败：${r.error ?? '${r.failed} 个文件写入失败'}'),
+      ));
+    });
+    await PackImport.startImport(uri: uri, kind: kind, targetRoot: root);
+  }
+
   Future<void> _openSettings() async {
     LogService.instance.info(LogTag.action, '打开设置页');
     final preview = _audio?.currentHymn ??
@@ -1107,6 +1206,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ---------- 主体 ----------
   Widget _buildBody({bool mobile = false}) {
+    // 2026-11-13：主体 APK 首次启动且未检测到任何素材 → 引导导入（用户要求）
+    if (_repo != null &&
+        kAudioVariant == AudioVariant.lite &&
+        !AudioCapability.lastHasScores) {
+      return _buildNoMediaGuide();
+    }
     if (_initError) {
       return ErrorView(
         message: '数据加载失败',

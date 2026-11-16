@@ -30,8 +30,8 @@
 param(
     # 保留的发布版本数量
     [int]$KeepCount = 5,
-    # 需要构建的变体（与 android/app/build.gradle.kts 的 productFlavors 一致）
-    [string[]]$Variants = @('full', 'piano', 'vocal', 'lite'),
+    # 需要构建的变体（2026-11-13 起 release **只打主体**：单一 APK，运行时按素材检测切换 UI）
+    [string[]]$Variants = @('full'),
     # 目标 ABI（arm64 覆盖绝大多数真机）
     [string]$TargetPlatform = 'android-arm64'
 )
@@ -109,9 +109,8 @@ foreach ($v in $Variants) {
     # 按变体裁剪内置音频样本：full 双版本 / piano 仅钢琴 / vocal 仅人声 / lite 无音频
     $syncSamples = Join-Path $Root 'tools\sync_audio_samples.ps1'
     if (Test-Path $syncSamples) {
-        # 2026-11-13 用户定稿：**所有变体（含 full）全量内置**（音频 + 全部扫描图）。
-        # full 约 2.52 GB（> Android ~2GB 安装上限属已知风险，由用户实机验证）。
-        $syncArgs = @('-Variant', $v, '-IncludeAll')
+        # 2026-11-13 用户定稿：release 只打**主体**（程序 + 数据库），素材由 installer 数据包导入。
+        $syncArgs = @('-Variant', $v, '-Empty')
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $syncSamples @syncArgs | Out-Null
         if ($LASTEXITCODE -ne 0) { Write-ErrorL "样本同步失败（变体 $v），继续构建" }
     }

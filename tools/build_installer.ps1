@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 $Root    = "E:\EchoHymn"
 $InstDir = Join-Path $Root "installer"
-$OutDir  = Join-Path $InstDir "output"
+$OutDir  = Join-Path $InstDir "output\windows"
 $Stage   = Join-Path $InstDir "staging"
 $StageData = Join-Path $InstDir "staging_data"
 $Payload = Join-Path $InstDir "payload.7z"

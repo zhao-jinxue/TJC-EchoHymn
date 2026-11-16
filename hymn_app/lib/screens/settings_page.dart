@@ -7,6 +7,7 @@ import '../app.dart';
 import '../app_feature.dart';
 import '../models/hymn.dart';
 import '../platform/media_import.dart';
+import '../platform/pack_import.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
@@ -499,9 +500,85 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _sectionTitle('数据导入（压缩包）'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '选择安装包附带的 zip：扫描图 / 人声 / 钢琴。只导入符合既有目录与文件名规则的文件'
+            '（规则外一律丢弃、不写入存储），同名文件直接覆盖。导入完成后请重启应用以更新界面。',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.5,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              OutlinedButton(
+                onPressed: () => _startPackImport(context, 'scores', '扫描图'),
+                child: const Text('导入扫描图'),
+              ),
+              OutlinedButton(
+                onPressed: () => _startPackImport(context, 'vocal', '人声音频'),
+                child: const Text('导入人声'),
+              ),
+              OutlinedButton(
+                onPressed: () => _startPackImport(context, 'piano', '钢琴音频'),
+                child: const Text('导入钢琴'),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 8),
         _divider(),
       ],
+    );
+  }
+
+  /// 选择 zip → 流式导入（规则外丢弃）→ 提示重启
+  Future<void> _startPackImport(
+      BuildContext context, String kind, String label) async {
+    final target = AppPaths.dataRoot;
+    if (target == null || target.isEmpty) {
+      LogService.instance.warning(LogTag.action, '数据包导入：数据根目录未就绪');
+      return;
+    }
+    final uri = await PackImport.pickZip(kind);
+    if (uri == null) {
+      LogService.instance.info(LogTag.action, '数据包导入：用户取消（$kind）');
+      return;
+    }
+    LogService.instance
+        .info(LogTag.action, '数据包导入开始：$label', detail: 'kind=$kind');
+    StreamSubscription<PackImportResult>? sub;
+    sub = PackImport.doneStream.listen((r) async {
+      await sub?.cancel();
+      LogService.instance.info(
+        LogTag.action,
+        '数据包导入结束：$label',
+        detail: '导入 ${r.accepted} / 规则外丢弃 ${r.rejected} / 失败 ${r.failed}'
+            '${r.error == null ? '' : ' / 错误 ${r.error}'}',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(r.ok
+            ? '$label 导入完成：${r.accepted} 个（规则外丢弃 ${r.rejected}）；请重启应用以更新界面'
+            : '$label 导入失败：${r.error ?? '${r.failed} 个文件写入失败'}'),
+      ));
+    });
+    await PackImport.startImport(uri: uri, kind: kind, targetRoot: target);
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _PackProgressDialog(),
     );
   }
 
@@ -695,4 +772,66 @@ class _ImportProgressDialogState extends State<_ImportProgressDialog> {
     );
   }
 }
+
+/// 数据包（zip）导入进度：`packDone` 到达后自动关闭
+class _PackProgressDialog extends StatefulWidget {
+  const _PackProgressDialog();
+
+  @override
+  State<_PackProgressDialog> createState() => _PackProgressDialogState();
+}
+
+class _PackProgressDialogState extends State<_PackProgressDialog> {
+  StreamSubscription<PackImportResult>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = PackImport.doneStream.listen((result) {
+      if (!mounted) return;
+      Navigator.of(context).maybePop(result);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: const Text('正在导入数据包'),
+        content: StreamBuilder<PackImportProgress>(
+          stream: PackImport.progressStream,
+          builder: (context, snap) {
+            final p = snap.data;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const LinearProgressIndicator(),
+                const SizedBox(height: 12),
+                Text(
+                  p == null
+                      ? '正在读取压缩包…'
+                      : '已处理 ${p.processed} 个（导入 ${p.accepted} / 规则外丢弃 ${p.rejected}）',
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '规则外的文件会被丢弃，不会写入存储。',
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 

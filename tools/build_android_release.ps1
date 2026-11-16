@@ -48,9 +48,8 @@ Write-Host "===== 构建 $Variant（$TargetPlatform）=====" -ForegroundColor Cy
 # ---- 1. 同步素材（治本：杜绝"变体与内容错配"）----
 $sync = Join-Path $Root 'tools\sync_audio_samples.ps1'
 Write-Host '[*] 同步素材 ...' -ForegroundColor Cyan
-# 2026-11-13 用户定稿：**所有变体（含 full）全量内置**（音频 + 全部扫描图）；
-# full 体积约 2.52 GB（超过 Android ~2GB 安装上限属已知风险，由用户实机验证）。
-$syncArgs = @('-Variant', $Variant, '-IncludeAll')
+# 2026-11-13 用户定稿：release 构建只打**主体**（程序 + 数据库）；素材走 installer 数据包。
+$syncArgs = @('-Variant', $Variant, '-Empty')
 & pwsh -NoProfile -ExecutionPolicy Bypass -File $sync @syncArgs
 if ($LASTEXITCODE -ne 0) { throw '素材同步失败，中止构建' }
 

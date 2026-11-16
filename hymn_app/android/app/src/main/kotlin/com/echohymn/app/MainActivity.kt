@@ -10,7 +10,9 @@ import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.BufferedInputStream
 import java.io.File
+import java.util.zip.ZipInputStream
 
 /**
  * EchoHymn 主 Activity。
@@ -22,9 +24,14 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     private val permissionChannel = "echohymn/permission"
     private val importChannel = "echohymn/import"
+    private val packChannelName = "echohymn/pack"
 
     private var pickResult: MethodChannel.Result? = null
     private var importChannelRef: MethodChannel? = null
+    private var packChannelRef: MethodChannel? = null
+
+    // 数据包（zip）导入
+    private var packPickResult: MethodChannel.Result? = null
 
     // 导入进度（字段便于在递归回调里累加）
     private var copiedCount = 0
@@ -86,10 +93,49 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // ---- 数据包（zip）导入（2026-11-13 主体 APK 方案）----
+        // 用户选择 `扫描图 / 人声 / 钢琴` 压缩包 → 流式解压到 files/Hymn_Downloads，
+        // **只接受**符合现有目录/文件名规则且属于该类别的文件，其余一律丢弃（不落盘）。
+        val pc = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, packChannelName)
+        packChannelRef = pc
+        pc.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "pickZip" -> {
+                    packPickResult = result
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/zip"
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivityForResult(intent, REQ_ZIP)
+                }
+                "importZip" -> {
+                    val uriStr = call.argument<String>("uri")
+                    val kind = call.argument<String>("kind") ?: ""
+                    val targetRoot = call.argument<String>("targetRoot")
+                    if (uriStr.isNullOrEmpty() || targetRoot.isNullOrEmpty()) {
+                        result.error("ARG", "缺少 uri / targetRoot", null)
+                    } else {
+                        result.success(null) // 进度走 packProgress 回调
+                        Thread { importZip(Uri.parse(uriStr), kind, File(targetRoot)) }.start()
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_ZIP) {
+            val uri = data?.data
+            packPickResult?.success(
+                if (resultCode == Activity.RESULT_OK && uri != null) uri.toString() else null
+            )
+            packPickResult = null
+            return
+        }
         if (requestCode == REQ_TREE) {
             val uri = data?.data
             if (resultCode == Activity.RESULT_OK && uri != null) {
@@ -160,7 +206,97 @@ class MainActivity : FlutterActivity() {
         )
     }
 
+    // ================= 数据包（zip）导入 =================
+
+    private fun importZip(uri: Uri, kind: String, root: File) {
+        var accepted = 0
+        var rejected = 0
+        var failed = 0
+        var processed = 0
+        try {
+            val input = contentResolver.openInputStream(uri)
+            if (input == null) {
+                packChannelRef?.invokeMethod(
+                    "packDone",
+                    mapOf("accepted" to 0, "rejected" to 0, "failed" to 0, "error" to "无法读取压缩包")
+                )
+                return
+            }
+            ZipInputStream(BufferedInputStream(input)).use { zip ->
+                var entry = zip.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory) {
+                        processed++
+                        val raw = entry.name.replace('\\', '/').removePrefix("./")
+                        if (packAllowed(raw, kind)) {
+                            val rel = raw.removePrefix("Hymn_Downloads/")
+                            val target = File(root, "Hymn_Downloads/$rel")
+                            val base = File(root, "Hymn_Downloads").canonicalPath
+                            if (target.canonicalPath.startsWith(base + File.separator)) {
+                                target.parentFile?.mkdirs()
+                                target.outputStream().use { out -> zip.copyTo(out) }
+                                accepted++
+                            } else {
+                                rejected++
+                            }
+                        } else {
+                            rejected++
+                        }
+                        if (processed % 50 == 0) {
+                            packChannelRef?.invokeMethod(
+                                "packProgress",
+                                mapOf(
+                                    "processed" to processed,
+                                    "accepted" to accepted,
+                                    "rejected" to rejected
+                                )
+                            )
+                        }
+                    }
+                    zip.closeEntry()
+                    entry = zip.nextEntry
+                }
+            }
+        } catch (_: Exception) {
+            failed++
+        }
+        packChannelRef?.invokeMethod(
+            "packDone",
+            mapOf(
+                "accepted" to accepted,
+                "rejected" to rejected,
+                "failed" to failed,
+                "error" to null
+            )
+        )
+    }
+
+    /**
+     * 路径 + 文件名白名单（2026-11-13 用户规则）：
+     * 只接受 `Hymn_Downloads/<目录>/<编号>_<类型>.<ext>`，且类型与本包类别匹配；
+     * 规则外（`..`、绝对路径、不认识的命名/扩展名）一律**拒绝且不落盘**。
+     */
+    private fun packAllowed(path: String, kind: String): Boolean {
+        if (path.isEmpty() || path.contains("..") || path.startsWith("/") || path.contains(":")) {
+            return false
+        }
+        val normalized =
+            if (path.startsWith("Hymn_Downloads/")) path else "Hymn_Downloads/$path"
+        val name = normalized.substringAfterLast('/')
+        if (name.isEmpty()) return false
+        val ext = name.substringAfterLast('.', "").lowercase()
+        if (ext !in setOf("m4a", "mp3", "png")) return false
+        if (!Regex("^[0-9]+(_b)?_").containsMatchIn(name)) return false
+        return when (kind) {
+            "scores" -> ext == "png" && (name.contains("简谱") || name.contains("五线谱"))
+            "piano" -> ext != "png" && name.contains("鋼琴版")
+            "vocal" -> ext != "png" && (name.contains("人聲版") || name.contains("合唱"))
+            else -> false
+        }
+    }
+
     companion object {
         private const val REQ_TREE = 2001
+        private const val REQ_ZIP = 2002
     }
 }
