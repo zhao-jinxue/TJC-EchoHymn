@@ -1,211 +1,146 @@
 import '../app_feature.dart';
 import 'user_manual_dialog.dart' show GuideLine;
 
-/// **Android 版用户手册内容**（2026-10-28 新建）
+/// Android 版用户手册
 ///
-/// 与 Windows 手册**完全分开**：手机没有键盘快捷键、没有窗口/托盘、没有右侧「诗歌源考」栏，
-/// 多了「SAF 素材导入」「系统音量键」「长按/滑动」等移动端交互 —— 照搬桌面手册会误导用户。
-///
-/// 同时**按 4 个细分变体精确匹配**（用户明确要求）：
-/// - `full`：钢琴 + 人声两种音频，按钮可循环切换
-/// - `piano`：仅钢琴伴奏，**没有**版本切换按钮
-/// - `vocal`：仅人声，**没有**版本切换按钮
-/// - `lite`：**无内置音频**，只有歌词 + 简谱/五线谱扫描图，必须导入音频才能出声
+/// 原则（2026-11-17 用户要求）：**只说明本应用有什么、怎么用** ——
+/// 不写平台对比（如「Android 没有…」「桌面版才有…」）、不写技术术语
+/// （SAF / 私有目录 / 通道）、不写跨版本购买指引。按运行期能力
+/// （full / piano / vocal / lite）只陈述本版本的事实。
 List<({String title, List<GuideLine> lines})> androidManualSections() {
   final variant = kAudioVariant;
-  return [
-    _openClose(variant),
-    _topBar(),
-    _audio(variant),
+  final sections = <({String title, List<GuideLine> lines})>[
+    _start(),
+    _mainScreen(),
     _displayMode(),
-    _playerBar(),
-    _leftPanel(),
-    _settings(variant),
-    _faq(variant),
   ];
+  if (variant != AudioVariant.lite) {
+    sections.add(_playback());
+  }
+  sections.addAll([
+    _audioInfo(variant),
+    _listPanel(),
+    _settings(),
+    _dataImport(),
+    _faq(variant),
+  ]);
+  return sections;
 }
 
-/// 变体中文名（手册正文用）
-String _variantName(AudioVariant v) => switch (v) {
-      AudioVariant.full => '全量音频版',
-      AudioVariant.piano => '钢琴版',
-      AudioVariant.vocal => '人声版',
-      AudioVariant.lite => '精简版（无音频）',
-    };
-
-({String title, List<GuideLine> lines}) _openClose(AudioVariant v) => (
-      title: '本手册的打开与关闭',
+({String title, List<GuideLine> lines}) _start() => (
+      title: '打开与关闭手册',
       lines: [
-        GuideLine('打开方式：', [
-          '点击顶栏右侧「？/ 更多」里的「用户手册」；',
-          '打开「设置 → 用户手册」；',
-          '${_variantName(v)}：若开启「启动时显示手册」，每次进入都会自动弹出。',
-        ]),
-        const GuideLine('关闭方式：', [
-          '点击右上角 ✕；',
-          '点击弹窗外任意空白处；',
-          'Android 返回手势（从屏幕左右边缘向内滑）也会关闭弹窗。',
-        ]),
-        const GuideLine('弹窗底部「启动时显示本手册」开关控制每次进入是否自动弹出，可随时恢复。'),
+        const GuideLine('打开：顶栏右侧「⋮」→「用户手册」，或「设置」→「用户手册」。'),
+        const GuideLine('关闭：点右上角「✕」，或点页面空白处。'),
+        const GuideLine('页面底部「启动时显示本手册」开关，控制每次启动是否自动打开。'),
       ],
     );
 
-({String title, List<GuideLine> lines}) _topBar() => (
-      title: kHasAudio ? '顶栏与音频版本按钮' : '顶栏与显示模式按钮',
+({String title, List<GuideLine> lines}) _mainScreen() => (
+      title: '主界面',
       lines: [
-        const GuideLine('左侧 ☰：打开诗歌列表 / 分类 / 我的歌单。'),
-        const GuideLine('中间标题：显示「第 N 首《诗歌名》」。'),
-        const GuideLine('右侧 🔍 搜索、⋮ 更多（用户手册、设置、关于）。'),
-        GuideLine('按钮栏分左右两组：', [
-          if (kHasAudio)
-            '左边是**音频版本**，右边是**显示模式**（歌词 / 简谱 / 五线谱）—— 两组互不干扰；'
-          else
-            '本版本**没有音频版本按钮**，按钮栏只有右侧的**显示模式**（歌词 / 简谱 / 五线谱）；',
-          'Android 版**没有「曲谱」模式**（桌面 Windows 版才有）。',
-        ]),
+        const GuideLine('左上角「☰」：打开诗歌列表、分类、我的歌单。'),
+        const GuideLine('中间标题：当前诗歌，如「第 1 首《颂赞独一真神》」。'),
+        const GuideLine('右上角「🔍」：搜索；「⋮」：用户手册、设置、关于。'),
+        const GuideLine('标题下方按钮：左边是音频，右边是显示模式（歌词 / 简谱 / 五线谱）。'),
       ],
     );
 
-({String title, List<GuideLine> lines}) _audio(AudioVariant v) {
-  switch (v) {
+({String title, List<GuideLine> lines}) _displayMode() => (
+      title: '歌词、简谱与五线谱',
+      lines: [
+        const GuideLine('点「歌词 / 简谱 / 五线谱」切换内容。'),
+        const GuideLine('歌词：一页一节，底部「＜ 第 N / M 节 ＞」翻页，也可以在歌词上左右滑动。'),
+        const GuideLine('点右上角「自动」后，歌词会随播放进度自动翻页。'),
+        const GuideLine('简谱、五线谱：显示该首的谱面图片；双指捏合缩放，单指拖动，双击复位。'),
+      ],
+    );
+
+({String title, List<GuideLine> lines}) _playback() => (
+      title: '播放',
+      lines: [
+        const GuideLine('底部播放条：拖进度条可跳转；按钮为上一首、播放 / 暂停、下一首。'),
+        const GuideLine('音量请用手机音量键调节。'),
+        const GuideLine('播放时可在通知栏和锁屏上控制播放、暂停、上一首、下一首。'),
+      ],
+    );
+
+({String title, List<GuideLine> lines}) _audioInfo(AudioVariant variant) {
+  switch (variant) {
     case AudioVariant.full:
       return (
-        title: '音频版本（全量音频版）',
+        title: '音频选择',
         lines: [
-          const GuideLine('顶栏左侧只有一个音频按钮，点一下**循环切换**该首的可用版本：', [
-            '显示「钢琴」→ 当前播放钢琴伴奏；',
-            '显示「人声」→ 当前播放人声演唱；',
-            '若该首只有一个版本，点击后会提示「该首只有「XX」音频」，不会静默无反应。',
-          ]),
-          const GuideLine('当前版本会记入状态，下次启动自动沿用。'),
-          const GuideLine('某首播不出声音时：说明本包内没有该首的音频文件，'
-              '可在「设置 → 素材 → 选择目录」导入（见「设置与素材导入」一节）。'),
+          const GuideLine('点左侧音频按钮，可在「钢琴」和「人声」之间切换。'),
+          const GuideLine('若该首只有一种音频，点击时会提示「该首只有…音频」。'),
         ],
       );
     case AudioVariant.piano:
       return (
-        title: '音频（钢琴版）',
+        title: '音频',
         lines: [
-          const GuideLine('本版本**只内置钢琴伴奏**，因此顶栏左侧**没有音频版本切换按钮**。'),
-          const GuideLine('这也意味着：不会出现「切到人声却播不出来」的情况。'),
-          const GuideLine('想听人声？请改用「人声版」或「全量音频版」安装包；'
-              '也可以导入自己的人声音频（见「设置与素材导入」）。'),
+          const GuideLine('本应用提供钢琴伴奏音频。'),
         ],
       );
     case AudioVariant.vocal:
       return (
-        title: '音频（人声版）',
+        title: '音频',
         lines: [
-          const GuideLine('本版本**只内置人声演唱**，因此顶栏左侧**没有音频版本切换按钮**。'),
-          const GuideLine('适合跟唱练习：人声起唱、歌词同步，便于学唱。'),
-          const GuideLine('想听纯伴奏？请改用「钢琴版」或「全量音频版」安装包，'
-              '或导入自己的伴奏音频（见「设置与素材导入」）。'),
+          const GuideLine('本应用提供人声演唱音频。'),
         ],
       );
     case AudioVariant.lite:
       return (
-        title: '音频（精简版：无播放功能）',
+        title: '音频',
         lines: [
-          const GuideLine('**本版本没有播放功能**：界面不显示播放条、进度、音量与音频按钮，'
-              '也不会有通知栏 / 锁屏控制 —— 定位是「看谱 / 背词」。'),
-          const GuideLine('精简版提供的是：474 首诗歌的**歌词**、**简谱扫描图**、**五线谱扫描图**、'
-              '分类与歌单管理 —— 体积最小。'),
-          const GuideLine('想听音频？请安装「钢琴版 / 人声版 / 全量音频版」；'
-              '本版本即使导入素材也不会播放。'),
+          const GuideLine('本应用没有播放功能，只提供歌词与谱面阅读。'),
         ],
       );
   }
 }
 
-({String title, List<GuideLine> lines}) _displayMode() => (
-      title: '显示模式：歌词 / 简谱 / 五线谱',
+({String title, List<GuideLine> lines}) _listPanel() => (
+      title: '诗歌列表与歌单',
       lines: [
-        const GuideLine('顶栏右侧三个按钮切换主区内容：', [
-          '歌词：按节分页，字号大、便于跟唱；',
-          '简谱：该首的简谱扫描图（可双指缩放、拖动）；',
-          '五线谱：该首的五线谱扫描图（同样可缩放拖动）。',
-        ]),
-        const GuideLine('歌词页翻页：', [
-          '底部「＜ 第 N / M 节 ＞」翻页条左右切换；',
-          '在歌词区左右滑动也可以翻页；',
-          '顶栏「⟳ 自动」开启后，按播放进度自动翻到对应节。',
-        ]),
-        const GuideLine('谱面图缩放/拖动：双指捏合缩放，单指拖动平移；双击快速复位。'),
-        const GuideLine('Android 版**没有「曲谱」模式** —— 该模式只在 Windows 桌面版提供。'),
+        const GuideLine('「诗歌列表」：全部 474 首，按编号排列。'),
+        const GuideLine('「分类」：按主题分组浏览。'),
+        const GuideLine('「我的歌单」：新建、改名、删除歌单，并可把诗歌加入歌单。'),
+        const GuideLine('列表顶部搜索框：输入编号可定位该首，输入歌名或歌词可筛选。'),
+        const GuideLine('点诗歌即开始浏览或播放；选择后列表自动收起。'),
       ],
     );
 
-({String title, List<GuideLine> lines}) _playerBar() => (
-      title: '播放条（无音量滑轨）',
+({String title, List<GuideLine> lines}) _settings() => (
+      title: '设置',
       lines: [
-        const GuideLine('底部播放条：进度条 + 上一首 / 播放暂停 / 下一首。'),
-        const GuideLine('**Android 版没有音量滑轨与音量图标**（2026-10-28 定稿）：', [
-          '请用手机**音量键**调节（系统音量，与其它音乐 App 一致）；',
-          '插拔耳机、蓝牙切换时行为与系统一致。',
-        ]),
-        const GuideLine('通知栏 / 锁屏可控制播放（播放、暂停、上一首、下一首），'
-            '首次使用需允许通知权限。'),
-        const GuideLine('拖进度条可跳到任意位置；拖动时不会误触发翻页。'),
+        const GuideLine('进入：顶栏「⋮」→「设置」。'),
+        const GuideLine('配色：晨光蓝、暖阳金、静谧绿、典雅紫、暗夜墨，点选立即生效。'),
+        const GuideLine('字号：标准 / 大 / 特大，点选立即生效。'),
+        const GuideLine('数据导入：导入扫描图、人声、钢琴三类数据（见下一节）。'),
+        const GuideLine('素材自检：检查已导入的文件是否完整。'),
+        const GuideLine('启动时显示手册：控制每次启动是否自动打开本手册。'),
       ],
     );
 
-({String title, List<GuideLine> lines}) _leftPanel() => (
-      title: '左侧栏：诗歌列表 / 分类 / 我的歌单',
+({String title, List<GuideLine> lines}) _dataImport() => (
+      title: '数据导入',
       lines: [
-        const GuideLine('左上 ☰ 打开，三栏目顶部切换：', [
-          '诗歌列表：全部 474 首，按编号排列；',
-          '分类：按主题分类浏览；',
-          '我的歌单：自建歌单，可增删改。',
-        ]),
-        const GuideLine('搜索（诗歌列表栏目顶部搜索框）：', [
-          '输入**编号**会定位并高亮该首；',
-          '输入**标题关键字**会过滤列表；',
-          '点击结果项即播放。',
-        ]),
-        const GuideLine('歌单操作：新建、重命名、删除；在诗歌上长按或点「更多」可加入歌单。'),
-        const GuideLine('选择诗歌后左侧栏自动收起，把屏幕让给内容区。'),
+        const GuideLine('安装包附带三类压缩文件：扫描图、人声、钢琴。'),
+        const GuideLine('导入步骤：设置 →「数据导入」→ 选择类型（扫描图 / 人声 / 钢琴）→ 选择压缩文件。'),
+        const GuideLine('程序只取需要的文件，同名文件直接覆盖；导入完成后重启应用。'),
+        const GuideLine('导入后可点「素材自检」，查看是否有缺失或损坏的文件。'),
       ],
     );
 
-({String title, List<GuideLine> lines}) _settings(AudioVariant v) => (
-      title: '设置与素材导入（SAF）',
-      lines: [
-        const GuideLine('进入方式：顶栏 ⋮ →「设置」。'),
-        const GuideLine('可调项：配色（多套主题）、字号（标准 / 大 / 特大）、'
-            '启动时显示手册、关于信息。'),
-        const GuideLine('**素材导入**（Android 独有，使用系统 SAF 目录选择器）：', [
-          '设置 →「素材」→「选择目录」；',
-          '在系统文件选择器里选中存放音频/图片的文件夹；',
-          '确认后 App 会把文件复制到自己的私有目录（**不会改动你的原始文件**），'
-              '完成后列表刷新即可播放；',
-          '导入过程有进度提示，可随时取消。',
-        ]),
-        if (v == AudioVariant.full || v == AudioVariant.lite)
-          const GuideLine('文件命名建议与诗歌编号对应（如 `001.mp3`、`001_鋼琴版.m4a`），'
-              '每首才能自动匹配到自己的音频。'),
-        if (v == AudioVariant.piano || v == AudioVariant.vocal)
-          GuideLine('本版本已内置${v == AudioVariant.piano ? '钢琴' : '人声'}素材，'
-              '导入主要用于补充本包未收录的诗歌。'),
-        const GuideLine('体积提醒：素材复制进私有目录会占用手机存储，导入前请确认剩余空间。'),
-      ],
-    );
-
-({String title, List<GuideLine> lines}) _faq(AudioVariant v) => (
+({String title, List<GuideLine> lines}) _faq(AudioVariant variant) => (
       title: '常见问题',
       lines: [
-        if (v == AudioVariant.lite)
-          const GuideLine('**点了播放没声音？** 精简版不含音频，需先「设置 → 素材 → 选择目录」导入。'),
-        if (v != AudioVariant.lite)
-          const GuideLine('点了播放没声音？该首可能不在内置素材里，用「设置 → 素材」导入补充。'),
-        if (v == AudioVariant.piano)
-          const GuideLine('找不到「人声」按钮？本版只含钢琴伴奏，属正常；需要人声请装人声版/全量版。'),
-        if (v == AudioVariant.vocal)
-          const GuideLine('找不到「钢琴」按钮？本版只含人声，属正常；需要伴奏请装钢琴版/全量版。'),
-        if (v == AudioVariant.full)
-          const GuideLine('音频按钮点了没反应？若该首只有一个版本，会提示「该首只有…音频」，'
-              '这是正常保护，不会静默失败。'),
-        const GuideLine('字体显示成方块/乱码？请确认系统未强制替换字体，'
-            '或卸载第三方字体模块后重试。'),
-        const GuideLine('导入素材失败？确认所选目录有读取权限，且文件为 mp3 / m4a 等常见格式。'),
+        if (variant != AudioVariant.lite)
+          const GuideLine('播放没有声音：该首没有音频文件，导入对应的音频包即可。'),
+        const GuideLine('简谱或五线谱显示「暂无」：该首没有谱面图片，导入扫描图包即可。'),
+        const GuideLine('导入完成但内容没变：重启应用。'),
+        const GuideLine('自检提示缺失或损坏：重新导入对应的数据包。'),
+        if (variant == AudioVariant.full)
+          const GuideLine('音频按钮点了没反应：该首只有一种音频，程序会给出提示。'),
       ],
     );
