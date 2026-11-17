@@ -12,7 +12,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.BufferedInputStream
 import java.io.File
+import java.security.MessageDigest
 import java.util.zip.ZipInputStream
+import org.json.JSONObject
 
 /**
  * EchoHymn 主 Activity。
@@ -121,6 +123,17 @@ class MainActivity : FlutterActivity() {
                         Thread { importZip(Uri.parse(uriStr), kind, File(targetRoot)) }.start()
                     }
                 }
+                "verifyInstalled" -> {
+                    val targetRoot = call.argument<String>("targetRoot")
+                    if (targetRoot.isNullOrEmpty()) {
+                        result.error("ARG", "缺少 targetRoot", null)
+                    } else {
+                        Thread {
+                            val report = verifyInstalled(File(targetRoot))
+                            runOnUiThread { result.success(report) }
+                        }.start()
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -211,14 +224,18 @@ class MainActivity : FlutterActivity() {
     private fun importZip(uri: Uri, kind: String, root: File) {
         var accepted = 0
         var rejected = 0
+        var corrupt = 0
         var failed = 0
         var processed = 0
+        var manifest: Map<String, String>? = null
+        var verified = false
         try {
             val input = contentResolver.openInputStream(uri)
             if (input == null) {
                 packChannelRef?.invokeMethod(
                     "packDone",
-                    mapOf("accepted" to 0, "rejected" to 0, "failed" to 0, "error" to "无法读取压缩包")
+                    mapOf("accepted" to 0, "rejected" to 0, "corrupt" to 0,
+                        "failed" to 0, "verified" to false, "error" to "无法读取压缩包")
                 )
                 return
             }
@@ -226,31 +243,38 @@ class MainActivity : FlutterActivity() {
                 var entry = zip.nextEntry
                 while (entry != null) {
                     if (!entry.isDirectory) {
-                        processed++
                         val raw = entry.name.replace('\\', '/').removePrefix("./")
-                        if (packAllowed(raw, kind)) {
-                            val rel = raw.removePrefix("Hymn_Downloads/")
-                            val target = File(root, "Hymn_Downloads/$rel")
-                            val base = File(root, "Hymn_Downloads").canonicalPath
-                            if (target.canonicalPath.startsWith(base + File.separator)) {
-                                target.parentFile?.mkdirs()
-                                target.outputStream().use { out -> zip.copyTo(out) }
-                                accepted++
+                        if (raw == MANIFEST_NAME) {
+                            // 清单是 zip 第一个条目（打包脚本保证）→ 读完即可用于后续逐文件校验
+                            val text = zip.readBytes().toString(Charsets.UTF_8)
+                            manifest = parseManifest(text)
+                            verified = manifest != null
+                            saveManifest(root, text)
+                        } else {
+                            processed++
+                            if (packAllowed(raw, kind)) {
+                                val rel = raw.removePrefix("Hymn_Downloads/")
+                                val target = File(root, "Hymn_Downloads/$rel")
+                                val base = File(root, "Hymn_Downloads").canonicalPath
+                                if (target.canonicalPath.startsWith(base + File.separator)) {
+                                    when (writeWithCheck(zip, target, manifest?.get(raw))) {
+                                        "ok" -> accepted++
+                                        "corrupt" -> corrupt++
+                                        else -> failed++
+                                    }
+                                } else {
+                                    rejected++
+                                }
                             } else {
                                 rejected++
                             }
-                        } else {
-                            rejected++
-                        }
-                        if (processed % 50 == 0) {
-                            packChannelRef?.invokeMethod(
-                                "packProgress",
-                                mapOf(
-                                    "processed" to processed,
-                                    "accepted" to accepted,
-                                    "rejected" to rejected
+                            if (processed % 50 == 0) {
+                                packChannelRef?.invokeMethod(
+                                    "packProgress",
+                                    mapOf("processed" to processed, "accepted" to accepted,
+                                        "rejected" to rejected, "corrupt" to corrupt)
                                 )
-                            )
+                            }
                         }
                     }
                     zip.closeEntry()
@@ -262,12 +286,8 @@ class MainActivity : FlutterActivity() {
         }
         packChannelRef?.invokeMethod(
             "packDone",
-            mapOf(
-                "accepted" to accepted,
-                "rejected" to rejected,
-                "failed" to failed,
-                "error" to null
-            )
+            mapOf("accepted" to accepted, "rejected" to rejected, "corrupt" to corrupt,
+                "failed" to failed, "verified" to verified, "error" to null)
         )
     }
 
@@ -295,8 +315,133 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /** 解析 `ECHOHYMN-MANIFEST.json` → `{zip内路径: sha256}` */
+    private fun parseManifest(text: String): Map<String, String>? {
+        val array = try {
+            JSONObject(text).optJSONArray("files")
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        val map = HashMap<String, String>()
+        for (i in 0 until array.length()) {
+            try {
+                val item = array.getJSONObject(i)
+                val path = item.optString("path")
+                val sha = item.optString("sha256")
+                if (path.isNotEmpty() && sha.isNotEmpty()) map[path] = sha
+            } catch (_: Exception) {
+            }
+        }
+        return if (map.isNotEmpty()) map else null
+    }
+
+    /** 保存清单副本，供「素材自检」使用（`files/pack_manifests/<name>.json`） */
+    private fun saveManifest(root: File, text: String) {
+        try {
+            val dir = File(root, "pack_manifests")
+            dir.mkdirs()
+            val name = try {
+                JSONObject(text).optString("name")
+            } catch (_: Exception) {
+                ""
+            }
+            val safe = name.ifEmpty { "pack-${System.currentTimeMillis()}" }
+                .replace(Regex("[^A-Za-z0-9._-]"), "_")
+            File(dir, "$safe.json").writeText(text)
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * 写临时文件 → 边写边算 SHA-256 → 与清单比对 → 通过才 rename（覆盖同名）。
+     * 返回 `ok` / `corrupt`（哈希不符）/ `error`（IO 失败）。
+     */
+    private fun writeWithCheck(zip: ZipInputStream, target: File, expectSha: String?): String {
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        return try {
+            target.parentFile?.mkdirs()
+            val digest = MessageDigest.getInstance("SHA-256")
+            tmp.outputStream().use { out ->
+                val buffer = ByteArray(1 shl 16)
+                while (true) {
+                    val read = zip.read(buffer)
+                    if (read <= 0) break
+                    digest.update(buffer, 0, read)
+                    out.write(buffer, 0, read)
+                }
+            }
+            if (expectSha != null) {
+                val actual = digest.digest().joinToString("") { "%02x".format(it) }
+                if (!actual.equals(expectSha, ignoreCase = true)) {
+                    tmp.delete()
+                    return "corrupt"
+                }
+            }
+            if (target.exists()) target.delete()
+            if (tmp.renameTo(target)) "ok" else "error"
+        } catch (_: Exception) {
+            tmp.delete()
+            "error"
+        }
+    }
+
+    /** 全量素材自检：按已保存清单核对存在性与 SHA-256 */
+    private fun verifyInstalled(root: File): Map<String, Any> {
+        var checked = 0
+        var ok = 0
+        var missing = 0
+        var corrupt = 0
+        val details = ArrayList<String>()
+        val dir = File(root, "pack_manifests")
+        dir.listFiles()?.forEach { file ->
+            try {
+                val array = JSONObject(file.readText()).optJSONArray("files") ?: return@forEach
+                for (i in 0 until array.length()) {
+                    val item = array.getJSONObject(i)
+                    val rel = item.getString("path")
+                    val expect = item.getString("sha256")
+                    val target = File(root, rel)
+                    checked++
+                    if (!target.exists()) {
+                        missing++
+                        if (details.size < 20) details.add("缺失：$rel")
+                        continue
+                    }
+                    if (sha256File(target).equals(expect, ignoreCase = true)) {
+                        ok++
+                    } else {
+                        corrupt++
+                        if (details.size < 20) details.add("损坏：$rel")
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return mapOf(
+            "checked" to checked,
+            "ok" to ok,
+            "missing" to missing,
+            "corrupt" to corrupt,
+            "details" to details
+        )
+    }
+
+    private fun sha256File(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1 shl 16)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
     companion object {
         private const val REQ_TREE = 2001
         private const val REQ_ZIP = 2002
+        private const val MANIFEST_NAME = "ECHOHYMN-MANIFEST.json"
     }
 }

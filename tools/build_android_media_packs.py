@@ -99,35 +99,74 @@ def sha256_file(path, chunk=1 << 20):
     return digest.hexdigest()
 
 
+def load_checksums(src_root, rel_dir):
+    """读取原始素材目录的 checksums.json（`{文件名: sha256}`），无则返回空表。"""
+    path = os.path.join(src_root, rel_dir.replace('/', os.sep), 'checksums.json')
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as fh:
+            data = json.load(fh)
+        if isinstance(data, list):
+            return {str(item['file']): str(item['sha256'])
+                    for item in data if item.get('file') and item.get('sha256')}
+    except (OSError, ValueError, KeyError):
+        pass
+    return {}
+
+
 def build_pack(rows, kind, half, start, end, src_root, out_dir):
+    """生成 <kind>-<start>-<end>.zip；首条目为 `ECHOHYMN-MANIFEST.json`（逐文件哈希）。"""
     name = '%s-%d-%d' % (kind, start, end)
     zip_path = os.path.join(out_dir, name + '.zip')
     manifest_path = os.path.join(out_dir, name + '.json')
-    collected = []
-    total = 0
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_STORED, allowZip64=True) as zf:
-        for row in rows[half[0]:half[1]]:
-            for rel in pick_files(row, kind):
-                abs_path = os.path.join(src_root, rel.replace('/', os.sep))
-                if not os.path.isfile(abs_path):
-                    continue
-                arcname = rel.replace('\\', '/')
-                zf.write(abs_path, arcname)
-                collected.append(arcname)
-                total += os.path.getsize(abs_path)
+
+    entries = []  # (arcname, abs_path, sha256, bytes)
+    checksum_cache = {}
+    for row in rows[half[0]:half[1]]:
+        for rel in pick_files(row, kind):
+            abs_path = os.path.join(src_root, rel.replace('/', os.sep))
+            if not os.path.isfile(abs_path):
+                continue
+            arcname = rel.replace('\\', '/')
+            rel_dir = os.path.dirname(arcname)
+            if rel_dir not in checksum_cache:
+                checksum_cache[rel_dir] = load_checksums(src_root, rel_dir)
+            digest = checksum_cache[rel_dir].get(os.path.basename(arcname))
+            if not digest:
+                digest = sha256_file(abs_path)
+            entries.append((arcname, abs_path, digest, os.path.getsize(abs_path)))
+
     manifest = {
         'name': name,
         'kind': kind,
         'range': [start, end],
-        'files': len(collected),
+        'generated': __import__('datetime').datetime.now().isoformat(timespec='seconds'),
+        'files': [{'path': a, 'sha256': d, 'bytes': n} for a, _p, d, n in entries],
+    }
+    total = sum(e[3] for e in entries)
+
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_STORED, allowZip64=True) as zf:
+        # **第一个条目**写清单：App 侧只需读第一条即可拿到全部哈希
+        zf.writestr('ECHOHYMN-MANIFEST.json',
+                    json.dumps(manifest, ensure_ascii=False, indent=2))
+        for arcname, abs_path, _digest, _size in entries:
+            zf.write(abs_path, arcname)
+
+    summary = {
+        'name': name,
+        'kind': kind,
+        'range': [start, end],
+        'files': len(entries),
         'bytes': total,
         'sha256': sha256_file(zip_path),
+        'manifest': 'ECHOHYMN-MANIFEST.json',
     }
     with open(manifest_path, 'w', encoding='utf-8') as fh:
-        json.dump(manifest, fh, ensure_ascii=False, indent=2)
+        json.dump(summary, fh, ensure_ascii=False, indent=2)
     print('[OK] %-22s files=%-5d %7.1f MB  sha256=%s'
-          % (name, len(collected), total / 1024 / 1024, manifest['sha256'][:16]))
-    return zip_path, manifest
+          % (name, len(entries), total / 1024 / 1024, summary['sha256'][:16]))
+    return zip_path, summary
 
 
 def main():
@@ -151,7 +190,8 @@ def main():
 
     packs = []
     for kind in ('scores', 'vocal', 'piano'):
-        packs.append(build_pack(rows, kind, (0, mid), 1, mid, args.src_root, args.out))
+        # 命名按用户口径：前半 0-237（对应 id 1..237）/ 后半 238-474
+        packs.append(build_pack(rows, kind, (0, mid), 0, mid, args.src_root, args.out))
         packs.append(build_pack(rows, kind, (mid, total), mid + 1, total,
                                 args.src_root, args.out))
 

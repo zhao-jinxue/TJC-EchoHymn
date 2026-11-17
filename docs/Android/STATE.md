@@ -295,6 +295,14 @@
       - **`installer/output` 分平台**：`windows/`（既有 Inno 产物已迁入）+ `android/`（新）
       - 脚本：`tools/build_android_media_packs.py`（6 包）+ `tools/build_android_installer.ps1`（APK + 包 + SHA256SUMS + BUILD-INFO）
       - 版本升 **`1.9.2+3`**；tag `android-v1.9.2-phone`
+    - **2026-11-17 导入完整性校验 + 素材自检（用户方案 A）**：
+      - 数据包**首条目**为 `ECHOHYMN-MANIFEST.json`（逐文件 `path/sha256/bytes`；哈希优先取自原始 `checksums.json`）
+      - 导入时**逐文件**边解压边算 SHA-256 → 不符则删临时文件、计入「校验失败」、**不落盘**；清单副本存 `files/pack_manifests/`
+      - **设置 → 素材自检**：按清单全量核对存在性 + SHA-256（正常 / 缺失 / 损坏 + 前 20 条明细）
+      - **实测**：`piano-0-237` 清单 237 条 → 源素材核对 **237/237 哈希一致、0 缺失、0 损坏**；
+        zip 首条目 = 清单、抽样文件哈希一致；Kotlin 编译通过（主体 APK 55.6 MB）
+      - **目录自动创建**：`target.parentFile?.mkdirs()`（数据包导入 / 旧 SAF 目录导入 / 内置素材迁移三处均有）
+      - 版本升 **`1.9.3+4`**
     - **试用包已产出**：`release/android/echohymn_android_trial_<时间戳>_18fd6c0/`
       （full 82.29 / piano 78.56 / vocal 67.24 / lite 63.52 MB + `SHA256SUMS.txt`）
     - **试用说明**：`docs/Android/TRIAL_GUIDE.md`（安装方式 / 能力边界 / 重点验什么 / 已知问题 / 反馈分级）

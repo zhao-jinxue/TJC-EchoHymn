@@ -851,8 +851,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(r.ok
-            ? '$label 导入完成：${r.accepted} 个；请重启应用以更新界面'
-            : '$label 导入失败：${r.error ?? '${r.failed} 个文件写入失败'}'),
+            ? '$label 导入完成：${r.accepted} 个'
+                '${r.verified ? '（已逐文件校验）' : ''}'
+                '${r.rejected > 0 ? '，规则外丢弃 ${r.rejected}' : ''}；请重启应用以更新界面'
+            : '$label 导入失败：${r.error ?? (r.corrupt > 0 ? '${r.corrupt} 个文件校验失败（已丢弃）' : '${r.failed} 个文件写入失败')}'),
       ));
     });
     await PackImport.startImport(uri: uri, kind: kind, targetRoot: root);

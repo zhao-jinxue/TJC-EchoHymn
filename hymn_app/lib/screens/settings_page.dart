@@ -533,6 +533,10 @@ class SettingsPage extends StatelessWidget {
                 onPressed: () => _startPackImport(context, 'piano', '钢琴音频'),
                 child: const Text('导入钢琴'),
               ),
+              OutlinedButton(
+                onPressed: () => _verifyPacks(context),
+                child: const Text('素材自检'),
+              ),
             ],
           ),
         ),
@@ -569,8 +573,10 @@ class SettingsPage extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(r.ok
-            ? '$label 导入完成：${r.accepted} 个（规则外丢弃 ${r.rejected}）；请重启应用以更新界面'
-            : '$label 导入失败：${r.error ?? '${r.failed} 个文件写入失败'}'),
+            ? '$label 导入完成：${r.accepted} 个'
+                '${r.verified ? '（已逐文件校验）' : ''}'
+                '${r.rejected > 0 ? '，规则外丢弃 ${r.rejected}' : ''}；请重启应用以更新界面'
+            : '$label 导入失败：${r.error ?? (r.corrupt > 0 ? '${r.corrupt} 个文件校验失败（已丢弃）' : '${r.failed} 个文件写入失败')}'),
       ));
     });
     await PackImport.startImport(uri: uri, kind: kind, targetRoot: target);
@@ -579,6 +585,50 @@ class SettingsPage extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       builder: (_) => const _PackProgressDialog(),
+    );
+  }
+
+  /// 素材自检：按导入时保存的清单核对存在性与 SHA-256
+  Future<void> _verifyPacks(BuildContext context) async {
+    final root = AppPaths.dataRoot;
+    if (root == null || root.isEmpty) return;
+    final report = await PackImport.verifyInstalled(targetRoot: root);
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('素材自检'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('已校验 ${report.checked} 个文件'),
+              const SizedBox(height: 6),
+              Text('正常 ${report.ok} / 缺失 ${report.missing} / 损坏 ${report.corrupt}'),
+              if (report.checked == 0) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '暂无导入记录（只有通过本应用导入的包才有校验清单）',
+                  style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                ),
+              ],
+              if (report.details.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ...report.details.map(
+                  (line) => Text(line, style: const TextStyle(fontSize: 12)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -818,7 +868,8 @@ class _PackProgressDialogState extends State<_PackProgressDialog> {
                 Text(
                   p == null
                       ? '正在读取压缩包…'
-                      : '已处理 ${p.processed} 个（导入 ${p.accepted} / 规则外丢弃 ${p.rejected}）',
+                      : '已处理 ${p.processed} 个（导入 ${p.accepted} / 规则外丢弃 ${p.rejected}'
+                          '${p.corrupt > 0 ? ' / 校验失败 ${p.corrupt}' : ''}）',
                 ),
                 const SizedBox(height: 6),
                 Text(

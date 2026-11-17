@@ -1175,6 +1175,15 @@ flutter build appbundle --release                # 发布产物（阶段 F）
 - 脚本：`tools/build_android_media_packs.py`（6 包）+ `tools/build_android_installer.ps1`（APK + 包 + SHA256SUMS + BUILD-INFO）。
 - `installer/output/` 已按平台分层：`windows/`（既有 Inno 产物）与 `android/`（本方案）。
 
+**完整性与校验（2026-11-16 追加，方案 A + 自检）**：
+
+- 每个 zip 的**第一个条目**是 `ECHOHYMN-MANIFEST.json`：包内每个文件的 `path / sha256 / bytes`
+  （哈希优先取自原始素材目录的 `checksums.json`，缺失则打包时现算）。
+- App 导入：**逐文件**边解压边算 SHA-256 → 与清单比对 → 不符则删临时文件、计入「校验失败」、**不落盘**；
+  清单副本保存到 `files/pack_manifests/<name>.json`。
+- **设置 → 素材自检**：按已保存清单全量核对**存在性 + SHA-256**，报告 正常 / 缺失 / 损坏（前 20 条明细）。
+- 包外 `<name>.json` 仍保留**整包 SHA-256**（分发侧可先验整包）；`SHA256SUMS.txt` 覆盖 APK + 6 包。
+
 > **落地口径**：阶段 B 走 **A**（样本 10~20 首，跑通全链路）；发布阶段按**内测**走 A + 可选手动导入完整素材；商店方案推迟到版权明确后。
 
 **按变体的资产清单（2026-10-11 追加，实测体积）**

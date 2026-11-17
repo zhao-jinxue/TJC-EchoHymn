@@ -2,17 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-/// 数据包导入进度（processed / accepted / rejected）
+/// 数据包导入进度（processed / accepted / rejected / corrupt）
 class PackImportProgress {
   const PackImportProgress({
     required this.processed,
     required this.accepted,
     required this.rejected,
+    this.corrupt = 0,
   });
 
   final int processed;
   final int accepted;
   final int rejected;
+
+  /// 哈希校验失败（已丢弃）
+  final int corrupt;
 }
 
 /// 数据包导入结果
@@ -21,6 +25,8 @@ class PackImportResult {
     required this.accepted,
     required this.rejected,
     required this.failed,
+    this.corrupt = 0,
+    this.verified = false,
     this.error,
   });
 
@@ -30,10 +36,35 @@ class PackImportResult {
   /// 规则外被丢弃（**不落盘**）的文件数
   final int rejected;
 
+  /// 哈希校验失败（**已丢弃，不落盘**）
+  final int corrupt;
+
+  /// 本次包内是否带逐文件清单（true = 已逐文件校验 SHA-256）
+  final bool verified;
+
   final int failed;
   final String? error;
 
-  bool get ok => error == null && failed == 0;
+  bool get ok => error == null && failed == 0 && corrupt == 0;
+}
+
+/// 素材自检报告
+class PackVerifyReport {
+  const PackVerifyReport({
+    required this.checked,
+    required this.ok,
+    required this.missing,
+    required this.corrupt,
+    required this.details,
+  });
+
+  final int checked;
+  final int ok;
+  final int missing;
+  final int corrupt;
+  final List<String> details;
+
+  bool get healthy => checked > 0 && missing == 0 && corrupt == 0;
 }
 
 /// 数据包（zip）导入通道（2026-11-13 主体 APK 方案）
@@ -64,6 +95,7 @@ class PackImport {
             processed: (args['processed'] as int?) ?? 0,
             accepted: (args['accepted'] as int?) ?? 0,
             rejected: (args['rejected'] as int?) ?? 0,
+            corrupt: (args['corrupt'] as int?) ?? 0,
           ));
           break;
         case 'packDone':
@@ -72,6 +104,8 @@ class PackImport {
             accepted: (args['accepted'] as int?) ?? 0,
             rejected: (args['rejected'] as int?) ?? 0,
             failed: (args['failed'] as int?) ?? 0,
+            corrupt: (args['corrupt'] as int?) ?? 0,
+            verified: (args['verified'] as bool?) ?? false,
             error: args['error'] as String?,
           ));
           break;
@@ -109,5 +143,27 @@ class PackImport {
       'targetRoot': targetRoot,
     });
     return true;
+  }
+
+  /// 素材自检：按已保存的清单核对已导入文件（存在性 + SHA-256）
+  static Future<PackVerifyReport> verifyInstalled({
+    required String targetRoot,
+  }) async {
+    _bind();
+    final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'verifyInstalled',
+      {'targetRoot': targetRoot},
+    );
+    final map = raw ?? const <dynamic, dynamic>{};
+    final details = (map['details'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .toList();
+    return PackVerifyReport(
+      checked: (map['checked'] as int?) ?? 0,
+      ok: (map['ok'] as int?) ?? 0,
+      missing: (map['missing'] as int?) ?? 0,
+      corrupt: (map['corrupt'] as int?) ?? 0,
+      details: details,
+    );
   }
 }
