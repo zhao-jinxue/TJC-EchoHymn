@@ -11,6 +11,7 @@ import '../platform/pack_import.dart';
 import '../services/app_paths.dart';
 import '../services/chinese_convert_service.dart';
 import '../services/log_service.dart';
+import '../services/media_capability_probe.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_palette.dart';
 import '../theme/score_display_prefs.dart';
@@ -54,20 +55,24 @@ class SettingsPage extends StatelessWidget {
             _buildTopBar(context),
             Divider(height: 1, color: AppColors.divider),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  _buildAppearanceSection(),
-                  _buildDisplaySection(),
-                  _buildPreviewSection(context),
-                  // 无音频版（lite）没有播放能力 → 不显示「播放」分组（§3.1.15）
-                  if (kHasAudio) _buildPlaybackSection(),
-                  // 素材导入（SAF；仅 Android 且有音频能力的变体才有意义，
-                  // 但 lite 也需要扫描图 → 全部 Android 变体都显示）
-                  if (Platform.isAndroid) _buildImportSection(context),
-                  _buildHelpSection(context),
-                  _buildAboutSection(),
-                ],
+              // 监听「导入完成」信号：导入后本页分组（播放/素材文案）立即按新能力刷新
+              child: ValueListenableBuilder<int>(
+                valueListenable: MediaCapabilityProbe.importTick,
+                builder: (context, _, __) => ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: [
+                    _buildAppearanceSection(),
+                    _buildDisplaySection(),
+                    _buildPreviewSection(context),
+                    // 无音频版（lite）没有播放能力 → 不显示「播放」分组（§3.1.15）
+                    if (kHasAudio) _buildPlaybackSection(),
+                    // 素材导入（SAF；仅 Android 且有音频能力的变体才有意义，
+                    // 但 lite 也需要扫描图 → 全部 Android 变体都显示）
+                    if (Platform.isAndroid) _buildImportSection(context),
+                    _buildHelpSection(context),
+                    _buildAboutSection(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -570,12 +575,15 @@ class SettingsPage extends StatelessWidget {
         detail: '导入 ${r.accepted} / 规则外丢弃 ${r.rejected} / 失败 ${r.failed}'
             '${r.error == null ? '' : ' / 错误 ${r.error}'}',
       );
+      // 免重启刷新：通知主页重新检测能力（模式按钮 / 播放条 / 语义即时更新）；
+      // 本页由下方 ValueListenableBuilder 监听同一信号自动重建。
+      MediaCapabilityProbe.importTick.value++;
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(r.ok
             ? '$label 导入完成：${r.accepted} 个'
                 '${r.verified ? '（已逐文件校验）' : ''}'
-                '${r.rejected > 0 ? '，规则外丢弃 ${r.rejected}' : ''}；请重启应用以更新界面'
+                '${r.rejected > 0 ? '，规则外丢弃 ${r.rejected}' : ''}；界面已自动更新'
             : '$label 导入失败：${r.error ?? (r.corrupt > 0 ? '${r.corrupt} 个文件校验失败（已丢弃）' : '${r.failed} 个文件写入失败')}'),
       ));
     });

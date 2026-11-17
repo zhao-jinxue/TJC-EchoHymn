@@ -125,6 +125,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         setState(() => _windowMaximized = zoomed);
       }
     });
+    // 导入完成 → 重新检测能力并刷新界面（免重启）
+    MediaCapabilityProbe.importTick.addListener(_onImportTick);
     _init();
   }
 
@@ -133,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // 注销窗口事件回调：防止已销毁 State 被 handler 闭包滞留（泄漏），
     // 且应用退出流程中 native 不再向死对象推送最大化状态
     WindowControls.instance.disposeListener();
+    MediaCapabilityProbe.importTick.removeListener(_onImportTick);
     WidgetsBinding.instance.removeObserver(this);
     _saveState(); // 关闭时保存
     _repo?.dispose();
@@ -149,6 +152,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       LogService.instance.info(LogTag.system, '应用生命周期变化: ${state.name}，保存状态');
       _saveState();
     }
+  }
+
+  /// 导入完成回调：重新检测能力 → `setState`（模式按钮 / 播放条 / 语义即时更新）
+  Future<void> _onImportTick() async {
+    if (_repo == null) return;
+    await MediaCapabilityProbe.detectAndApply(_allHymns);
+    if (!mounted) return;
+    setState(() {});
+    LogService.instance.info(
+      LogTag.ui,
+      '素材导入后已刷新界面',
+      detail: '能力: ${kAudioVariant.id} / 扫描图: ${AudioCapability.hasScores}',
+    );
   }
 
   Future<void> _init() async {

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
+
 import '../app_feature.dart';
 import '../models/hymn.dart';
 import 'app_paths.dart';
@@ -20,6 +22,9 @@ class MediaCapabilityProbe {
 
   /// 抽样首数（用户 2026-11-13 指定：检测前十首）
   static const int sampleSize = 10;
+
+  /// **导入完成信号**（设置页导入结束后 +1 → 主页重新检测并刷新 UI，免重启）。
+  static final ValueNotifier<int> importTick = ValueNotifier<int>(0);
 
   /// 检测并应用到 [AudioCapability]，返回生效变体
   static Future<AudioVariant> detectAndApply(List<Hymn> hymns) async {
