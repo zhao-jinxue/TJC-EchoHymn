@@ -367,8 +367,8 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   children: [
                     _modeBtn('歌词', DisplayMode.lyrics, Icons.lyrics_outlined),
                     const SizedBox(width: 2),
-                    // 「曲谱」仅桌面（Android/iOS 不提供，2026-10-28 定稿）
-                    if (!isMobile) ...[
+                    // 「曲谱」**仅 Windows**（2026-11-17 收紧：Android/iOS/Linux/macOS 均不提供）
+                    if (Platform.isWindows) ...[
                       _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
                       const SizedBox(width: 2),
                     ],
@@ -567,9 +567,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
       case DisplayMode.lyrics:
         return _buildLyrics(hymn);
       case DisplayMode.score:
-        // **Android/iOS 不提供「曲谱」模式**（2026-10-28 用户定稿：算法难适配全库诗歌，
-        // 反复微调不划算）。若 state.json 里残留 score（旧状态/桌面同步）→ 回退歌词页。
-        if (Platform.isAndroid || Platform.isIOS) return _buildLyrics(hymn);
+        // **仅 Windows 提供「曲谱」模式**（2026-11-17 收紧：移动端与其它桌面平台均不提供）。
+        // 若 state.json 里残留 score（旧状态/跨平台同步）→ 回退歌词页。
+        if (!Platform.isWindows) return _buildLyrics(hymn);
         return _buildJianpu(hymn);
       case DisplayMode.jianpu:
         return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
