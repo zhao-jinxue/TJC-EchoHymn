@@ -296,6 +296,11 @@ class _HymnDisplayState extends State<HymnDisplay> {
   ///    移动端保持「左音频 / 右模式」两组分明。
   Widget _buildVersionBar(Hymn? hymn) {
     final isMobile = Platform.isAndroid || Platform.isIOS;
+    // **纯文本歌词模式**（2026-11-17 用户要求）：移动端既无音频、也无扫描图时，
+    // 音频按钮与「简谱/五线谱」按钮都没有可选项 → 整行隐藏，把 44dp 高度让给歌词。
+    if (isMobile && !kHasAudio && !AudioCapability.hasScores) {
+      return const SizedBox.shrink();
+    }
     return Container(
       height: 44,
       color: AppColors.versionBarBg,
@@ -372,9 +377,13 @@ class _HymnDisplayState extends State<HymnDisplay> {
                       _modeBtn('曲谱', DisplayMode.score, Icons.queue_music),
                       const SizedBox(width: 2),
                     ],
-                    _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
-                    const SizedBox(width: 2),
-                    _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+                    // 「简谱 / 五线谱」：Windows 始终显示；移动端仅在**检测到扫描图**时显示
+                    // （2026-11-17：无扫描图时点开只会是"暂无"，故不显示）
+                    if (Platform.isWindows || AudioCapability.hasScores) ...[
+                      _modeBtn('简谱', DisplayMode.jianpu, Icons.music_note),
+                      const SizedBox(width: 2),
+                      _modeBtn('五线谱', DisplayMode.staff, Icons.graphic_eq),
+                    ],
                   ],
                 ),
               ],
@@ -572,8 +581,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
         if (!Platform.isWindows) return _buildLyrics(hymn);
         return _buildJianpu(hymn);
       case DisplayMode.jianpu:
+        // 移动端未检测到扫描图 → 回退歌词（纯文本模式，避免露出"暂无简谱"空页）
+        if (!Platform.isWindows && !AudioCapability.hasScores) {
+          return _buildLyrics(hymn);
+        }
         return _buildScore(hymn.numberedPngPath, isEmpty: '暂无简谱');
       case DisplayMode.staff:
+        if (!Platform.isWindows && !AudioCapability.hasScores) {
+          return _buildLyrics(hymn);
+        }
         return _buildScore(hymn.staffPngPath, isEmpty: '暂无五线谱');
     }
   }

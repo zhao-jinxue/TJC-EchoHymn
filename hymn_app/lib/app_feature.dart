@@ -61,8 +61,11 @@ class AudioCapability {
   /// 是否已完成运行期检测
   static bool get detected => _detected.value != null;
 
-  /// 最近一次检测是否发现扫描图（首启引导用；随 [apply] 一起更新）
+  /// 最近一次检测是否发现扫描图（首启引导 / 模式按钮显隐用；随 [apply] 一起更新）
   static bool lastHasScores = false;
+
+  /// 是否检测到扫描图（无扫描图时**移动端不显示简谱/五线谱模式**）
+  static bool get hasScores => lastHasScores;
 
   static void apply(AudioVariant variant, {bool hasScores = false}) {
     lastHasScores = hasScores;
