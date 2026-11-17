@@ -55,7 +55,7 @@ foreach ($f in (Get-ChildItem $OutDir -File | Where-Object { $_.Extension -in '.
 }
 [System.IO.File]::WriteAllText(
     (Join-Path $OutDir 'SHA256SUMS.txt'),
-    ("`r`n" -join $sums) + "`r`n",
+    (($sums -join "`r`n") + "`r`n"),
     (New-Object System.Text.UTF8Encoding($true))
 )
 
@@ -79,7 +79,7 @@ $info = @(
     '          规则外一律丢弃、不写入存储；同名文件直接覆盖。'
 )
 [System.IO.File]::WriteAllText((Join-Path $OutDir 'BUILD-INFO.txt'),
-    ("`r`n" -join $info) + "`r`n", (New-Object System.Text.UTF8Encoding($true)))
+    (($info -join "`r`n") + "`r`n"), (New-Object System.Text.UTF8Encoding($true)))
 
 Write-Host '==============================================' -ForegroundColor Green
 Write-Host ("  Android installer 产物已生成：{0}" -f $OutDir) -ForegroundColor Green
