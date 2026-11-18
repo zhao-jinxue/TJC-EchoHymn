@@ -255,3 +255,33 @@ double lyricMaxFontByWidth(double availW, int maxDisplayWidth) {
   if (maxDisplayWidth <= 0) return 40.0;
   return availW * 2.0 / maxDisplayWidth * 0.97;
 }
+
+/// **允许折行**的字号上限（移动端专用）：按「折行后的总行数」估算总高，
+/// 从大字号向下试，取第一个「总高 ≤ 可用高」的字号 → 上下填满、无明显空白。
+///
+/// 背景（2026-11-18 用户反馈）：原算法按「单行不换行」求宽度上限，
+/// 但中文长句实际会折成多行 → 高度有富余却没用上，字号偏小、上下留白大。
+///
+/// [lineHeightEm] 与 [lyricMaxFontByHeight] 一致（按 2.0em 保守估算）。
+double lyricMaxFontByWrap({
+  required double availW,
+  required double availH,
+  required List<String> lines,
+  double lineHeightEm = 2.0,
+  double minFont = 12.0,
+  double maxFont = 96.0,
+}) {
+  if (lines.isEmpty || availW <= 0 || availH <= 0) return 40.0;
+  for (var size = maxFont; size >= minFont; size -= 0.5) {
+    // 每行可容纳的 displayWidth 列数（全角=2 / 半角=1）
+    final cols = availW * 2.0 / size;
+    if (cols < 2) continue;
+    var rows = 0;
+    for (final line in lines) {
+      final w = LyricPage.displayWidthOf(line);
+      rows += (w / cols).ceil();
+    }
+    if (rows * size * lineHeightEm <= availH) return size;
+  }
+  return minFont;
+}

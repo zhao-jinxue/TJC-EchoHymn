@@ -809,10 +809,20 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // 此系数本是"高度有余量时把字放大"，高度不足时放大只会牺牲可见性。
     // 桌面（ls=1.0 且版式基准固定）不进入该分支，golden 基准不变。
     final ls = AppFonts.lyricsScale;
-    final heightBound = isMobile && maxByH <= maxByW;
-    var size = heightBound ? maxByH : maxByH * ls;
-    if (size > maxByW) size = maxByW;
-    if (!heightBound) {
+    double size;
+    if (isMobile) {
+      // **移动端允许折行**（2026-11-18 用户要求）：按折行后的真实行数求字号，
+      // 把上下两端的空白吃掉（原「单行不换行」的宽度上限会让字号偏小）。
+      final lines = [...page.verseLines, ...page.chorusLines];
+      size = lyricMaxFontByWrap(
+        availW: availW,
+        availH: availH,
+        lines: lines,
+      );
+    } else {
+      // 桌面：保持原算法（不折行；golden 基准不变）
+      size = maxByH * ls;
+      if (size > maxByW) size = maxByW;
       size = size + 4.0 > maxByW ? maxByW : size + 4.0;
     }
     // 歌词字号缩放（**仅 Android**，用户按钮调节，持久化到 state.json）
