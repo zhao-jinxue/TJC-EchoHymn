@@ -64,6 +64,8 @@ class AppStateService {
     String fontSizeLevel = '',
     /// 深色下谱面显示：'dim'（默认）/ 'original' / 'invert'（§3.10）
     String scoreDarkMode = 'dim',
+    /// 歌词字号缩放系数（仅 Android；1.0 = 默认，范围 0.8~2.0）
+    double lyricScale = 1.0,
     bool manualOnStart = true,
     bool lyricAutoMode = true,
     String closeAction = '',
@@ -81,6 +83,7 @@ class AppStateService {
       'appTheme': appTheme,
       'fontSizeLevel': fontSizeLevel,
       'scoreDarkMode': scoreDarkMode,
+      'lyricScale': lyricScale,
       'manualOnStart': manualOnStart,
       'lyricAutoMode': lyricAutoMode,
       'closeAction': closeAction,
@@ -162,6 +165,7 @@ class AppStateService {
         appTheme: (json['appTheme'] as String?) ?? '',
         fontSizeLevel: (json['fontSizeLevel'] as String?) ?? '',
         scoreDarkMode: (json['scoreDarkMode'] as String?) ?? 'dim',
+        lyricScale: (json['lyricScale'] as num?)?.toDouble() ?? 1.0,
         manualOnStart: (json['manualOnStart'] as bool?) ?? true,
         lyricAutoMode: (json['lyricAutoMode'] as bool?) ?? true,
         closeAction: (json['closeAction'] as String?) ?? '',
@@ -219,6 +223,9 @@ class AppState {
   /// `'dim'`（默认，原色 + 20% 黑遮罩）/ `'original'`（原色）/ `'invert'`（反色，实验）
   final String scoreDarkMode;
 
+  /// 歌词字号缩放系数（**仅 Android**；1.0 = 默认，0.8~2.0，步进 0.15）
+  final double lyricScale;
+
   const AppState({
     required this.leftTab,
     required this.subcategory,
@@ -235,5 +242,6 @@ class AppState {
     this.lyricAutoMode = true,
     this.closeAction = '',
     this.scoreDarkMode = 'dim',
+    this.lyricScale = 1.0,
   });
 }

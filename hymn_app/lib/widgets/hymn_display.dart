@@ -53,6 +53,12 @@ class HymnDisplay extends StatefulWidget {
   /// 数据仓库（读 `jianpu_*` 三表渲染简谱网格视图；可为 null=该模式不可用）
   final SqliteRepository? repo;
 
+  /// 歌词字号缩放（**仅 Android**；1.0 默认，范围 0.8~2.0）
+  final double lyricScale;
+
+  /// 歌词字号缩放变化回调（供上层持久化到 `state.json`）
+  final ValueChanged<double>? onLyricScaleChanged;
+
   const HymnDisplay({
     super.key,
     required this.audio,
@@ -62,6 +68,8 @@ class HymnDisplay extends StatefulWidget {
     this.onAudioVersionChanged,
     this.onAutoPagingChanged,
     this.repo,
+    this.lyricScale = 1.0,
+    this.onLyricScaleChanged,
   });
 
   @override
@@ -727,7 +735,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // 字号系数会把内容撑出可用高度（可滚动），overlay 的翻页条会盖住第 3~4 行歌词。
     // 桌面保持原 overlay 版式（Windows golden 基准不变）。
     final isMobile = Platform.isAndroid || Platform.isIOS;
-    final navReserve = (isMobile && pages.length > 1) ? 56.0 : 0.0;
+    final navReserve = (isMobile && pages.length > 1) ? 44.0 : 0.0;
 
     // 歌词显示区：暖白背景（与左右侧栏冷灰形成轻微色差，便于感知区域大小）
     return Container(
@@ -748,15 +756,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
               ),
             ),
           ),
-          // 右上角：歌词翻页「手动 / 自动」切换按钮（默认自动）
-          Positioned(top: 10, right: 12, child: _buildPagingModeButton()),
+          // 右上角：歌词字号缩放（仅 Android）+ 手/自动切换
+          Positioned(top: 10, right: 12, child: _buildLyricToolbar()),
           // 底部中央：上一页 / 页码 / 下一页（仅多页时出现）
           if (pages.length > 1)
             Positioned(
               left: 0,
               right: 0,
               bottom: 6,
-              child: _buildPageNav(pages.length),
+              child: _buildPageNav(pages.length, compact: isMobile),
             ),
         ],
       ),
@@ -781,7 +789,10 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // 总行数：标题 + 本页歌词行
     // （2026-09-21 二轮反馈：「第 N 首」标题已删除——标题栏已有该信息）
     // （2026-09-21 五轮反馈：「第 N 节」标签也已删除——底部翻页条已给出节号）
-    final lineCount = 1 + page.lineCount;
+    // 移动端**不显示诗歌名称**（标题栏已有该信息，2026-11-18 用户要求省出篇幅）
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final showTitle = !isMobile;
+    final lineCount = (showTitle ? 1 : 0) + page.lineCount;
     final maxByH = lyricMaxFontByHeight(availH, lineCount);
     final maxByW = lyricMaxFontByWidth(availW, page.maxDisplayWidth);
 
@@ -798,14 +809,15 @@ class _HymnDisplayState extends State<HymnDisplay> {
     // 此系数本是"高度有余量时把字放大"，高度不足时放大只会牺牲可见性。
     // 桌面（ls=1.0 且版式基准固定）不进入该分支，golden 基准不变。
     final ls = AppFonts.lyricsScale;
-    final isMobile = Platform.isAndroid || Platform.isIOS;
     final heightBound = isMobile && maxByH <= maxByW;
     var size = heightBound ? maxByH : maxByH * ls;
     if (size > maxByW) size = maxByW;
     if (!heightBound) {
       size = size + 4.0 > maxByW ? maxByW : size + 4.0;
     }
-    final bodySize = size.clamp(12.0, 100.0);
+    // 歌词字号缩放（**仅 Android**，用户按钮调节，持久化到 state.json）
+    final userScale = isMobile ? widget.lyricScale.clamp(0.8, 2.0) : 1.0;
+    final bodySize = (size * userScale).clamp(12.0, 160.0);
     final titleSize = (bodySize * 1.4).clamp(16.0, 40.0);
 
     return SingleChildScrollView(
@@ -824,15 +836,17 @@ class _HymnDisplayState extends State<HymnDisplay> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              conv.toSimplified(hymn.title),
-              style: TextStyle(
-                fontSize: titleSize,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            if (showTitle) ...[
+              Text(
+                conv.toSimplified(hymn.title),
+                style: TextStyle(
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
+            ],
             for (final line in page.verseLines)
               Text(
                 conv.toSimplified(line),
@@ -857,6 +871,69 @@ class _HymnDisplayState extends State<HymnDisplay> {
                 ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 歌词页右上角工具条：**字号缩小 / 放大（仅 Android）** + 手/自动切换。
+  ///
+  /// 桌面（Windows）不显示字号按钮，行为与 v1.8.x 一致。
+  Widget _buildLyricToolbar() {
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    if (!isMobile) return _buildPagingModeButton();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _lyricScaleBtn(
+          icon: Icons.text_decrease,
+          tooltip: '缩小歌词字号',
+          delta: -0.15,
+        ),
+        const SizedBox(width: 4),
+        _lyricScaleBtn(
+          icon: Icons.text_increase,
+          tooltip: '放大歌词字号',
+          delta: 0.15,
+        ),
+        const SizedBox(width: 6),
+        _buildPagingModeButton(),
+      ],
+    );
+  }
+
+  /// 字号缩放按钮（0.8~2.0，步进 0.15）
+  Widget _lyricScaleBtn({
+    required IconData icon,
+    required String tooltip,
+    required double delta,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.controlBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(color: AppColors.controlBorder, width: 1),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () {
+            // 两位小数（避免 1.4499999… 这类浮点尾数写进 state.json）
+            final next = (((widget.lyricScale + delta) * 100).round() / 100)
+                .clamp(0.8, 2.0);
+            if (next == widget.lyricScale) return;
+            LogService.instance.info(
+              LogTag.action,
+              '歌词字号缩放: ${(next * 100).round()}%',
+            );
+            widget.onLyricScaleChanged?.call(next);
+          },
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: Icon(icon, size: 18, color: AppColors.textPrimary),
+          ),
         ),
       ),
     );
@@ -906,7 +983,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
   /// 底部翻页条：◀ 上一页 · 第 N / M 节 · 下一页 ▶
   ///
   /// 自带歌词区底色背景：内容超高时翻页条浮在文字之上，无背景会压字难读。
-  Widget _buildPageNav(int total, {bool byBar = false}) {
+  Widget _buildPageNav(int total, {bool byBar = false, bool compact = false}) {
     final current = _page.clamp(0, total - 1);
     final unit = byBar ? '页' : '节';
     final barText = (byBar && _pagination != null && !_pagination!.isEmpty)
@@ -914,7 +991,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
         : '';
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: compact
+            ? const EdgeInsets.symmetric(horizontal: 4)
+            : const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: AppColors.lyricsBg,
           borderRadius: BorderRadius.circular(8),
@@ -928,13 +1007,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
               tooltip: current > 0 ? '上一页：第 $current $unit' : '已是第一$unit',
               enabled: current > 0,
               onTap: () => _turnPage(-1),
+              compact: compact,
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
               child: Text(
                 '第 ${current + 1} / $total $unit$barText',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: compact ? 12 : 13,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
@@ -947,6 +1027,7 @@ class _HymnDisplayState extends State<HymnDisplay> {
                   : '已是最后一$unit',
               enabled: current < total - 1,
               onTap: () => _turnPage(1),
+              compact: compact,
             ),
           ],
         ),
@@ -959,7 +1040,26 @@ class _HymnDisplayState extends State<HymnDisplay> {
     required String tooltip,
     required bool enabled,
     required VoidCallback onTap,
+    bool compact = false,
   }) {
+    // 移动端紧凑版：32dp 热区（原 48dp）→ 翻页条整体高度≈原来的 2/3
+    if (compact) {
+      return SizedBox(
+        width: 32,
+        height: 32,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          iconSize: 20,
+          icon: Icon(
+            icon,
+            color: enabled ? AppColors.textPrimary : AppColors.textTertiary,
+          ),
+          tooltip: tooltip,
+          onPressed: enabled ? onTap : null,
+        ),
+      );
+    }
     return IconButton(
       icon: Icon(
         icon,

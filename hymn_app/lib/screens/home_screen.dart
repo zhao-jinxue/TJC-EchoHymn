@@ -107,6 +107,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 歌词翻页模式（true=自动跟随播放进度 / false=手动按钮翻页）
   bool _lyricAutoMode = true;
 
+  /// 歌词字号缩放（**仅 Android**；1.0 默认，范围 0.8~2.0）
+  double _lyricScale = 1.0;
+
   /// 关闭按钮行为：''=未选择（首次点击关闭时弹窗询问）、'exit'=直接关闭、
   /// 'tray'=最小化到系统托盘；持久化于 state.json `closeAction`（v1.8.0）
   String _closeAction = '';
@@ -206,6 +209,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _currentDisplayMode =
             state.displayMode.isEmpty ? 'lyrics' : state.displayMode;
         _lyricAutoMode = state.lyricAutoMode;
+        _lyricScale = state.lyricScale;
         _restoredPlaylistIndex = state.playlistIndex;
         _playSubcategory = state.subcategory.isEmpty ? null : state.subcategory;
         _playPlaylistName =
@@ -368,6 +372,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       appTheme: ThemeController.instance.current.id,
       fontSizeLevel: FontScaleController.instance.current.id,
       scoreDarkMode: ScoreDisplayPrefs.instance.mode,
+      lyricScale: _lyricScale,
       manualOnStart: ManualPrefs.instance.showOnStart,
       lyricAutoMode: _lyricAutoMode,
       closeAction: _closeAction,
@@ -1178,6 +1183,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       repo: repo,
       initialMode: _currentDisplayMode,
       initialAutoPaging: _lyricAutoMode,
+      lyricScale: _lyricScale,
+      onLyricScaleChanged: (v) {
+        setState(() => _lyricScale = v);
+        _saveState();
+      },
       onModeChanged: (mode) {
         _currentDisplayMode = mode;
         _saveState();
