@@ -276,10 +276,14 @@ class _HymnDisplayState extends State<HymnDisplay> {
           _buildVersionBar(hymn),
           Divider(height: 1, color: AppColors.divider),
           Expanded(child: _buildContent(hymn)),
-          // 无音频版（lite）：**整条播放条不出现**（ANDROID_PLAN §3.1.15）
+          // 无音频版（lite）：**不显示播放条**（ANDROID_PLAN §3.1.15）；
+          // 改为「浏览导航条」——只提供上一首 / 下一首，不出现播放、进度与音量。
           if (kHasAudio) ...[
             Divider(height: 1, color: AppColors.divider),
             _buildPlayerBar(hymn),
+          ] else ...[
+            Divider(height: 1, color: AppColors.divider),
+            _buildBrowseBar(hymn),
           ],
         ],
       ),
@@ -988,6 +992,53 @@ class _HymnDisplayState extends State<HymnDisplay> {
   }
 
   // ============ 播放条（两层） ============
+  /// 浏览导航条（无音频形态，56dp）：上一首 / 当前诗歌 / 下一首。
+  ///
+  /// 不出现播放、暂停、进度、时间、音量 —— lite 没有播放能力（§3.1.15）。
+  Widget _buildBrowseBar(Hymn? hymn) {
+    final title = hymn == null
+        ? '未选择诗歌'
+        : '第 ${hymn.hymnNumber} 首《'
+            '${ChineseConvertService.instance.toSimplified(hymn.title)}》';
+    return Container(
+      color: AppColors.playBarBg,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
+                tooltip: '上一首',
+                onPressed: () => widget.audio.browsePrev(),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
+                tooltip: '下一首',
+                onPressed: () => widget.audio.browseNext(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlayerBar(Hymn? hymn) {
     // 手机判定与 HomeScreen 保持一致：最短边 < 600dp = 手机（横屏也算）
     final size = MediaQuery.sizeOf(context);

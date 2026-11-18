@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../app_feature.dart';
 import '../../models/hymn.dart';
 import '../../services/audio_service.dart';
 import '../../services/app_state_service.dart';
@@ -153,13 +154,20 @@ abstract class LeftPanelState<P extends LeftPanel> extends State<P> {
   }) {
     LogService.instance.info(
       LogTag.play,
-      '左栏点击播放：第 ${hymn.hymnNumber} 首《${hymn.title}》',
+      kHasAudio
+          ? '左栏点击播放：第 ${hymn.hymnNumber} 首《${hymn.title}》'
+          : '左栏点击浏览：第 ${hymn.hymnNumber} 首《${hymn.title}》',
       detail: '来源子目录: ${sourceSubcategory ?? '无'}\n'
           '来源个人歌单: ${sourcePlaylistName ?? '无'}\n'
           '列表位置: $index / 列表长度: ${contextList.length}',
     );
     audio.setPlaylist(contextList, startIndex: index);
-    audio.playHymn(hymn, index: index, version: audio.currentAudioVersion);
+    if (kHasAudio) {
+      audio.playHymn(hymn, index: index, version: audio.currentAudioVersion);
+    } else {
+      // 无音频形态（lite）：只切换当前诗歌，不尝试播放（没有音频文件）
+      audio.loadHymn(hymn, index: index);
+    }
     widget.onPlayback(PlaybackEvent(
       contextList: contextList,
       hymn: hymn,

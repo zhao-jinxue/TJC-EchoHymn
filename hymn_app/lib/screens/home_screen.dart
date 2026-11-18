@@ -809,12 +809,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (idx < 0) return;
     LogService.instance.info(
       LogTag.play,
-      '搜索命中播放：第 ${picked.hymnNumber} 首《${picked.title}》',
+      kHasAudio
+          ? '搜索命中播放：第 ${picked.hymnNumber} 首《${picked.title}》'
+          : '搜索命中浏览：第 ${picked.hymnNumber} 首《${picked.title}》',
       detail: '全库位置 $idx / ${_allHymns.length}',
     );
     setState(() => _leftTab = LeftTab.hymnList);
     audio.setPlaylist(_allHymns, startIndex: idx);
-    await audio.playAt(idx);
+    if (kHasAudio) {
+      await audio.playAt(idx);
+    } else {
+      // 无音频形态：只切换到该首（不播放）
+      await audio.loadHymn(picked, index: idx);
+    }
     _saveState();
   }
 

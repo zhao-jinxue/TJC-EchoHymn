@@ -94,6 +94,7 @@ List<({String title, List<GuideLine> lines})> androidManualSections() {
         title: '音频',
         lines: [
           const GuideLine('本应用没有播放功能，只提供歌词与谱面阅读。'),
+          const GuideLine('页面底部可点「上一首」「下一首」切换诗歌。'),
         ],
       );
   }

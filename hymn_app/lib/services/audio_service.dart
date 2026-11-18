@@ -505,6 +505,27 @@ class AudioService {
     await playAt(prev);
   }
 
+  /// **浏览切换（无音频形态）**：只加载上一首 / 下一首，不播放。
+  ///
+  /// lite 没有播放能力，`playAt` 会走到 `playHymn`（找不到音频文件 → 报错），
+  /// 因此浏览导航条使用本方法（`loadHymn` 只切当前曲目与状态）。
+  Future<void> browsePrev() => _browseBy(-1);
+
+  Future<void> browseNext() => _browseBy(1);
+
+  Future<void> _browseBy(int delta) async {
+    if (_playlist.isEmpty) return;
+    final next = _currentIndex < 0
+        ? 0
+        : (_currentIndex + delta + _playlist.length) % _playlist.length;
+    if (next == _currentIndex) return;
+    LogService.instance.info(
+      LogTag.play,
+      delta > 0 ? '浏览下一首 → 列表位置 $next' : '浏览上一首 → 列表位置 $next',
+    );
+    await loadHymn(_playlist[next], index: next);
+  }
+
   Future<void> seek(Duration position) async {
     // 未加载音轨时拖动进度条（刚启动 / 未选曲）会走这里 —— 直接忽略。
     // audioplayers 在无 source 时 seek 会抛异常（C 阶段实机实测：日志出现异步异常栈，
