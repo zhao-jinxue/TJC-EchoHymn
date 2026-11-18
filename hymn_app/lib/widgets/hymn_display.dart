@@ -1092,8 +1092,9 @@ class _HymnDisplayState extends State<HymnDisplay> {
   }
 
   // ============ 播放条（两层） ============
-  /// 浏览导航条（无音频形态，56dp）：上一首 / 当前诗歌 / 下一首。
+  /// 浏览导航条（无音频形态）：上一首 / 当前诗歌 / 下一首。
   ///
+  /// **高度 28dp**（2026-11-18 用户要求：原 56dp 太高，取一半即可）；
   /// 不出现播放、暂停、进度、时间、音量 —— lite 没有播放能力（§3.1.15）。
   Widget _buildBrowseBar(Hymn? hymn) {
     final title = hymn == null
@@ -1102,17 +1103,17 @@ class _HymnDisplayState extends State<HymnDisplay> {
             '${ChineseConvertService.instance.toSimplified(hymn.title)}》';
     return Container(
       color: AppColors.playBarBg,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 56,
+          height: 28,
           child: Row(
             children: [
-              IconButton(
-                icon: Icon(Icons.skip_previous, color: AppColors.textPrimary),
+              _browseBtn(
+                icon: Icons.skip_previous,
                 tooltip: '上一首',
-                onPressed: () => widget.audio.browsePrev(),
+                onTap: () => widget.audio.browsePrev(),
               ),
               Expanded(
                 child: Center(
@@ -1121,20 +1122,40 @@ class _HymnDisplayState extends State<HymnDisplay> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 11,
                       color: AppColors.textSecondary,
                     ),
                   ),
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.skip_next, color: AppColors.textPrimary),
+              _browseBtn(
+                icon: Icons.skip_next,
                 tooltip: '下一首',
-                onPressed: () => widget.audio.browseNext(),
+                onTap: () => widget.audio.browseNext(),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 浏览条按钮（28dp 紧凑热区）
+  Widget _browseBtn({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        iconSize: 18,
+        icon: Icon(icon, color: AppColors.textPrimary),
+        tooltip: tooltip,
+        onPressed: onTap,
       ),
     );
   }
