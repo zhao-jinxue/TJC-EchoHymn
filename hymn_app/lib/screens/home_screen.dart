@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemNavigator;
@@ -1204,7 +1205,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (mobile) {
       final size = MediaQuery.sizeOf(context);
-      final rightW = (size.width * 0.92).clamp(260.0, 480.0);
+      // 覆盖层宽度按**视觉**屏宽比例算，再除以全局字号缩放系数：
+      // 全局 Transform.scale 会把画布放大 s 倍，若宽度不补偿，视觉宽 = 0.92×屏宽×s
+      // → 字号档 >100% 时右栏/左栏会超出屏幕（2026-11-18 用户截图反馈）。
+      final rightVisual = (size.width * 0.92).clamp(260.0, 480.0);
+      final rightW = rightVisual / AppFonts.scale;
 
       // ---------- 横屏 / 小平板（width ≥ 600，ANDROID_PLAN §3.1.10）----------
       // 双栏：左栏**常驻 260dp**（可关），内容占余；源考仍为覆盖层。
@@ -1252,7 +1257,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       // ---------- 竖屏（ANDROID_PLAN §3.1.1）----------
       // 内容区**始终满宽**，左/右栏为覆盖层——桌面 Row 挤压式在 411dp 屏上只剩 ~60dp。
-      final leftW = (size.width * 0.84).clamp(240.0, 420.0);
+      final leftVisual = (size.width * 0.84).clamp(240.0, 420.0);
+      final leftW = leftVisual / AppFonts.scale;
       return Stack(
         children: [
           Positioned.fill(child: display),
@@ -1445,6 +1451,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ---------- 右侧栏（源考） ----------
   Widget _buildRightPanel({double? width}) {
     final hymn = _audio?.currentHymn;
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    // 移动端源考正文**显式随字号档位放大**（全局缩放之外再乘一次）：
+    // 固定 13sp 在 1.0/1.12/1.26 档位下视觉差异太小（用户 2026-11-18 反馈）。
+    final titleFont = isMobile ? 15 * AppFonts.scale : 14.0;
+    final bodyFont = isMobile ? 14 * AppFonts.scale : 13.0;
     // 右栏宽度**不随字号缩放**（用户 2026-08-31：右栏有滚动条，无需加宽）。
     // 全局 Transform.scale 会把整树视觉放大为 画布宽×系数，这里用
     // 反向系数抵消：画布宽 = 600 / 系数 / dpr → 视觉物理宽恒为 600。
@@ -1465,7 +1476,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: Text(
                 '诗歌源考',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: titleFont,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
@@ -1483,7 +1494,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ? '暂无源考资料'
                                 : hymn.sourceInfo),
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: bodyFont,
                           height: 1.6,
                           color: AppColors.textSecondary,
                         ),
